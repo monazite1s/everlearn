@@ -8,7 +8,7 @@ Everlearn 使用 `pnpm workspace` Monorepo 和模块化单体，不拆微服务�
 Next.js Web ── HTTP/SSE ── NestJS API ───── PostgreSQL + pgvector
                                │                    │
                                ├── Redis/BullMQ ─ NestJS Worker
-                               ├── S3 Adapter ─── MinIO
+                               ├── S3 Adapter ─── SeaweedFS
                                ├── LLM Provider
                                └── Search Provider / RSS
 ```
@@ -22,7 +22,7 @@ Next.js Web ── HTTP/SSE ── NestJS API ───── PostgreSQL + pgvec
 | `packages/ui` | Design Tokens、Radix 封装和稳定通用组件。 |
 | `packages/agent-runtime` | LangGraph 定义、工具注册、检查点协议和 Agent 专用 Zod Schema。 |
 
-Docker Compose 是首个部署基线，包含 Web、API、Worker、PostgreSQL、Redis 和 MinIO。Web、API 与 Worker 使用同一源码版本；部署不得让不同版本同时处理同一 Workflow 定义格式。
+Docker Compose 是首个部署基线，包含 Web、API、Worker、PostgreSQL、Redis 和 SeaweedFS。Web、API 与 Worker 使用同一源码版本；部署不得让不同版本同时处理同一 Workflow 定义格式。
 
 ## 领域模块
 
@@ -52,7 +52,7 @@ Docker Compose 是首个部署基线，包含 Web、API、Worker、PostgreSQL、
 
 - PostgreSQL 是业务、状态和审计事实源；pgvector 与全文索引与文档修订关联。
 - Redis 只保存队列、调度、限流和短期协调数据，允许在业务数据保留时重建。
-- MinIO/S3 保存附件和导入导出临时对象；数据库保存所有权、哈希、大小、MIME、状态和对象键。
+- SeaweedFS S3 保存附件和导入导出临时对象；数据库保存所有权、哈希、大小、MIME、状态和对象键。
 - 文档使用 ProseMirror JSON；服务端派生纯文本和块级索引。Markdown 不是内部事实源。
 - 外部资料不归档完整正文，只保存生成所需且允许长期保存的摘要、短摘录和来源元数据。
 

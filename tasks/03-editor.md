@@ -34,13 +34,13 @@
 
 ## ED-04 实现附件上传与生命周期
 
-- 依赖：FND-04、ED-01。
+- 依赖：FND-08、ED-01。
 - 必读：`docs/01-design/pages/editor.md`、`docs/02-architecture/system.md`、`docs/02-architecture/api-and-events.md`。
 - 目标：支持图片预览、普通附件下载、受限上传确认和孤儿清理。
 - 实施：校验大小/MIME/哈希；对象先 pending，正文引用后 active；下载经所有权授权。
 - 非目标：PDF/Office 解析、OCR、转码和 AI 检索。
 - 验收：失败上传可重试且不写无效 Block；未授权对象不可下载；孤儿清理幂等。
-- 验证：MinIO 集成测试、授权测试、编辑器上传 E2E。
+- 验证：SeaweedFS S3 集成测试、授权测试、编辑器上传 E2E。
 
 ## ED-05 实现编辑器页面与工具栏
 
@@ -64,4 +64,4 @@
 
 ## 检查点
 
-运行编辑器单元/组件、PostgreSQL/MinIO 集成、自动保存与修订 E2E，再执行 `pnpm check`。
+运行编辑器单元/组件、PostgreSQL/SeaweedFS S3 集成、自动保存与修订 E2E，再执行 `pnpm check`。

@@ -37,7 +37,7 @@ Stylelint 使用 standard config；禁止 `!important`，选择器嵌套不超�
 | 层级 | 责任 |
 |---|---|
 | 单元 | 领域规则、状态机、Schema、排序、引用和序列化。 |
-| 集成 | PostgreSQL 仓储、Nest API、BullMQ Worker、MinIO 和伪 Provider。 |
+| 集成 | PostgreSQL 仓储、Nest API、BullMQ Worker、SeaweedFS S3 和伪 Provider。 |
 | 组件 | 编辑器扩展、Radix 封装、表单状态、键盘和 reduced motion。 |
 | E2E | 用户可见核心闭环和跨服务恢复。 |
 

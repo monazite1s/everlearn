@@ -16,7 +16,7 @@
 
 - 依赖：OPS-01。
 - 必读：`docs/02-architecture/system.md`、`docs/02-architecture/data-model.md`。
-- 目标：备份 PostgreSQL 与 MinIO，并提供一致性恢复步骤和校验报告。
+- 目标：备份 PostgreSQL 与 SeaweedFS 对象数据，并提供一致性恢复步骤和校验报告。
 - 实施：记录应用版本、迁移版本、对象清单和时间；恢复到隔离环境，不覆盖现有实例。
 - 非目标：跨区域持续复制和无限历史保留。
 - 验收：恢复后文档、附件、运行索引和分享快照一致；Redis 丢失可重建调度。

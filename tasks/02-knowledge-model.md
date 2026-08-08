@@ -4,7 +4,7 @@
 
 ## KB-01 建立 Identity 与 Knowledge Schema
 
-- 依赖：FND-04。
+- 依赖：FND-08、FND-09。
 - 必读：`docs/02-architecture/data-model.md`、`docs/02-architecture/system.md`、`docs/00-product/product-spec.md`。
 - 目标：创建 User、KnowledgeBase、Document、Revision、Inbox、Tag 与 Link 的首个迁移和本地用户种子。
 - 实施：UUID、`ownerId`、版本、状态和唯一约束一次定义；文档先保存最小合法 JSON。

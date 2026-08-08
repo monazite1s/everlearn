@@ -4,7 +4,7 @@
 
 ## UI-01 实现 Design Tokens 与主题
 
-- 依赖：FND-02。
+- 依赖：FND-05。
 - 必读：`docs/01-design/design-system.md`、`docs/03-engineering/quality-gates.md`。
 - 目标：实现纸张棕金、中性预设及各自浅色/深色 Token，支持跟随系统和持久化选择。
 - 实施：颜色、排版、间距、圆角、阴影和动效分别建 Token；用展示页覆盖全部语义角色。

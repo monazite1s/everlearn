@@ -4,7 +4,7 @@
 
 ## AI-01 定义 Provider 与 LLM Gateway
 
-- 依赖：FND-03。
+- 依赖：FND-07。
 - 必读：`docs/02-architecture/ai-workflow-runtime.md`、`docs/02-architecture/system.md`、`docs/03-engineering/research-and-dependencies.md`。
 - 目标：定义流式文本、结构化生成、Embedding、取消和用量接口，并实现 OpenAI-compatible Adapter。
 - 实施：统一超时、重试、错误分类、模型配置和密钥隔离；提供确定性伪 Provider。

@@ -4,7 +4,7 @@
 
 ## SEARCH-01 建立文本投影与全文索引
 
-- 依赖：ED-02、FND-05。
+- 依赖：ED-02、FND-09。
 - 必读：`docs/02-architecture/data-model.md`、`docs/02-architecture/ai-workflow-runtime.md`、`docs/02-architecture/system.md`。
 - 目标：消费 `document.saved`，生成纯文本和 `SearchBlock`，建立 PostgreSQL FTS 索引。
 - 实施：按 Block ID、修订和内容哈希幂等更新；删除/恢复同步可见性；失败可由扫描任务重建。

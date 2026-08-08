@@ -24,7 +24,7 @@
 
 ## WFR-03 建立 LangGraph 执行与检查点
 
-- 依赖：WFR-01、WFR-02、FND-04。
+- 依赖：WFR-01、WFR-02、FND-08。
 - 必读：`docs/02-architecture/ai-workflow-runtime.md`、`docs/02-architecture/system.md`、`docs/03-engineering/research-and-dependencies.md`。
 - 目标：把发布定义编译为 LangGraph，使用 PostgreSQL Checkpointer 和一对一 thread ID 运行。
 - 实施：业务 Run 与检查点分离；节点尝试保存摘要；取消在节点和副作用边界检查。
