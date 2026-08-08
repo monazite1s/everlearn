@@ -7,6 +7,7 @@
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "test:config": "pnpm build && node --test dist/runtime-config.spec.js",
+    "test:correlation": "pnpm build && node --test dist/worker-log-context.spec.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

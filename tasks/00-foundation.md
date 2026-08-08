@@ -110,6 +110,7 @@
 
 ## FND-07 建立请求关联与结构化日志
 
+- 状态：已完成。
 - 依赖：FND-03、FND-06。
 - 必读：`docs/02-architecture/api-and-events.md`、`docs/03-engineering/quality-gates.md`、`AGENTS.md`。
 - 目标：API 统一生成或接收 request ID，并用 Nest Logger 输出结构化安全日志。
@@ -117,6 +118,13 @@
 - 非目标：业务审计事件和第三方可观察性平台。
 - 验收：合法请求 ID 被保留，缺失或非法值生成 UUID；日志不含敏感字段。
 - 验证：API 集成测试与日志快照检查。
+
+### FND-07 完成证据
+
+- 改动：API Middleware 统一解析、生成和回传 request ID，并记录安全字段白名单；API/Worker 使用 Nest 单行 JSON Logger，Worker 日志入口支持任务关联标识。
+- 验证：API 集成测试验证合法、非法和缺失 request ID；API/Worker 日志结构测试共 4 项通过；前台 Worker 启动输出均可解析为单行 JSON。
+- 证据：HTTP 完成日志只包含事件、request ID、方法、无查询路径、状态码和耗时；Worker 只接受事件、服务及可选 `jobId/runId/requestId`，不接受任务载荷。
+- 风险：本阶段没有业务异常端点；错误响应体与响应头 request ID 一致性将在首个全局异常过滤器落地时加入集成测试。
 
 ## FND-08 建立本地依赖环境
 

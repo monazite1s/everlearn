@@ -21,6 +21,14 @@
 
 `message` 可直接展示给用户且不含内部信息；`details` 只放字段错误或安全的恢复信息。服务端日志用 `requestId` 关联详细异常。
 
+## 请求关联与日志
+
+- 客户端可发送 `X-Request-Id`；仅 UUID 被保留，缺失或非法值由服务端生成 UUID v4。
+- 每个响应以 `X-Request-Id` 回传最终值；错误响应的 `requestId` 字段必须与响应头一致。
+- HTTP 完成日志只包含事件名、request ID、方法、无查询参数路径、状态码和耗时；禁止记录 Cookie、Authorization、请求/响应正文、Prompt、密钥或外部全文。
+- Worker 日志固定包含事件名与服务名；处理任务时保留 `jobId`，有来源时同时保留 `runId` 和 `requestId`，不得记录完整任务载荷。
+- Nest 系统日志与应用日志使用单行 JSON；本阶段不引入第三方日志 SDK。
+
 ## 核心资源
 
 ### Knowledge
