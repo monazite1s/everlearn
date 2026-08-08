@@ -6,11 +6,17 @@ allowBuilds:
   sharp: true
 
 catalog:
+  '@nestjs/cli': 11.0.24
+  '@nestjs/common': 11.1.28
+  '@nestjs/core': 11.1.28
+  '@nestjs/platform-express': 11.1.28
   '@types/node': 24.13.3
   '@types/react': 19.2.18
   '@types/react-dom': 19.2.4
   next: 16.2.9
   react: 19.2.8
   react-dom: 19.2.8
+  reflect-metadata: 0.2.2
+  rxjs: 7.8.2
   turbo: 2.10.6
   typescript: 5.9.3
