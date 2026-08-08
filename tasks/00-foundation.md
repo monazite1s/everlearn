@@ -38,6 +38,7 @@
 
 ## FND-03 建立 API 与 Worker 应用壳
 
+- 状态：已完成。
 - 依赖：FND-01。
 - 必读：`docs/02-architecture/system.md`、`docs/03-engineering/development.md`、`docs/02-architecture/api-and-events.md`。
 - 目标：建立 NestJS HTTP API 与无 HTTP 的 standalone Worker。
@@ -45,6 +46,13 @@
 - 非目标：数据库连接、队列消费者、认证和业务模块。
 - 验收：API 健康端点返回稳定契约；Worker 可启动并正常退出；两者可独立构建。
 - 验证：API/Worker package 的 `typecheck` 与 `build`，健康端点 smoke。
+
+### FND-03 完成证据
+
+- 改动：建立 NestJS HTTP API、存活/就绪健康端点与无 HTTP 的 standalone Worker。
+- 验证：API 和 Worker 独立 `typecheck`、`build` 均退出 0；Worker 启动后记录生命周期就绪并正常退出；根 `pnpm typecheck` 与 `pnpm build` 共执行 3 个 package 且全部通过。
+- 证据：`/api/v1/health/live` 与 `/api/v1/health/ready` smoke 均返回 HTTP 200 和稳定状态字段。
+- 风险：健康就绪端点尚未探测 PostgreSQL、Redis 与对象存储；该能力按 FND-06 的配置基线和后续连接任务实现。
 
 ## FND-04 建立共享 Package 边界
 
