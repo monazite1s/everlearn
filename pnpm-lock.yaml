@@ -138,6 +138,12 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
+  packages/contracts:
+    devDependencies:
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
 packages:
 
   '@angular-devkit/core@19.2.24':
