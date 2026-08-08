@@ -74,6 +74,7 @@
 
 ## FND-05 配置格式与静态门禁
 
+- 状态：已完成。
 - 依赖：FND-02、FND-03、FND-04。
 - 必读：`docs/03-engineering/quality-gates.md`、`AGENTS.md`。
 - 目标：配置 Prettier、ESLint flat config、Stylelint、JSDoc 与文件/函数规模检查。
@@ -81,6 +82,13 @@
 - 非目标：业务测试和 CI。
 - 验收：缺少文件/函数 JSDoc、超过行数、原始业务颜色和 `console.log` 均失败；合法样例通过。
 - 验证：`pnpm format:check`、`pnpm lint`、`pnpm check:file-size`。
+
+### FND-05 完成证据
+
+- 改动：配置独立 Prettier、类型感知 ESLint flat config、Stylelint、Design Token 限制和手写文件 400 行扫描脚本。
+- 验证：`pnpm check:file-size`、`pnpm format:check`、`pnpm lint`、`pnpm typecheck`、`pnpm build` 与 `pnpm peers check` 均退出 0。
+- 证据：临时失败夹具分别触发 `require-file-overview`、`require-jsdoc`、`no-console`、`declaration-strict-value`、`declaration-no-important` 和 405 行文件阻断，验证后已删除。
+- 风险：当前 `npmmirror` 不实现 npm audit endpoint，`pnpm audit --audit-level high` 无法运行；未切换用户 registry，依赖漏洞扫描留给支持审计源的 CI 环境。
 
 ## FND-06 建立运行时配置校验
 

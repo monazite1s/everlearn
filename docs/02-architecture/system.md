@@ -13,30 +13,30 @@ Next.js Web ── HTTP/SSE ── NestJS API ───── PostgreSQL + pgvec
                                └── Search Provider / RSS
 ```
 
-| 单元 | 职责 |
-|---|---|
-| `apps/web` | 路由、UI、只读渲染器、编辑器与 SSE 客户端。 |
-| `apps/api` | 业务 API、鉴权边界、事务、Provider Gateway 和运行查询。 |
-| `apps/worker` | BullMQ 消费、LangGraph 执行、调度任务、索引和到期清理。 |
-| `packages/contracts` | API DTO 派生类型、错误码、事件信封和共享枚举。 |
-| `packages/ui` | Design Tokens、Radix 封装和稳定通用组件。 |
+| 单元                     | 职责                                                           |
+| ------------------------ | -------------------------------------------------------------- |
+| `apps/web`               | 路由、UI、只读渲染器、编辑器与 SSE 客户端。                    |
+| `apps/api`               | 业务 API、鉴权边界、事务、Provider Gateway 和运行查询。        |
+| `apps/worker`            | BullMQ 消费、LangGraph 执行、调度任务、索引和到期清理。        |
+| `packages/contracts`     | API DTO 派生类型、错误码、事件信封和共享枚举。                 |
+| `packages/ui`            | Design Tokens、Radix 封装和稳定通用组件。                      |
 | `packages/agent-runtime` | LangGraph 定义、工具注册、检查点协议和 Agent 专用 Zod Schema。 |
 
 Docker Compose 是首个部署基线，包含 Web、API、Worker、PostgreSQL、Redis 和 SeaweedFS。Web、API 与 Worker 使用同一源码版本；部署不得让不同版本同时处理同一 Workflow 定义格式。
 
 ## 领域模块
 
-| 模块 | 所有权 |
-|---|---|
-| Identity | 用户主体、本地开发身份和后续会话。 |
-| Knowledge | 知识库、文档树、Inbox、回收站、标签、链接和修订。 |
-| Search | 文本投影、全文索引、向量块、混合排序和引用定位。 |
-| Files | 附件元数据、上传授权、对象生命周期。 |
-| Generations | LLM 请求、流式草稿、差异接受、费用和错误。 |
-| Workflows | 定义、版本、计划、运行索引、节点尝试和人工确认。 |
-| News | 订阅、来源、条目摘要、简报与质量警告。 |
-| Tutorials | 研究范围、大纲、章节状态和教程知识库映射。 |
-| Sharing | M7 的发布快照、Token、撤销、过期和克隆来源。 |
+| 模块        | 所有权                                            |
+| ----------- | ------------------------------------------------- |
+| Identity    | 用户主体、本地开发身份和后续会话。                |
+| Knowledge   | 知识库、文档树、Inbox、回收站、标签、链接和修订。 |
+| Search      | 文本投影、全文索引、向量块、混合排序和引用定位。  |
+| Files       | 附件元数据、上传授权、对象生命周期。              |
+| Generations | LLM 请求、流式草稿、差异接受、费用和错误。        |
+| Workflows   | 定义、版本、计划、运行索引、节点尝试和人工确认。  |
+| News        | 订阅、来源、条目摘要、简报与质量警告。            |
+| Tutorials   | 研究范围、大纲、章节状态和教程知识库映射。        |
+| Sharing     | M7 的发布快照、Token、撤销、过期和克隆来源。      |
 
 模块只能通过应用服务、只读查询接口或领域事件协作。禁止跨模块直接写表；允许在同一数据库事务内由应用服务协调多个模块仓储。
 

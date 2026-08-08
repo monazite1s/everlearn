@@ -23,30 +23,41 @@
 
 ## 已采用基线
 
-| 领域 | 选择 | 用途与边界 |
-|---|---|---|
-| 编辑器 | [Tiptap](https://github.com/ueberdosis/tiptap) | Headless ProseMirror 编辑器、扩展和拖拽；不采用协作云或 Yjs。 |
-| UI 原语 | [Radix Primitives](https://www.radix-ui.com/primitives/docs/overview/introduction) | 可访问行为层，由 CSS Modules 提供视觉。 |
-| 动效 | [Motion for React](https://motion.dev/docs/react) | 编排与布局动效；简单变化使用 CSS。 |
-| 画布 | [React Flow](https://reactflow.dev/learn/concepts/terms-and-definitions) | Workflow 可视化；列表仍是完整编辑入口。 |
-| Agent Runtime | [LangGraph.js](https://github.com/langchain-ai/langgraphjs) | 图执行、检查点、子图和人工中断。 |
-| 队列 | [BullMQ Job Schedulers](https://docs.bullmq.io/guide/job-schedulers) | 后台分发与每日/每周调度；不用废弃 repeatable API。 |
-| 搜索 | PostgreSQL FTS + pgvector | 普通搜索与 AI 混合召回；不引入独立搜索集群。 |
-| Web 搜索 | Tavily Adapter | 首个实现；业务只依赖 Provider 接口。 |
-| 组件样式 | CSS Modules + CSS variables | 禁止原子化 CSS。 |
+| 领域          | 选择                                                                               | 用途与边界                                                    |
+| ------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 编辑器        | [Tiptap](https://github.com/ueberdosis/tiptap)                                     | Headless ProseMirror 编辑器、扩展和拖拽；不采用协作云或 Yjs。 |
+| UI 原语       | [Radix Primitives](https://www.radix-ui.com/primitives/docs/overview/introduction) | 可访问行为层，由 CSS Modules 提供视觉。                       |
+| 动效          | [Motion for React](https://motion.dev/docs/react)                                  | 编排与布局动效；简单变化使用 CSS。                            |
+| 画布          | [React Flow](https://reactflow.dev/learn/concepts/terms-and-definitions)           | Workflow 可视化；列表仍是完整编辑入口。                       |
+| Agent Runtime | [LangGraph.js](https://github.com/langchain-ai/langgraphjs)                        | 图执行、检查点、子图和人工中断。                              |
+| 队列          | [BullMQ Job Schedulers](https://docs.bullmq.io/guide/job-schedulers)               | 后台分发与每日/每周调度；不用废弃 repeatable API。            |
+| 搜索          | PostgreSQL FTS + pgvector                                                          | 普通搜索与 AI 混合召回；不引入独立搜索集群。                  |
+| Web 搜索      | Tavily Adapter                                                                     | 首个实现；业务只依赖 Provider 接口。                          |
+| 组件样式      | CSS Modules + CSS variables                                                        | 禁止原子化 CSS。                                              |
+
+## 工程门禁基线（2026-08-09）
+
+| 能力       | 选择                                                                                                                                                                                       | 决策与边界                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| JS/TS Lint | [ESLint flat config](https://eslint.org/docs/latest/use/configure/configuration-files) 9.x、[typescript-eslint typed linting](https://typescript-eslint.io/getting-started/typed-linting/) | 使用类型信息执行正确性规则；ESLint 10 因 React/import 插件 peer 不兼容而不采用。 |
+| 注释门禁   | [eslint-plugin-jsdoc](https://github.com/gajus/eslint-plugin-jsdoc)                                                                                                                        | 强制 `@fileoverview` 与全部函数/方法/组件 JSDoc，不强制无意义参数说明。          |
+| CSS Lint   | [Stylelint](https://stylelint.io/user-guide/configure/) standard config + strict values                                                                                                    | CSS Modules 合法性、复杂度及颜色/间距/圆角/阴影/时长 Token 使用。                |
+| 格式化     | [Prettier](https://prettier.io/docs/configuration)                                                                                                                                         | 独立于 ESLint 运行；不采用 `eslint-plugin-prettier`。                            |
+
+上述依赖仅用于开发门禁，不进入生产运行包；版本由根锁文件固定，升级时必须重新执行 peer 检查和失败样例验证。
 
 ## 已拒绝或延期
 
-| 方案 | 结论 | 原因 |
-|---|---|---|
-| Superpowers | 禁止 | Token 成本与收益不符合项目工作方式。 |
-| OpenAI Agents SDK 作为 Runtime | 不采用 | 当前需要可编辑图、持久检查点和明确子图；Provider 仍保持可替换。 |
-| 自研 Workflow DSL/状态机 | 不采用 | 重复建设持久化、中断和恢复能力。 |
-| 固定 Planner/Executor/Critic | 不采用 | 不是所有流程都需要三角色，节点和质量门槛应按模板定义。 |
-| Tailwind/UnoCSS | 禁止 | 原子化样式不符合可读性和主题约束。 |
-| Yjs/CRDT | 延期且无计划 | 产品不允许同时协作编辑。 |
-| Browser automation | 首期排除 | 资讯仅支持 RSS/Atom 和 Search API。 |
-| 任意 HTTP/代码节点 | 首期排除 | 密钥、SSRF、隔离与资源治理成本过高。 |
+| 方案                           | 结论         | 原因                                                            |
+| ------------------------------ | ------------ | --------------------------------------------------------------- |
+| Superpowers                    | 禁止         | Token 成本与收益不符合项目工作方式。                            |
+| OpenAI Agents SDK 作为 Runtime | 不采用       | 当前需要可编辑图、持久检查点和明确子图；Provider 仍保持可替换。 |
+| 自研 Workflow DSL/状态机       | 不采用       | 重复建设持久化、中断和恢复能力。                                |
+| 固定 Planner/Executor/Critic   | 不采用       | 不是所有流程都需要三角色，节点和质量门槛应按模板定义。          |
+| Tailwind/UnoCSS                | 禁止         | 原子化样式不符合可读性和主题约束。                              |
+| Yjs/CRDT                       | 延期且无计划 | 产品不允许同时协作编辑。                                        |
+| Browser automation             | 首期排除     | 资讯仅支持 RSS/Atom 和 Search API。                             |
+| 任意 HTTP/代码节点             | 首期排除     | 密钥、SSRF、隔离与资源治理成本过高。                            |
 
 ## 已校验的重要限制
 

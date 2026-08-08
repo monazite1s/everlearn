@@ -2,13 +2,13 @@
 
 文档只记录当前有效的产品决策、行为、架构和验收标准。历史方案由版本控制保存，不在正文中兼容。
 
-| 层级 | 事实源 | 使用时机 |
-|---|---|---|
-| 产品 | [产品规格](00-product/product-spec.md)、[发布路线](00-product/release-roadmap.md) | 判断目标、范围、优先级和延期能力。 |
-| 设计 | [设计系统](01-design/design-system.md)、[布局与导航](01-design/layout-and-navigation.md)、[页面规格](01-design/pages/) | 新建或修改页面、组件和交互。 |
+| 层级 | 事实源                                                                                                                                                                                              | 使用时机                                   |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| 产品 | [产品规格](00-product/product-spec.md)、[发布路线](00-product/release-roadmap.md)                                                                                                                   | 判断目标、范围、优先级和延期能力。         |
+| 设计 | [设计系统](01-design/design-system.md)、[布局与导航](01-design/layout-and-navigation.md)、[页面规格](01-design/pages/)                                                                              | 新建或修改页面、组件和交互。               |
 | 架构 | [系统架构](02-architecture/system.md)、[数据模型](02-architecture/data-model.md)、[API 与事件](02-architecture/api-and-events.md)、[AI 与 Workflow Runtime](02-architecture/ai-workflow-runtime.md) | 修改模块、数据、接口、异步任务或外部集成。 |
-| 工程 | [开发规范](03-engineering/development.md)、[质量门禁](03-engineering/quality-gates.md)、[研究与依赖](03-engineering/research-and-dependencies.md) | 执行任何代码任务或引入依赖。 |
-| 施工 | [任务入口](../tasks/README.md) | 领取任务、确认依赖和记录验收证据。 |
+| 工程 | [开发规范](03-engineering/development.md)、[质量门禁](03-engineering/quality-gates.md)、[研究与依赖](03-engineering/research-and-dependencies.md)                                                   | 执行任何代码任务或引入依赖。               |
+| 施工 | [任务入口](../tasks/README.md)                                                                                                                                                                      | 领取任务、确认依赖和记录验收证据。         |
 
 ## 冲突处理
 
