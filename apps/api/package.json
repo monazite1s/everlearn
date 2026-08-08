@@ -10,8 +10,11 @@
   },
   "dependencies": {
     "@nestjs/common": "catalog:",
+    "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",
     "@nestjs/platform-express": "catalog:",
+    "class-transformer": "catalog:",
+    "class-validator": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:"
   },

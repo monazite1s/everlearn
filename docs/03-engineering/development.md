@@ -58,6 +58,20 @@ async function acceptGeneration(input: AcceptGenerationInput): Promise<DocumentR
 - 新依赖必须记录解决的问题、版本/许可、维护状态、替代方案和移除成本。
 - 依赖锁定使用 workspace 统一策略；应用不得各自引入不同主版本。
 
+## 服务端运行时配置
+
+API 与 Worker 在 Nest 应用创建前校验同一基础契约，缺少、空值或格式错误均阻止启动。错误只允许返回字段名与约束，不得回显配置值。
+
+| 分组       | 环境变量                                                                                         | 规则                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| PostgreSQL | `DATABASE_URL`                                                                                   | 必填，协议为 `postgres` 或 `postgresql`。                 |
+| Redis      | `REDIS_URL`                                                                                      | 必填，协议为 `redis` 或 `rediss`。                        |
+| S3         | `S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`、`S3_ACCESS_KEY`、`S3_SECRET_KEY`、`S3_FORCE_PATH_STYLE` | 全部必填；path style 只接受字符串 `true` 或 `false`。     |
+| LLM        | `LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL`                                                       | 可省略；提供任一字段时必须提供完整组合。                  |
+| Search     | `SEARCH_PROVIDER`、`SEARCH_API_KEY`                                                              | 可省略；提供任一字段时必须完整，首个 Provider 为 Tavily。 |
+
+服务端只选择上述白名单字段；其他进程环境变量不得进入应用配置对象。Web 构建不得读取这些变量。
+
 ## 必备命令
 
 根 `package.json` 建立后必须提供：

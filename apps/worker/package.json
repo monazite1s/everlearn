@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@nestjs/common": "catalog:",
+    "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",
+    "class-transformer": "catalog:",
+    "class-validator": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:"
   },

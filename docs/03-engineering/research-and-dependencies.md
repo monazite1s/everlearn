@@ -23,17 +23,18 @@
 
 ## 已采用基线
 
-| 领域          | 选择                                                                               | 用途与边界                                                    |
-| ------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| 编辑器        | [Tiptap](https://github.com/ueberdosis/tiptap)                                     | Headless ProseMirror 编辑器、扩展和拖拽；不采用协作云或 Yjs。 |
-| UI 原语       | [Radix Primitives](https://www.radix-ui.com/primitives/docs/overview/introduction) | 可访问行为层，由 CSS Modules 提供视觉。                       |
-| 动效          | [Motion for React](https://motion.dev/docs/react)                                  | 编排与布局动效；简单变化使用 CSS。                            |
-| 画布          | [React Flow](https://reactflow.dev/learn/concepts/terms-and-definitions)           | Workflow 可视化；列表仍是完整编辑入口。                       |
-| Agent Runtime | [LangGraph.js](https://github.com/langchain-ai/langgraphjs)                        | 图执行、检查点、子图和人工中断。                              |
-| 队列          | [BullMQ Job Schedulers](https://docs.bullmq.io/guide/job-schedulers)               | 后台分发与每日/每周调度；不用废弃 repeatable API。            |
-| 搜索          | PostgreSQL FTS + pgvector                                                          | 普通搜索与 AI 混合召回；不引入独立搜索集群。                  |
-| Web 搜索      | Tavily Adapter                                                                     | 首个实现；业务只依赖 Provider 接口。                          |
-| 组件样式      | CSS Modules + CSS variables                                                        | 禁止原子化 CSS。                                              |
+| 领域          | 选择                                                                                                                              | 用途与边界                                                    |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 编辑器        | [Tiptap](https://github.com/ueberdosis/tiptap)                                                                                    | Headless ProseMirror 编辑器、扩展和拖拽；不采用协作云或 Yjs。 |
+| UI 原语       | [Radix Primitives](https://www.radix-ui.com/primitives/docs/overview/introduction)                                                | 可访问行为层，由 CSS Modules 提供视觉。                       |
+| 动效          | [Motion for React](https://motion.dev/docs/react)                                                                                 | 编排与布局动效；简单变化使用 CSS。                            |
+| 画布          | [React Flow](https://reactflow.dev/learn/concepts/terms-and-definitions)                                                          | Workflow 可视化；列表仍是完整编辑入口。                       |
+| Agent Runtime | [LangGraph.js](https://github.com/langchain-ai/langgraphjs)                                                                       | 图执行、检查点、子图和人工中断。                              |
+| 队列          | [BullMQ Job Schedulers](https://docs.bullmq.io/guide/job-schedulers)                                                              | 后台分发与每日/每周调度；不用废弃 repeatable API。            |
+| 搜索          | PostgreSQL FTS + pgvector                                                                                                         | 普通搜索与 AI 混合召回；不引入独立搜索集群。                  |
+| Web 搜索      | Tavily Adapter                                                                                                                    | 首个实现；业务只依赖 Provider 接口。                          |
+| 组件样式      | CSS Modules + CSS variables                                                                                                       | 禁止原子化 CSS。                                              |
+| 服务端配置    | [Nest Config](https://docs.nestjs.com/techniques/configuration) + [class-validator](https://github.com/typestack/class-validator) | API/Worker 启动前同步校验白名单字段；普通业务不使用 Zod。     |
 
 ## 工程门禁基线（2026-08-09）
 
