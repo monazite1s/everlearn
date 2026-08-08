@@ -3,10 +3,21 @@
  */
 
 import { Logger, Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 
+import { validateRuntimeEnvironment } from './runtime-config';
+
 /** Provides the root dependency-injection context before queue modules are introduced. */
-@Module({})
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      cache: true,
+      isGlobal: true,
+      validate: validateRuntimeEnvironment,
+    }),
+  ],
+})
 class WorkerModule {}
 
 const bootstrapLogger = new Logger('WorkerBootstrap');

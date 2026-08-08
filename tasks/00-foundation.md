@@ -92,6 +92,7 @@
 
 ## FND-06 建立运行时配置校验
 
+- 状态：已完成。
 - 依赖：FND-03、FND-05。
 - 必读：`docs/02-architecture/system.md`、`docs/02-architecture/api-and-events.md`、`AGENTS.md`。
 - 目标：API 与 Worker 启动时校验数据库、Redis 和对象存储配置。
@@ -99,6 +100,13 @@
 - 非目标：Provider、数据库和对象存储连接测试。
 - 验收：缺少必需配置时快速失败；可选配置不完整时返回可定位错误；不使用 Zod。
 - 验证：配置单元测试和 API/Worker 启动失败测试。
+
+### FND-06 完成证据
+
+- 改动：API 与 Worker 使用 Nest Config、`class-validator` 和白名单投影校验 PostgreSQL、Redis、S3 及可选 Provider 配置；完整契约已写入开发规范。
+- 验证：API/Worker 配置测试共 8 项全部通过；缺少基础配置时两个进程均退出 1；完整本地假配置下 Worker 正常退出且 API 就绪端点返回 HTTP 200。
+- 证据：测试覆盖必填字段、空字符串、Provider 组合完整性、冻结结果和错误不回显密钥值；`pnpm lint`、聚焦类型检查、格式与文件规模门禁通过。
+- 风险：本任务只验证配置结构，不连接 PostgreSQL、Redis 或 S3；真实依赖健康检查在 FND-08 环境就绪后实现。
 
 ## FND-07 建立请求关联与结构化日志
 

@@ -6,6 +6,7 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
+    "test:config": "pnpm build && node --test dist/runtime-config.spec.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
