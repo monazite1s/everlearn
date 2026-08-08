@@ -21,6 +21,7 @@
 
 ## FND-02 建立 Web 应用壳
 
+- 状态：已完成。
 - 依赖：FND-01。
 - 必读：`docs/02-architecture/system.md`、`docs/03-engineering/development.md`。
 - 目标：建立可独立构建的 Next.js App Router 最小应用。
@@ -28,6 +29,12 @@
 - 非目标：设计系统、业务页面、原子化 CSS 和 React Compiler。
 - 验收：Web 可启动和构建；没有业务组件或跨应用源码导入。
 - 验证：Web package 的 `typecheck` 与 `build`。
+
+### FND-02 完成证据
+
+- 改动：建立 Next.js App Router、Server Component 根布局、中文工程占位页和 CSS Modules。
+- 验证：根 `pnpm typecheck` 与 `pnpm build` 各执行 1 个 Web 任务并通过；本地生产服务器返回 HTTP 200 且包含页面标题。
+- 风险：当前页面只验证应用边界，不代表 M1 设计系统或产品应用壳。
 
 ## FND-03 建立 API 与 Worker 应用壳
 

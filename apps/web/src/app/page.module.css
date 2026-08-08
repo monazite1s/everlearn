@@ -1,0 +1,12 @@
+/* Centers the temporary engineering status without defining product visual language. */
+
+.shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+}
+
+.content {
+  max-width: 42rem;
+  text-align: center;
+}
