@@ -1,0 +1,90 @@
+# 开发规范
+
+## 开始任务
+
+1. 从 `tasks/README.md` 选择首个依赖已完成的任务。
+2. 只读取任务列出的最多三份上下文文档和将修改的现有实现。
+3. 确认任务目标、非目标、接口、状态和验收；缺失时先修正规格，不在代码中猜测。
+4. 用 `rg` 搜索已有模块、类型、组件和依赖；禁止重复实现。
+5. 涉及复杂模块或新增依赖时，先按研究规则记录证据和选择。
+
+## Monorepo 边界
+
+```text
+apps/web            Next.js 页面与 feature
+apps/api            NestJS HTTP/SSE 与应用服务
+apps/worker         队列消费者、LangGraph 和后台维护
+packages/contracts  共享枚举、事件与安全传输类型
+packages/ui         Design Tokens 与稳定通用 UI
+packages/agent-runtime  Agent 专用状态、Schema 和工具协议
+```
+
+- Nest 模块先以 `controller / application / domain / infrastructure` 的实际需要组织；没有第二个实现时不创建空接口或抽象工厂。
+- Next 页面只负责路由组合；业务状态、组件和 CSS 放在 `features/<feature>`。通用组件必须语义稳定且至少复用两次。
+- 禁止跨应用源码相对导入；共享内容只能经明确 package 出口。
+- 禁止 `common`、`shared`、`utils` 成为无所有权目录；通用函数按领域命名并放在最窄作用域。
+
+## 编码原则
+
+- 先写最小正确实现。第三个真实用例出现前不建设通用框架。
+- 函数单一职责，使用早返回控制嵌套；不可变更新，不修改传入对象。
+- 每层显式处理错误：基础设施映射外部错误，应用层决定业务结果，UI 展示可行动信息。
+- 数据库查询参数化；跨实体不变量在应用服务或领域对象中校验，不能只依赖 Controller DTO。
+- 队列任务按至少一次交付设计；外部写入和文档创建必须有业务幂等约束。
+- 正式日志使用结构化 logger；禁止生产 `console.log` 和记录正文、Prompt、密钥或外部全文。
+
+## JSDoc
+
+```ts
+/**
+ * @fileoverview Applies accepted AI changes to a versioned document.
+ */
+
+/** Accepts a reviewed patch once and records its generation-backed revision. */
+async function acceptGeneration(input: AcceptGenerationInput): Promise<DocumentRevision> {
+  // Implementation.
+}
+```
+
+- 文件说明只写职责和关键边界，不列目录或作者。
+- 函数说明只写无法由名称和类型表达的行为；只有实际约束、单位或副作用需要时才写 `@param`、`@returns` 或 `@throws`。
+- 队列幂等、重试语义、Agent 工具权限、状态迁移、安全例外和非显然迁移规则必须说明。
+- 内联注释解释“为什么”，不翻译下一行代码；禁止模板化长注释、TODO 堆积和注释掉的代码。
+
+## 数据库与依赖变更
+
+- 新迁移、依赖、Provider、CI 或部署变更必须先获得用户确认并绑定独立任务。
+- 迁移必须有前向与回退/恢复策略；生产数据转换不得和无关 Schema 修改混在同一迁移。
+- 新依赖必须记录解决的问题、版本/许可、维护状态、替代方案和移除成本。
+- 依赖锁定使用 workspace 统一策略；应用不得各自引入不同主版本。
+
+## 必备命令
+
+根 `package.json` 建立后必须提供：
+
+```text
+pnpm dev
+pnpm build
+pnpm typecheck
+pnpm lint
+pnpm lint:js
+pnpm lint:css
+pnpm format
+pnpm format:check
+pnpm check:file-size
+pnpm test
+pnpm test:unit
+pnpm test:integration
+pnpm test:e2e
+pnpm check
+```
+
+任务先运行聚焦测试；里程碑检查点运行 `pnpm check`。不得因当前无代码而伪造成功命令。
+
+## 完成任务
+
+- 行为符合页面和架构规格，非目标没有被顺带实现。
+- 正常、空、失败、取消、冲突和恢复路径按任务要求覆盖。
+- 聚焦测试、类型检查和相关 Lint 通过；达到检查点时完整构建通过。
+- 自审文件/函数大小、循环依赖、重复组件、无用抽象、日志和注释质量。
+- 在任务文件填写实际改动、命令与结果；不得开始下一任务。

@@ -1,0 +1,34 @@
+# Dependencies and package manager state
+node_modules/
+.pnpm-store/
+
+# Build and framework output
+.next/
+dist/
+build/
+.turbo/
+coverage/
+
+# Test artifacts
+playwright-report/
+test-results/
+blob-report/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime files
+*.log
+*.pid
+tmp/
+.cache/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
