@@ -2,17 +2,18 @@
  * @fileoverview Boots the versioned NestJS HTTP API without domain dependencies.
  */
 
-import { Logger } from '@nestjs/common';
+import { ConsoleLogger, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
 
 const bootstrapLogger = new Logger('ApiBootstrap');
+const systemLogger = new ConsoleLogger({ colors: false, json: true });
 
 /** Starts the API and reports startup failures through the framework logger. */
 async function bootstrap(): Promise<void> {
   try {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { logger: systemLogger });
     app.setGlobalPrefix('api/v1');
     await app.listen(3001, '127.0.0.1');
   } catch (error: unknown) {
