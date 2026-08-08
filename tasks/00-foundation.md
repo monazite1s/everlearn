@@ -128,6 +128,7 @@
 
 ## FND-08 建立本地依赖环境
 
+- 状态：已完成。
 - 依赖：FND-01、FND-06。
 - 必读：`docs/02-architecture/system.md`、`docs/03-engineering/development.md`。
 - 目标：用 Docker Compose 启动 PostgreSQL+pgvector、Redis 和 SeaweedFS S3，并提供健康检查与持久卷。
@@ -135,6 +136,14 @@
 - 非目标：生产 TLS、备份和容器安全加固。
 - 验收：三项依赖健康；重启后测试数据保留；端口与凭据可通过环境覆盖。
 - 验证：`docker compose up -d`、健康检查命令、重启持久化检查。
+
+### FND-08 完成证据
+
+- 改动：新增固定镜像版本的 Compose、本地环境变量示例、pgvector 初始化脚本和持久卷；补充本地启动与数据重置边界。
+- 验证：`docker compose config --quiet` 通过；PostgreSQL、Redis 与 SeaweedFS 均为 `healthy`，分别通过 pgvector `0.8.2` 查询、认证 `PONG` 和 `/healthz` 检查。
+- 证据：端口均只绑定 `127.0.0.1`；执行 `docker compose down` 后重建，PostgreSQL 行、Redis 键和 SeaweedFS 文件均保留，验证标记随后已清除且命名卷未删除。
+- 环境说明：本机 `6379` 已被其他进程占用，本次以 `REDIS_PORT=6380` 验收；凭据仅在当前命令进程传入，没有创建或提交 `.env`。
+- 风险：当前配置仅用于本地开发，不包含生产 TLS、备份、密钥托管或应用级依赖就绪探测。
 
 ## FND-09 建立测试骨架与根检查命令
 

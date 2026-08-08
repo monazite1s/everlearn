@@ -35,6 +35,7 @@
 | Web 搜索      | Tavily Adapter                                                                                                                    | 首个实现；业务只依赖 Provider 接口。                          |
 | 组件样式      | CSS Modules + CSS variables                                                                                                       | 禁止原子化 CSS。                                              |
 | 服务端配置    | [Nest Config](https://docs.nestjs.com/techniques/configuration) + [class-validator](https://github.com/typestack/class-validator) | API/Worker 启动前同步校验白名单字段；普通业务不使用 Zod。     |
+| 本地依赖镜像  | pgvector 0.8.2/PostgreSQL 17、Redis 8.8.0、SeaweedFS 4.29                                                                         | 固定镜像版本；SeaweedFS 使用维护者推荐的单节点 `weed mini`。  |
 
 ## 工程门禁基线（2026-08-09）
 

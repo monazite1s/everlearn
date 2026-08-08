@@ -72,6 +72,15 @@ API 与 Worker 在 Nest 应用创建前校验同一基础契约，缺少、空�
 
 服务端只选择上述白名单字段；其他进程环境变量不得进入应用配置对象。Web 构建不得读取这些变量。
 
+## 本地依赖环境
+
+1. 复制 `.env.example` 为 `.env`，替换所有本地占位凭据；不得提交 `.env`。
+2. 执行 `docker compose up -d --wait`，再用 `docker compose ps` 确认三项依赖为 `healthy`。
+3. 自定义端口或凭据时，同步修改连接 URL，确保应用配置与 Compose 配置一致。
+4. `docker compose down` 会保留命名卷；只有明确重置本地数据时才允许执行 `docker compose down -v`。
+
+Compose 仅提供 PostgreSQL+pgvector、Redis 和 SeaweedFS S3，不构建或启动应用服务。所有端口只绑定 `127.0.0.1`。
+
 ## 必备命令
 
 根 `package.json` 建立后必须提供：
