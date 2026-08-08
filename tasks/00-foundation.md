@@ -56,6 +56,7 @@
 
 ## FND-04 建立共享 Package 边界
 
+- 状态：已完成。
 - 依赖：FND-01。
 - 必读：`docs/02-architecture/system.md`、`docs/03-engineering/development.md`。
 - 目标：建立 `contracts`、`ui` 与 `agent-runtime` 的最小公开入口。
@@ -63,6 +64,13 @@
 - 非目标：DTO、组件、LangGraph 和 Zod Schema。
 - 验收：package 可独立类型检查；应用只能通过 package 入口引用；不存在跨应用源码导入。
 - 验证：共享 package 的 `typecheck` 与根 `pnpm typecheck`。
+
+### FND-04 完成证据
+
+- 改动：建立 `contracts`、`ui` 与 `agent-runtime` 三个独立 package，声明显式公开入口和统一 TypeScript 构建边界。
+- 验证：三个 package 的聚焦 `typecheck` 与 `build` 均退出 0；根 `pnpm typecheck` 和 `pnpm build` 共执行 6 个 package 且全部通过。
+- 证据：公开入口当前不导出占位 DTO、组件、Schema、工厂或假实现；仓库不存在跨应用源码导入。
+- 风险：共享包尚无业务导出；后续能力只能在出现真实用例的任务中加入。
 
 ## FND-05 配置格式与静态门禁
 
