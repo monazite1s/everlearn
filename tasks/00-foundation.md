@@ -4,6 +4,7 @@
 
 ## FND-01 初始化 Workspace 根配置
 
+- 状态：已完成。
 - 依赖：无。
 - 必读：`docs/02-architecture/system.md`、`docs/03-engineering/development.md`、`docs/03-engineering/quality-gates.md`。
 - 目标：建立 Node 24、pnpm 11、Turborepo 和严格 TypeScript 的 Monorepo 根配置。
@@ -11,6 +12,12 @@
 - 非目标：应用脚手架、质量工具和业务模块。
 - 验收：运行时版本不符时快速失败；workspace 配置可识别预定目录；根类型配置可被扩展。
 - 验证：`node --version`、`pnpm --version`、`pnpm install --frozen-lockfile=false`。
+
+### FND-01 完成证据
+
+- 改动：建立 pnpm Workspace、Catalog、Turbo 任务图、Node/pnpm 约束和严格 TypeScript 基础配置。
+- 验证：`pnpm install --frozen-lockfile`、`pnpm typecheck`、`pnpm build` 均退出 0；Node 24.18.0、pnpm 11.20.0、Turbo 2.10.6、TypeScript 5.9.3。
+- 风险：应用 package 尚未创建，因此 Turbo 本任务执行 0 个 package；FND-02..04 分别提供真实构建任务。
 
 ## FND-02 建立 Web 应用壳
 
