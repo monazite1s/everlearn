@@ -18,29 +18,29 @@ export const Tabs = TabsPrimitive.Root;
 
 /** Groups tab triggers into one keyboard-navigable list. */
 export function TabsList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
-  const classes = `${styles.tabsList} ${className ?? ''}`.trim();
+  const classes = `${styles['tabs-list']} ${className ?? ''}`.trim();
   return <TabsPrimitive.List {...props} className={classes} />;
 }
 
 /** Renders one tab selector with explicit selected-state styling. */
 export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsPrimitive.Trigger>) {
-  const classes = `${styles.tabsTrigger} ${className ?? ''}`.trim();
+  const classes = `${styles['tabs-trigger']} ${className ?? ''}`.trim();
   return <TabsPrimitive.Trigger {...props} className={classes} />;
 }
 
 /** Renders the panel associated with the active tab. */
 export function TabsContent({ className, ...props }: ComponentProps<typeof TabsPrimitive.Content>) {
-  const classes = `${styles.tabsContent} ${className ?? ''}`.trim();
+  const classes = `${styles['tabs-content']} ${className ?? ''}`.trim();
   return <TabsPrimitive.Content {...props} className={classes} />;
 }
 
 /** Renders a select trigger with a placeholder and non-semantic disclosure icon. */
 export function SelectTrigger({ className, placeholder, ...props }: SelectTriggerProps) {
-  const classes = `${styles.selectTrigger} ${className ?? ''}`.trim();
+  const classes = `${styles['select-trigger']} ${className ?? ''}`.trim();
   return (
     <SelectPrimitive.Trigger {...props} className={classes}>
       <SelectPrimitive.Value placeholder={placeholder} />
-      <SelectPrimitive.Icon className={styles.selectIcon} aria-hidden="true">
+      <SelectPrimitive.Icon className={styles['select-icon']} aria-hidden="true">
         ▾
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
@@ -55,7 +55,7 @@ export function SelectContent({
   sideOffset = 6,
   ...props
 }: ComponentProps<typeof SelectPrimitive.Content>) {
-  const classes = `${styles.selectContent} ${className ?? ''}`.trim();
+  const classes = `${styles['select-content']} ${className ?? ''}`.trim();
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -64,7 +64,7 @@ export function SelectContent({
         position={position}
         sideOffset={sideOffset}
       >
-        <SelectPrimitive.Viewport className={styles.selectViewport}>
+        <SelectPrimitive.Viewport className={styles['select-viewport']}>
           {children}
         </SelectPrimitive.Viewport>
       </SelectPrimitive.Content>
@@ -78,11 +78,11 @@ export function SelectItem({
   className,
   ...props
 }: ComponentProps<typeof SelectPrimitive.Item>) {
-  const classes = `${styles.selectItem} ${className ?? ''}`.trim();
+  const classes = `${styles['select-item']} ${className ?? ''}`.trim();
   return (
     <SelectPrimitive.Item {...props} className={classes}>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-      <SelectPrimitive.ItemIndicator className={styles.selectIndicator}>
+      <SelectPrimitive.ItemIndicator className={styles['select-indicator']}>
         ✓
       </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>

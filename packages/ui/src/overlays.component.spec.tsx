@@ -29,13 +29,17 @@ async function restoresDialogFocus(): Promise<void> {
       <DialogTrigger asChild>
         <Button>打开设置</Button>
       </DialogTrigger>
-      <DialogContent heading="文档设置">设置内容</DialogContent>
+      <DialogContent className="custom-dialog" heading="文档设置">
+        设置内容
+      </DialogContent>
     </Dialog>,
   );
 
   const trigger = screen.getByRole('button', { name: '打开设置' });
   fireEvent.click(trigger);
-  expect(screen.getByRole('dialog', { name: '文档设置' })).toBeVisible();
+  const dialog = screen.getByRole('dialog', { name: '文档设置' });
+  expect(dialog).toBeVisible();
+  expect(dialog).toHaveClass('custom-dialog');
   fireEvent.click(screen.getByRole('button', { name: '关闭对话框' }));
   await waitFor(() => expect(trigger).toHaveFocus());
 }

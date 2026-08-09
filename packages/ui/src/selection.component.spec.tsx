@@ -52,6 +52,7 @@ function selectsOneValue(): void {
     </Select>,
   );
 
+  expect(screen.getByRole('listbox').className).not.toBe('');
   fireEvent.click(screen.getByRole('option', { name: '温润纸张' }));
   expect(onValueChange).toHaveBeenCalledWith('paper');
 }

@@ -15,6 +15,7 @@ function exposesNotificationAction(): void {
     <ToastProvider>
       <Toast
         action={{ altText: '重新保存当前文档', label: '重试', onClick: onRetry }}
+        className="custom-toast"
         defaultOpen
         description="网络连接已恢复"
         title="自动保存失败"
@@ -22,7 +23,9 @@ function exposesNotificationAction(): void {
     </ToastProvider>,
   );
 
-  expect(screen.getByText('自动保存失败')).toBeVisible();
+  const title = screen.getByText('自动保存失败');
+  expect(title).toBeVisible();
+  expect(title.closest('li')).toHaveClass('custom-toast');
   expect(screen.getByRole('button', { name: '关闭通知' })).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: '重试' }));
   expect(onRetry).toHaveBeenCalledOnce();
