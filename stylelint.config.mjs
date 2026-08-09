@@ -4,7 +4,15 @@
 
 export default {
   extends: ['stylelint-config-standard', 'stylelint-config-css-modules'],
-  ignoreFiles: ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/coverage/**'],
+  ignoreFiles: [
+    '**/node_modules/**',
+    '**/.next/**',
+    '**/dist/**',
+    '**/coverage/**',
+    '**/playwright-report/**',
+    '**/test-results/**',
+    '**/blob-report/**',
+  ],
   plugins: ['stylelint-declaration-strict-value'],
   rules: {
     'declaration-no-important': true,
