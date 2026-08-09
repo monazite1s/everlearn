@@ -1,4 +1,4 @@
-/** @fileoverview Verifies desktop navigation, panel controls, and route focus behavior. */
+/** @fileoverview Verifies desktop and mobile shell navigation behavior. */
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -27,9 +27,8 @@ function resetShell(): void {
 
 afterEach(resetShell);
 
-/** Confirms route context, title focus, and persisted panel controls remain accessible. */
-async function rendersDesktopShell(): Promise<void> {
-  sessionStorage.setItem('everlearn-right-panel:/knowledge', 'true');
+/** Renders the shell with the stable knowledge page used by component scenarios. */
+function renderShell(): void {
   render(
     <ThemeProvider>
       <AppShell>
@@ -39,6 +38,12 @@ async function rendersDesktopShell(): Promise<void> {
       </AppShell>
     </ThemeProvider>,
   );
+}
+
+/** Confirms route context, title focus, and persisted panel controls remain accessible. */
+async function rendersDesktopShell(): Promise<void> {
+  sessionStorage.setItem('everlearn-right-panel:/knowledge', 'true');
+  renderShell();
 
   expect(screen.getByRole('link', { name: '知识库' })).toHaveAttribute('aria-current', 'page');
   expect(screen.getByRole('banner').className).not.toBe('');
@@ -55,4 +60,25 @@ async function rendersDesktopShell(): Promise<void> {
   expect(screen.getByRole('complementary', { name: '当前上下文' })).toBeVisible();
 }
 
+/** Confirms mobile drawers expose navigation and explain desktop-only creation. */
+async function rendersMobileReadingControls(): Promise<void> {
+  renderShell();
+
+  const menuTrigger = screen.getByRole('button', { name: '打开导航' });
+  fireEvent.click(menuTrigger);
+  expect(screen.getByRole('dialog', { name: '导航' })).toBeVisible();
+  expect(screen.getByRole('link', { name: '资讯' })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '关闭对话框' }));
+  await waitFor(
+    /** Verifies the shared Dialog restores focus to the mobile trigger. */
+    () => expect(menuTrigger).toHaveFocus(),
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: '新建' }));
+  expect(screen.getByRole('dialog', { name: '请在桌面端创作' })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '返回阅读' }));
+  expect(screen.queryByRole('dialog', { name: '请在桌面端创作' })).not.toBeInTheDocument();
+}
+
 test('renders the accessible desktop shell', rendersDesktopShell);
+test('renders mobile reading controls', rendersMobileReadingControls);

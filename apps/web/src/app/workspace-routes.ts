@@ -3,12 +3,15 @@
 export type WorkspaceRouteId =
   'home' | 'knowledge' | 'news' | 'tutorials' | 'workflows' | 'settings';
 
+export type MobileRouteCapability = 'read' | 'status' | 'limited';
+
 export interface WorkspaceRoute {
   context: string;
   description: string;
   href: string;
   id: WorkspaceRouteId;
   label: string;
+  mobileCapability: MobileRouteCapability;
   shortLabel: string;
 }
 
@@ -18,6 +21,7 @@ export const homeRoute: WorkspaceRoute = {
   href: '/',
   id: 'home',
   label: '首页',
+  mobileCapability: 'read',
   shortLabel: '首',
 };
 
@@ -29,6 +33,7 @@ export const workspaceRoutes: readonly WorkspaceRoute[] = [
     href: '/knowledge',
     id: 'knowledge',
     label: '知识库',
+    mobileCapability: 'read',
     shortLabel: '知',
   },
   {
@@ -37,6 +42,7 @@ export const workspaceRoutes: readonly WorkspaceRoute[] = [
     href: '/news',
     id: 'news',
     label: '资讯',
+    mobileCapability: 'status',
     shortLabel: '讯',
   },
   {
@@ -45,6 +51,7 @@ export const workspaceRoutes: readonly WorkspaceRoute[] = [
     href: '/tutorials',
     id: 'tutorials',
     label: '教程',
+    mobileCapability: 'status',
     shortLabel: '教',
   },
   {
@@ -53,6 +60,7 @@ export const workspaceRoutes: readonly WorkspaceRoute[] = [
     href: '/workflows',
     id: 'workflows',
     label: '工作流',
+    mobileCapability: 'status',
     shortLabel: '流',
   },
   {
@@ -61,6 +69,7 @@ export const workspaceRoutes: readonly WorkspaceRoute[] = [
     href: '/settings',
     id: 'settings',
     label: '设置',
+    mobileCapability: 'limited',
     shortLabel: '设',
   },
 ];

@@ -109,3 +109,17 @@
     animation: none;
   }
 }
+
+@media (width <= 768px) {
+  .page {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .header {
+    padding-block-end: var(--space-6);
+  }
+
+  .placeholder {
+    padding-block: var(--space-8);
+  }
+}

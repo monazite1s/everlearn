@@ -2,7 +2,15 @@
 
 'use client';
 
-import { Button, Tooltip, TooltipProvider } from '@everlearn/ui';
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTrigger,
+  Tooltip,
+  TooltipProvider,
+} from '@everlearn/ui';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -19,6 +27,7 @@ interface AppShellProps {
 
 interface PrimaryNavigationProps {
   collapsed: boolean;
+  dismissOnNavigate?: boolean;
   pathname: string;
 }
 
@@ -122,29 +131,81 @@ function useRouteContextPanel(pathname: string): [boolean, () => void] {
 }
 
 /** Renders the six stable primary destinations with visible current-page state. */
-function PrimaryNavigation({ collapsed, pathname }: PrimaryNavigationProps) {
+function PrimaryNavigation({
+  collapsed,
+  dismissOnNavigate = false,
+  pathname,
+}: PrimaryNavigationProps) {
   /** Renders one route using text, aria-current, and the knowledge-spine marker. */
   function renderRoute(route: WorkspaceRoute) {
     const current = pathname === route.href;
+    const link = (
+      <Link
+        className={styles['nav-link']}
+        href={route.href}
+        aria-current={current ? 'page' : undefined}
+      >
+        <span className={styles['short-label']} aria-hidden="true">
+          {route.shortLabel}
+        </span>
+        <span className={collapsed ? styles['visually-hidden'] : undefined}>{route.label}</span>
+      </Link>
+    );
     return (
-      <li key={route.id}>
-        <Link
-          className={styles['nav-link']}
-          href={route.href}
-          aria-current={current ? 'page' : undefined}
-        >
-          <span className={styles['short-label']} aria-hidden="true">
-            {route.shortLabel}
-          </span>
-          <span className={collapsed ? styles['visually-hidden'] : undefined}>{route.label}</span>
-        </Link>
-      </li>
+      <li key={route.id}>{dismissOnNavigate ? <DialogClose asChild>{link}</DialogClose> : link}</li>
     );
   }
   return (
     <nav aria-label="一级导航">
       <ul className={styles.navigation}>{workspaceRoutes.map(renderRoute)}</ul>
     </nav>
+  );
+}
+
+/** Renders the mobile navigation as a modal drawer with managed focus. */
+function MobileNavigation({ pathname }: Pick<PrimaryNavigationProps, 'pathname'>) {
+  return (
+    <div className={styles['mobile-navigation']}>
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button aria-label="打开导航" size="small" variant="ghost">
+            菜单
+          </Button>
+        </DialogTrigger>
+        <DialogContent className={styles['mobile-drawer']} heading="导航">
+          <PrimaryNavigation collapsed={false} dismissOnNavigate pathname={pathname} />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/** Replaces mobile creation with an explicit desktop requirement. */
+function CreationAction() {
+  return (
+    <>
+      <Link
+        className={`${styles['primary-action']} ${styles['desktop-creation']}`}
+        href="/knowledge?create=document"
+      >
+        新建
+      </Link>
+      <div className={styles['mobile-creation']}>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button size="small">新建</Button>
+          </DialogTrigger>
+          <DialogContent
+            description="移动端保留阅读、搜索和运行状态，暂不提供内容创作。"
+            heading="请在桌面端创作"
+          >
+            <DialogClose asChild>
+              <Button>返回阅读</Button>
+            </DialogClose>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </>
   );
 }
 
@@ -179,29 +240,30 @@ function ThemeControls() {
 function Topbar({ rightOpen, route, toggleRightPanel }: TopbarProps) {
   return (
     <header className={styles.topbar}>
+      <MobileNavigation pathname={route.href} />
       <Link className={styles.brand} href="/">
         Everlearn
       </Link>
       <span className={styles.location}>{route.label}</span>
       <div className={styles['top-actions']}>
         <Link href="/knowledge?search=open">搜索</Link>
-        <Link className={styles['primary-action']} href="/knowledge?create=document">
-          新建
-        </Link>
+        <CreationAction />
         <Link href={`${route.href}?view=runs`}>运行中 2</Link>
-        <ThemeControls />
-        <Tooltip content={rightOpen ? '收起上下文' : '展开上下文'}>
-          <Button
-            aria-controls="context-panel"
-            aria-expanded={rightOpen}
-            aria-label={rightOpen ? '收起上下文' : '展开上下文'}
-            onClick={toggleRightPanel}
-            size="small"
-            variant="ghost"
-          >
-            ◫
-          </Button>
-        </Tooltip>
+        <div className={styles['desktop-controls']}>
+          <ThemeControls />
+          <Tooltip content={rightOpen ? '收起上下文' : '展开上下文'}>
+            <Button
+              aria-controls="context-panel"
+              aria-expanded={rightOpen}
+              aria-label={rightOpen ? '收起上下文' : '展开上下文'}
+              onClick={toggleRightPanel}
+              size="small"
+              variant="ghost"
+            >
+              ◫
+            </Button>
+          </Tooltip>
+        </div>
       </div>
     </header>
   );
