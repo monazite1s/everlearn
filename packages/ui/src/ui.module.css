@@ -1,0 +1,131 @@
+/* Styles shared UI primitives exclusively through semantic design tokens. */
+
+.button {
+  align-items: center;
+  border: 0.0625rem solid transparent;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-interface);
+  font-size: var(--text-interface);
+  font-weight: 600;
+  gap: var(--space-2);
+  justify-content: center;
+  line-height: var(--leading-interface);
+  transition:
+    background-color var(--duration-micro) var(--ease-standard),
+    border-color var(--duration-micro) var(--ease-standard),
+    color var(--duration-micro) var(--ease-standard);
+}
+
+.button[data-size='small'] {
+  min-height: 2rem;
+  padding: var(--space-1) var(--space-3);
+}
+
+.button[data-size='medium'] {
+  min-height: 2.5rem;
+  padding: var(--space-2) var(--space-4);
+}
+
+.button[data-variant='primary'] {
+  background: var(--accent);
+  color: var(--surface-raised);
+}
+
+.button[data-variant='secondary'] {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--ink);
+}
+
+.button[data-variant='ghost'] {
+  background: transparent;
+  color: var(--ink-muted);
+}
+
+.button[data-variant='danger'] {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.spinner {
+  animation: spin var(--duration-panel) linear infinite;
+  border: 0.125rem solid currentcolor;
+  border-right-color: transparent;
+  border-radius: var(--radius-round);
+  height: 0.875rem;
+  width: 0.875rem;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.label {
+  color: var(--ink);
+  font-size: var(--text-interface);
+  font-weight: 600;
+}
+
+.input,
+.textarea {
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-small);
+  color: var(--ink);
+  font-family: var(--font-interface);
+  font-size: var(--text-interface);
+  line-height: var(--leading-interface);
+  padding: var(--space-2) var(--space-3);
+  width: 100%;
+}
+
+.input[aria-invalid='true'],
+.textarea[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.description,
+.error {
+  font-size: 0.75rem;
+  line-height: var(--leading-interface);
+}
+
+.description {
+  color: var(--ink-muted);
+}
+
+.error {
+  color: var(--danger);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-right-color: currentcolor;
+  }
+}

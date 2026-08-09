@@ -1,5 +1,10 @@
-/**
- * @fileoverview Defines the public boundary for stable UI primitives shared by web features.
- */
+/** @fileoverview Exposes stable UI primitives without leaking library-specific APIs to features. */
 
-export {};
+export { Button, TextArea, TextInput } from './primitives';
+export type {
+  ButtonProps,
+  ButtonSize,
+  ButtonVariant,
+  TextAreaProps,
+  TextInputProps,
+} from './primitives';
