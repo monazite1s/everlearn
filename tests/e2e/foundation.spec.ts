@@ -10,7 +10,7 @@ async function opensFoundationPage({ page }: { page: Page }): Promise<void> {
   await page.goto('/');
 
   await expect(page).toHaveTitle('Everlearn');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('一套语义，四种光线');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('首页');
 
   const theme = page.getByLabel('主题', { exact: true });
   const appearance = page.getByLabel('外观', { exact: true });
@@ -25,18 +25,29 @@ async function opensFoundationPage({ page }: { page: Page }): Promise<void> {
   await expect(page.locator('html')).toHaveAttribute('data-color-mode', 'dark');
 }
 
-/** Confirms the shared component specimen has no automatically detectable WCAG violations. */
-async function auditsSharedComponents({ page }: { page: Page }): Promise<void> {
+/** Confirms desktop navigation moves route, current state, focus, and accessibility together. */
+async function navigatesDesktopShell({ page }: { page: Page }): Promise<void> {
+  await page.setViewportSize({ height: 900, width: 1440 });
   await page.goto('/');
 
   const pageAudit = await new AxeBuilder({ page }).analyze();
   expect(pageAudit.violations).toEqual([]);
 
-  await page.getByRole('button', { name: '新建文档' }).click();
-  await expect(page.getByRole('dialog', { name: '新建文档' })).toBeVisible();
-  const dialogAudit = await new AxeBuilder({ page }).analyze();
-  expect(dialogAudit.violations).toEqual([]);
+  await page.getByRole('link', { name: '知识库', exact: true }).click();
+  await expect(page).toHaveURL('/knowledge');
+  const title = page.getByRole('heading', { level: 1, name: '知识库' });
+  await expect(title).toBeFocused();
+  await expect(page.getByRole('link', { name: '知识库', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await expect(page.getByRole('complementary', { name: '当前上下文' })).toBeVisible();
+  const mainBounds = await page.getByRole('main').boundingBox();
+  expect(mainBounds?.width).toBeGreaterThanOrEqual(640);
+  const routeAudit = await new AxeBuilder({ page }).analyze();
+  expect(routeAudit.violations).toEqual([]);
+  await page.screenshot({ fullPage: true, path: 'test-results/ui-03-desktop.png' });
 }
 
 test('opens the foundation page', opensFoundationPage);
-test('passes automated accessibility checks', auditsSharedComponents);
+test('navigates the accessible desktop shell', navigatesDesktopShell);

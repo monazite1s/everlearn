@@ -1,0 +1,208 @@
+/* Defines the persistent desktop workspace shell with independently collapsible side panels. */
+
+.shell {
+  --left-panel-width: 16.5rem;
+  --right-panel-width: 20rem;
+
+  background: var(--canvas);
+  min-height: 100vh;
+}
+
+.skip-link {
+  background: var(--surface-raised);
+  color: var(--ink);
+  left: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  position: fixed;
+  top: var(--space-2);
+  transform: translateY(-200%);
+  z-index: 100;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.topbar {
+  align-items: center;
+  background: var(--surface);
+  border-bottom: 0.0625rem solid var(--border);
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: auto 1fr auto;
+  height: 3rem;
+  padding-inline: var(--space-4);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.brand {
+  color: var(--ink);
+  font-family: var(--font-reading);
+  font-size: var(--text-title-small);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.location {
+  color: var(--ink-muted);
+  font-size: var(--text-interface);
+}
+
+.top-actions,
+.theme-controls {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.top-actions > a {
+  color: var(--ink-muted);
+  font-size: var(--text-interface);
+  padding: var(--space-1) var(--space-2);
+  text-decoration: none;
+}
+
+.top-actions > a:hover {
+  color: var(--ink);
+}
+
+.top-actions .primary-action {
+  background: var(--accent);
+  border-radius: var(--radius-small);
+  color: var(--surface-raised);
+}
+
+.theme-controls select {
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-small);
+  color: var(--ink);
+  font-size: 0.75rem;
+  max-width: 7rem;
+  padding: var(--space-1) var(--space-2);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: var(--left-panel-width) minmax(40rem, 1fr) var(--right-panel-width);
+  min-height: calc(100vh - 3rem);
+}
+
+.shell[data-left-collapsed='true'] {
+  --left-panel-width: 3.5rem;
+}
+
+.shell[data-right-open='false'] {
+  --right-panel-width: 0rem;
+}
+
+.left-panel,
+.right-panel {
+  background: var(--surface);
+  min-width: 0;
+  overflow: hidden;
+  padding: var(--space-4);
+}
+
+.left-panel {
+  border-right: 0.0625rem solid var(--border);
+}
+
+.right-panel {
+  border-left: 0.0625rem solid var(--border);
+}
+
+.shell[data-left-collapsed='true'] .left-panel {
+  padding-inline: var(--space-2);
+}
+
+.shell[data-right-open='false'] .right-panel {
+  border: 0;
+  padding: 0;
+  visibility: hidden;
+}
+
+.navigation {
+  display: grid;
+  gap: var(--space-1);
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+}
+
+.nav-link {
+  align-items: center;
+  border-left: 0.125rem solid transparent;
+  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+  color: var(--ink-muted);
+  display: flex;
+  font-size: var(--text-interface);
+  gap: var(--space-3);
+  min-height: 2.5rem;
+  padding: var(--space-2) var(--space-3);
+  text-decoration: none;
+}
+
+.nav-link[aria-current='page'] {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.short-label {
+  display: none;
+}
+
+.shell[data-left-collapsed='true'] .short-label {
+  display: inline;
+}
+
+.main {
+  background: var(--canvas);
+  min-width: 0;
+  overflow: auto;
+}
+
+.context-label {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  margin: 0 0 var(--space-2);
+}
+
+.right-panel h2 {
+  font-family: var(--font-reading);
+  font-size: var(--text-title-small);
+  margin: 0;
+}
+
+.right-panel > p:last-child {
+  color: var(--ink-muted);
+  font-size: var(--text-interface);
+  line-height: var(--leading-interface);
+}
+
+.visually-hidden {
+  clip-path: inset(50%);
+  height: 0.0625rem;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 0.0625rem;
+}
+
+@media (width <= 1280px) {
+  .shell {
+    --right-panel-width: 0rem;
+  }
+
+  .right-panel {
+    border: 0;
+    padding: 0;
+    visibility: hidden;
+  }
+}

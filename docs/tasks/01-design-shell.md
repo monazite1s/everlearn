@@ -40,6 +40,7 @@
 
 ## UI-03 实现桌面应用壳
 
+- 状态：已完成。
 - 依赖：UI-02。
 - 必读：`docs/01-design/layout-and-navigation.md`、`docs/01-design/pages/home.md`、`docs/01-design/design-system.md`。
 - 目标：实现顶栏、六项一级导航、左右可折叠栏和中央工作区。
@@ -47,6 +48,13 @@
 - 非目标：首页业务数据和各模块二级导航。
 - 验收：当前入口有文本和 `aria-current`；路由后焦点到标题；中央区不被侧栏压缩低于规格。
 - 验证：Playwright 桌面导航与截图、键盘测试。
+
+### UI-03 完成证据
+
+- 改动：建立六个真实一级路由、48px 顶栏、264/640/320 三栏、左右折叠状态、路由标题聚焦、跳过导航和布局匹配 Skeleton。
+- 验证：13 个组件测试通过；Web 类型检查、ESLint、Stylelint、文件尺寸检查和生产构建退出 0；2 个 Chrome E2E 与两轮 axe 断言通过。
+- 证据：`navigates the accessible desktop shell` 验证真实 URL、`aria-current`、标题焦点、右栏与中央区最小宽度；1440px 截图确认三栏和知识脊线。
+- 风险：Playwright 在当前 Codex 终端完成断言后仍需由超时回收服务进程，未影响测试断言与产物。
 
 ## UI-04 实现移动只读壳
 

@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 
 import './globals.css';
 import './theme.css';
+import { AppShell } from './app-shell';
 import { ThemeProvider, ThemeScript } from './theme-provider';
 
 export const metadata: Metadata = {
@@ -26,7 +27,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <ThemeScript />
       </head>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AppShell>{children}</AppShell>
+        </ThemeProvider>
       </body>
     </html>
   );

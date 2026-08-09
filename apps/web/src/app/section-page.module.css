@@ -71,3 +71,41 @@
 .lines span:nth-child(3) {
   width: 48%;
 }
+
+.skeleton-title,
+.skeleton-lead,
+.skeleton-body {
+  animation: skeleton-pulse var(--duration-panel) var(--ease-standard) alternate infinite;
+  background: var(--border);
+}
+
+.skeleton-title {
+  height: 2.5rem;
+  margin-block-start: var(--space-4);
+  max-width: 16rem;
+}
+
+.skeleton-lead {
+  height: 1rem;
+  margin-block-start: var(--space-4);
+  max-width: 28rem;
+}
+
+.skeleton-body {
+  height: 18rem;
+  margin-block-start: var(--space-12);
+}
+
+@keyframes skeleton-pulse {
+  to {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-title,
+  .skeleton-lead,
+  .skeleton-body {
+    animation: none;
+  }
+}
