@@ -73,4 +73,6 @@ Stylelint 使用 standard config；禁止 `!important`，选择器嵌套不超�
 
 ## `pnpm check`
 
-完整门禁依次执行：文件规模 → 格式检查 → JS/CSS Lint → 类型检查 → 单元/集成测试与覆盖率 → 构建。E2E 在具备 Docker 依赖的 CI Job 单独运行并作为发布门禁。
+前期门禁 `pnpm check` 依次执行：文件规模 → 格式检查 → JS/CSS Lint → 类型检查 → 轻量测试 → 构建。任务优先运行与当前行为直接相关的聚焦测试。
+
+核心流程稳定后启用 `pnpm check:full` 的 80% 覆盖率，并在独立 CI Job 恢复 E2E 发布门禁。Playwright 单场景上限 15 秒、单次运行上限 120 秒；超时视为失败。

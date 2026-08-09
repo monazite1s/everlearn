@@ -102,6 +102,18 @@ pnpm test:e2e
 pnpm check
 ```
 
+## 测试反馈顺序
+
+任务开发期间只运行与改动直接相关的检查，按失败成本从低到高执行：
+
+1. `pnpm format:files -- <文件>` 与对应的 `lint:js:files` 或 `lint:css:files`。
+2. `pnpm test:component -- <测试文件>`、`test:unit` 或 `test:integration` 的聚焦文件。
+3. 受影响应用的 `typecheck`，例如 `pnpm --filter @everlearn/web typecheck`。
+4. 页面或路由变更运行受影响应用的生产构建，并人工检查关键交互。
+5. 核心业务流程稳定后才启用 `pnpm check:full` 与 E2E。
+
+项目前期不运行 E2E、覆盖率或复杂跨服务测试。`pnpm check` 执行规模、格式、Lint、类型、轻量测试与构建；任务中优先按文件运行必要的单元或组件测试。`pnpm check:full` 才增加覆盖率门禁，Playwright 保留给后续稳定阶段。
+
 任务先运行聚焦测试；里程碑检查点运行 `pnpm check`。不得因当前无代码而伪造成功命令。
 
 ## 完成任务
