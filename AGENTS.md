@@ -5,7 +5,7 @@
 1. 本文件。
 2. `docs/README.md`。
 3. 当前任务指定的产品、设计、架构和工程文档，最多三份。
-4. `tasks/README.md` 与当前里程碑任务文件。
+4. `docs/tasks/README.md` 与当前里程碑任务文件。
 
 ## 工作方式
 

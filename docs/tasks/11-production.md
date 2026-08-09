@@ -55,7 +55,7 @@
 ## OPS-06 固化发布门禁
 
 - 依赖：OPS-02..05。
-- 必读：`docs/03-engineering/quality-gates.md`、`docs/00-product/release-roadmap.md`、`tasks/README.md`。
+- 必读：`docs/03-engineering/quality-gates.md`、`docs/00-product/release-roadmap.md`、`docs/tasks/README.md`。
 - 目标：把所有核心 E2E、覆盖率、构建、迁移、备份恢复和安全检查纳入版本发布清单。
 - 实施：失败门禁不得跳过；记录产物版本、命令、Trace 和已知风险；提供回滚步骤。
 - 非目标：自动发布到公共云。
