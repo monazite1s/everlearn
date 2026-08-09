@@ -1,0 +1,164 @@
+/* Styles floating and selection primitives through semantic design tokens. */
+
+.overlay {
+  animation: overlay-in var(--duration-panel) var(--ease-standard);
+  background: color-mix(in srgb, var(--ink) 28%, transparent);
+  inset: 0;
+  position: fixed;
+  z-index: 40;
+}
+
+.dialog-content,
+.popover-content,
+.menu-content,
+.tooltip-content {
+  background: var(--surface-raised);
+  border: 0.0625rem solid var(--border);
+  box-shadow: var(--shadow-float);
+  color: var(--ink);
+  z-index: 50;
+}
+
+.dialog-content {
+  animation: dialog-in var(--duration-panel) var(--ease-standard);
+  border-radius: var(--radius-large);
+  left: 50%;
+  max-height: min(42rem, calc(100vh - 2rem));
+  max-width: min(32rem, calc(100vw - 2rem));
+  overflow: auto;
+  padding: var(--space-6);
+  position: fixed;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+}
+
+.dialog-header {
+  align-items: start;
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+  margin-block-end: var(--space-5);
+}
+
+.dialog-title {
+  font-family: var(--font-reading);
+  font-size: 1.25rem;
+  font-weight: 650;
+  line-height: var(--leading-interface);
+  margin: 0;
+}
+
+.dialog-description {
+  color: var(--ink-muted);
+  font-size: var(--text-interface);
+  line-height: var(--leading-interface);
+  margin-block-start: var(--space-1);
+}
+
+.icon-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-small);
+  color: var(--ink-muted);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font: inherit;
+  height: 2rem;
+  justify-content: center;
+  width: 2rem;
+}
+
+.icon-button:hover {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.popover-content,
+.menu-content {
+  animation: floating-in var(--duration-micro) var(--ease-standard);
+  border-radius: var(--radius-medium);
+}
+
+.popover-content {
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: var(--space-4);
+}
+
+.menu-content {
+  min-width: 12rem;
+  padding: var(--space-1);
+}
+
+.menu-item {
+  align-items: center;
+  border-radius: var(--radius-small);
+  color: var(--ink);
+  cursor: default;
+  display: flex;
+  font-size: var(--text-interface);
+  line-height: var(--leading-interface);
+  min-height: 2rem;
+  outline: none;
+  padding: var(--space-1) var(--space-2);
+  user-select: none;
+}
+
+.menu-item[data-highlighted] {
+  background: var(--accent-soft);
+}
+
+.menu-item[data-disabled] {
+  opacity: 0.5;
+}
+
+.menu-separator {
+  background: var(--border);
+  height: 0.0625rem;
+  margin: var(--space-1);
+}
+
+.tooltip-content {
+  animation: floating-in var(--duration-micro) var(--ease-standard);
+  border-radius: var(--radius-small);
+  font-size: 0.75rem;
+  line-height: var(--leading-interface);
+  max-width: 16rem;
+  padding: var(--space-1) var(--space-2);
+}
+
+.floating-arrow {
+  fill: var(--surface-raised);
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + var(--space-2))) scale(0.98);
+  }
+}
+
+@keyframes floating-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--space-1) * -1));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .dialog-content,
+  .popover-content,
+  .menu-content,
+  .tooltip-content {
+    animation: none;
+  }
+}
