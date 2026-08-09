@@ -133,6 +133,98 @@
   fill: var(--surface-raised);
 }
 
+.tabs-list {
+  align-items: center;
+  border-bottom: 0.0625rem solid var(--border);
+  display: flex;
+  gap: var(--space-4);
+}
+
+.tabs-trigger {
+  background: transparent;
+  border: 0;
+  border-bottom: 0.125rem solid transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font: inherit;
+  min-height: 2.5rem;
+  padding: var(--space-2) 0;
+}
+
+.tabs-trigger[data-state='active'] {
+  border-bottom-color: var(--accent);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.tabs-content {
+  outline: none;
+  padding-block-start: var(--space-4);
+}
+
+.select-trigger {
+  align-items: center;
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-small);
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: var(--space-3);
+  justify-content: space-between;
+  min-height: 2.5rem;
+  min-width: 10rem;
+  padding: var(--space-2) var(--space-3);
+}
+
+.select-icon {
+  color: var(--ink-muted);
+}
+
+.select-content {
+  animation: floating-in var(--duration-micro) var(--ease-standard);
+  background: var(--surface-raised);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-medium);
+  box-shadow: var(--shadow-float);
+  color: var(--ink);
+  min-width: var(--radix-select-trigger-width);
+  overflow: hidden;
+  z-index: 50;
+}
+
+.select-viewport {
+  padding: var(--space-1);
+}
+
+.select-item {
+  align-items: center;
+  border-radius: var(--radius-small);
+  cursor: default;
+  display: flex;
+  font-size: var(--text-interface);
+  justify-content: space-between;
+  line-height: var(--leading-interface);
+  min-height: 2rem;
+  outline: none;
+  padding: var(--space-1) var(--space-2);
+  user-select: none;
+}
+
+.select-item[data-highlighted] {
+  background: var(--accent-soft);
+}
+
+.select-item[data-disabled] {
+  opacity: 0.5;
+}
+
+.select-indicator {
+  color: var(--accent);
+  margin-inline-start: var(--space-4);
+}
+
 @keyframes overlay-in {
   from {
     opacity: 0;
@@ -159,6 +251,10 @@
   .popover-content,
   .menu-content,
   .tooltip-content {
+    animation: none;
+  }
+
+  .select-content {
     animation: none;
   }
 }

@@ -26,3 +26,15 @@ export type {
   TextInputProps,
 } from './primitives';
 export type { DialogContentProps, TooltipProps } from './overlays';
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from './selection';
+export type { SelectTriggerProps } from './selection';
