@@ -166,6 +166,7 @@
 
 ## FND-10 建立 GitHub Actions 门禁
 
+- 状态：已完成。
 - 依赖：FND-09。
 - 必读：`docs/03-engineering/quality-gates.md`、`docs/03-engineering/development.md`。
 - 目标：建立静态/单元、Docker 集成和 E2E 三类 CI Job。
@@ -174,6 +175,15 @@
 - 验收：任一门禁失败阻断 CI；Job 之间职责清晰；本地命令与 CI 一致。
 - 验证：Workflow 语法检查、`pnpm check`、`pnpm test:e2e`。
 
+### FND-10 完成证据
+
+- 改动：建立静态与单元质量、Docker 依赖、浏览器 E2E 三个独立 GitHub Actions Job；均使用冻结锁文件或固定镜像，不含部署和真实 Provider 凭据。
+- 验证：Workflow 通过 Prettier YAML 解析；`pnpm install --frozen-lockfile` 与 `pnpm check` 退出 0；Compose 配置有效且 PostgreSQL、Redis、SeaweedFS 均为 `healthy`。
+- E2E：已有系统 Chrome 首页断言通过；CI 使用 Playwright 官方 Chromium 安装命令，失败时上传 7 天有效的 Trace。
+- 风险：当前网络访问 Playwright CDN 超时，且 Codex 无 TTY 预检会先于本地 `pnpm test:e2e` 中止；首次推送后仍需以远端 Actions 结果确认完整 E2E 生命周期。
+
 ## 检查点
 
-FND-01..10 均完成后记录依赖版本、完整 `pnpm check` 和 Compose 健康结果；未通过不得进入 UI。
+FND-01..10 已完成。检查点版本为 Node 24.18.0、pnpm 11.20.0、TypeScript 5.9.3、Next.js 16.2.9、NestJS 11.1.28、Vitest 4.1.10、Playwright 1.62.1、pgvector 0.8.2/PostgreSQL 17、Redis 8.8.0 与 SeaweedFS 4.29。
+
+`pnpm check` 退出 0；6 个测试文件共 15 项通过，语句、函数和行覆盖率 100%，分支覆盖率 81.81%；Web、API、Worker 与共享 package 全部构建通过。`docker compose up --detach --wait` 退出 0，三个依赖服务均为 `healthy`。远端 E2E 首次运行是进入 UI 里程碑前唯一待确认的外部证据。
