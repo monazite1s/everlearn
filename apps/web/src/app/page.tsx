@@ -1,9 +1,8 @@
-/** @fileoverview Renders the knowledge-first workspace entry page. */
+/** @fileoverview Connects the root route to the typed static home composition. */
 
-import { SectionPage } from './section-page';
-import { homeRoute } from './workspace-routes';
+import { HomePage } from '../features/home/home-page';
 
-/** Renders the home route using the same stable frame as other workspace sections. */
-export default function HomePage() {
-  return <SectionPage route={homeRoute} />;
+/** Renders the default knowledge-first home state without business API calls. */
+export default function HomeRoute() {
+  return <HomePage />;
 }
