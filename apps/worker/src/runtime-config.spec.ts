@@ -2,8 +2,7 @@
  * @fileoverview Verifies Worker runtime configuration groups and secret-safe failures.
  */
 
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { expect, test } from 'vitest';
 
 import { validateRuntimeEnvironment } from './runtime-config';
 
@@ -21,8 +20,8 @@ const requiredEnvironment = Object.freeze({
 /** Confirms that the minimum infrastructure configuration is accepted. */
 function acceptsRequiredInfrastructure(): void {
   const configuration = validateRuntimeEnvironment(requiredEnvironment);
-  assert.equal(configuration.S3_BUCKET, 'everlearn');
-  assert.ok(Object.isFrozen(configuration));
+  expect(configuration.S3_BUCKET).toBe('everlearn');
+  expect(Object.isFrozen(configuration)).toBe(true);
 }
 
 /** Invokes validation without the Redis setting for the assertion below. */
@@ -40,7 +39,7 @@ function validateMissingRedis(): void {
 
 /** Confirms that absent required infrastructure stops startup. */
 function rejectsMissingInfrastructure(): void {
-  assert.throws(validateMissingRedis, /REDIS_URL/u);
+  expect(validateMissingRedis).toThrow(/REDIS_URL/u);
 }
 
 /** Invokes validation with a partial search group for the assertion below. */
@@ -53,11 +52,10 @@ function validatePartialSearchGroup(): void {
 
 /** Confirms that optional Provider groups are all-or-nothing. */
 function rejectsPartialProviderGroup(): void {
-  assert.throws(validatePartialSearchGroup, /SEARCH_API_KEY/u);
-  assert.throws(
+  expect(validatePartialSearchGroup).toThrow(/SEARCH_API_KEY/u);
+  expect(
     validateRuntimeEnvironment.bind(null, { ...requiredEnvironment, SEARCH_PROVIDER: '' }),
-    /SEARCH_PROVIDER/u,
-  );
+  ).toThrow(/SEARCH_PROVIDER/u);
 }
 
 /** Invokes validation with a malformed secret-bearing setting. */
@@ -72,15 +70,15 @@ function validateSecretBearingFailure(): void {
 function hidesSecretValues(): void {
   try {
     validateSecretBearingFailure();
-    assert.fail('Expected invalid Provider configuration to throw');
+    throw new Error('Expected invalid Provider configuration to throw');
   } catch (error: unknown) {
-    assert.ok(error instanceof Error);
-    assert.match(error.message, /SEARCH_PROVIDER/u);
-    assert.doesNotMatch(error.message, /sensitive-search-secret/u);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/SEARCH_PROVIDER/u);
+    expect((error as Error).message).not.toMatch(/sensitive-search-secret/u);
   }
 }
 
-void test('accepts required Worker infrastructure configuration', acceptsRequiredInfrastructure);
-void test('rejects missing Worker infrastructure configuration', rejectsMissingInfrastructure);
-void test('rejects partial Worker Provider configuration', rejectsPartialProviderGroup);
-void test('does not expose Worker secrets in validation errors', hidesSecretValues);
+test('accepts required Worker infrastructure configuration', acceptsRequiredInfrastructure);
+test('rejects missing Worker infrastructure configuration', rejectsMissingInfrastructure);
+test('rejects partial Worker Provider configuration', rejectsPartialProviderGroup);
+test('does not expose Worker secrets in validation errors', hidesSecretValues);

@@ -45,6 +45,8 @@
 | 注释门禁   | [eslint-plugin-jsdoc](https://github.com/gajus/eslint-plugin-jsdoc)                                                                                                                        | 强制 `@fileoverview` 与全部函数/方法/组件 JSDoc，不强制无意义参数说明。          |
 | CSS Lint   | [Stylelint](https://stylelint.io/user-guide/configure/) standard config + strict values                                                                                                    | CSS Modules 合法性、复杂度及颜色/间距/圆角/阴影/时长 Token 使用。                |
 | 格式化     | [Prettier](https://prettier.io/docs/configuration)                                                                                                                                         | 独立于 ESLint 运行；不采用 `eslint-plugin-prettier`。                            |
+| 测试       | [Vitest 4](https://vitest.dev/guide/projects.html) + V8 Coverage、[Supertest 7](https://github.com/forwardemail/supertest)、Testing Library                                                | 分离单元、集成和组件 project；覆盖率统一汇总；API 不绑定固定端口。               |
+| 浏览器 E2E | [Playwright 1.62](https://playwright.dev/docs/test-configuration)                                                                                                                          | 验证生产构建；使用语义定位，失败保留 trace/截图，CI 执行重试。                   |
 
 上述依赖仅用于开发门禁，不进入生产运行包；版本由根锁文件固定，升级时必须重新执行 peer 检查和失败样例验证。
 

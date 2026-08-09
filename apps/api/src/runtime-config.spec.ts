@@ -2,8 +2,7 @@
  * @fileoverview Verifies API runtime configuration groups and secret-safe failures.
  */
 
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { expect, test } from 'vitest';
 
 import { validateRuntimeEnvironment } from './runtime-config';
 
@@ -21,8 +20,8 @@ const requiredEnvironment = Object.freeze({
 /** Confirms that the minimum infrastructure configuration is accepted. */
 function acceptsRequiredInfrastructure(): void {
   const configuration = validateRuntimeEnvironment(requiredEnvironment);
-  assert.equal(configuration.S3_BUCKET, 'everlearn');
-  assert.ok(Object.isFrozen(configuration));
+  expect(configuration.S3_BUCKET).toBe('everlearn');
+  expect(Object.isFrozen(configuration)).toBe(true);
 }
 
 /** Invokes validation without the database setting for the assertion below. */
@@ -40,7 +39,7 @@ function validateMissingDatabase(): void {
 
 /** Confirms that absent required infrastructure stops startup. */
 function rejectsMissingInfrastructure(): void {
-  assert.throws(validateMissingDatabase, /DATABASE_URL/u);
+  expect(validateMissingDatabase).toThrow(/DATABASE_URL/u);
 }
 
 /** Invokes validation with a partial LLM group for the assertion below. */
@@ -53,12 +52,11 @@ function validatePartialLlmGroup(): void {
 
 /** Confirms that optional Provider groups are all-or-nothing. */
 function rejectsPartialProviderGroup(): void {
-  assert.throws(validatePartialLlmGroup, /LLM_API_KEY/u);
-  assert.throws(validatePartialLlmGroup, /LLM_MODEL/u);
-  assert.throws(
+  expect(validatePartialLlmGroup).toThrow(/LLM_API_KEY/u);
+  expect(validatePartialLlmGroup).toThrow(/LLM_MODEL/u);
+  expect(
     validateRuntimeEnvironment.bind(null, { ...requiredEnvironment, LLM_API_KEY: '' }),
-    /LLM_API_KEY/u,
-  );
+  ).toThrow(/LLM_API_KEY/u);
 }
 
 /** Invokes validation with a malformed secret-bearing setting. */
@@ -73,16 +71,16 @@ function validateSecretBearingFailure(): void {
 function hidesSecretValues(): void {
   try {
     validateSecretBearingFailure();
-    assert.fail('Expected invalid Provider configuration to throw');
+    throw new Error('Expected invalid Provider configuration to throw');
   } catch (error: unknown) {
-    assert.ok(error instanceof Error);
-    assert.match(error.message, /LLM_BASE_URL/u);
-    assert.match(error.message, /LLM_MODEL/u);
-    assert.doesNotMatch(error.message, /sensitive-provider-secret/u);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/LLM_BASE_URL/u);
+    expect((error as Error).message).toMatch(/LLM_MODEL/u);
+    expect((error as Error).message).not.toMatch(/sensitive-provider-secret/u);
   }
 }
 
-void test('accepts required API infrastructure configuration', acceptsRequiredInfrastructure);
-void test('rejects missing API infrastructure configuration', rejectsMissingInfrastructure);
-void test('rejects partial API Provider configuration', rejectsPartialProviderGroup);
-void test('does not expose API secrets in validation errors', hidesSecretValues);
+test('accepts required API infrastructure configuration', acceptsRequiredInfrastructure);
+test('rejects missing API infrastructure configuration', rejectsMissingInfrastructure);
+test('rejects partial API Provider configuration', rejectsPartialProviderGroup);
+test('does not expose API secrets in validation errors', hidesSecretValues);

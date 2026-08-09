@@ -21,9 +21,11 @@ const ignoredDirectories = new Set([
 const checkedExtensions = new Set([
   '.cjs',
   '.css',
+  '.cts',
   '.js',
   '.json',
   '.mjs',
+  '.mts',
   '.sql',
   '.ts',
   '.tsx',

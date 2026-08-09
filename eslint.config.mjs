@@ -12,8 +12,8 @@ import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-const sourceFiles = ['**/*.{js,mjs,cjs,ts,tsx}'];
-const typeScriptFiles = ['**/*.{ts,tsx}'];
+const sourceFiles = ['**/*.{js,mjs,cjs,ts,mts,cts,tsx}'];
+const typeScriptFiles = ['**/*.{ts,mts,cts,tsx}'];
 const ignoredPaths = [
   '**/node_modules/**',
   '**/.next/**',
@@ -75,7 +75,12 @@ export default defineConfig([
     files: typeScriptFiles,
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        project: [
+          './tsconfig.json',
+          './apps/*/tsconfig.json',
+          './apps/*/tsconfig.spec.json',
+          './packages/*/tsconfig.json',
+        ],
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -90,7 +95,12 @@ export default defineConfig([
       'import/resolver': {
         typescript: {
           noWarnOnMultipleProjects: true,
-          project: ['apps/*/tsconfig.json', 'packages/*/tsconfig.json'],
+          project: [
+            'tsconfig.json',
+            'apps/*/tsconfig.json',
+            'apps/*/tsconfig.spec.json',
+            'packages/*/tsconfig.json',
+          ],
         },
       },
     },

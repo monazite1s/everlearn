@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "turbo run build",
+    "check": "pnpm check:file-size && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "check:file-size": "node scripts/check-file-size.mjs",
     "dev": "turbo run dev",
     "format": "prettier --write .",
@@ -16,11 +17,20 @@
     "lint": "pnpm lint:js && pnpm lint:css",
     "lint:css": "stylelint \"**/*.css\"",
     "lint:js": "eslint . --max-warnings 0",
-    "typecheck": "turbo run typecheck"
+    "test": "vitest run --coverage",
+    "test:component": "vitest run --project component",
+    "test:e2e": "pnpm --filter @everlearn/web build && playwright test",
+    "test:integration": "vitest run --project integration",
+    "test:unit": "vitest run --project unit",
+    "typecheck": "tsc --project tsconfig.json --noEmit && turbo run typecheck"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@next/eslint-plugin-next": "16.3.0",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "eslint": "9.39.5",
     "eslint-import-resolver-typescript": "4.4.5",
     "eslint-plugin-import": "2.32.0",
@@ -35,6 +45,7 @@
     "stylelint-declaration-strict-value": "1.11.1",
     "turbo": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "8.66.0"
+    "typescript-eslint": "8.66.0",
+    "vitest": "catalog:"
   }
 }

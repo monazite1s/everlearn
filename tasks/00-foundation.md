@@ -147,6 +147,7 @@
 
 ## FND-09 建立测试骨架与根检查命令
 
+- 状态：已完成。
 - 依赖：FND-05、FND-08。
 - 必读：`docs/03-engineering/quality-gates.md`、`docs/03-engineering/development.md`。
 - 目标：建立 Vitest 单元/集成/组件入口、Supertest API 测试、Playwright E2E 和根 `pnpm check`。
@@ -154,6 +155,14 @@
 - 非目标：业务 E2E 和真实 Provider 测试。
 - 验收：根测试命令齐全；失败测试和覆盖率不足会阻断；Playwright 产物可诊断。
 - 验证：`pnpm check`、`pnpm test:e2e`。
+
+### FND-09 完成证据
+
+- 改动：建立 Vitest 单元/集成/组件 project、V8 全局覆盖率、Supertest API 集成测试、Testing Library 组件测试和 Playwright 生产构建 E2E。
+- 验证：`pnpm check` 退出 0；6 个测试文件共 15 项通过，语句/函数/行覆盖率 100%，分支覆盖率 81.81%；Web、API、Worker 和共享 package 全部类型检查与构建通过。
+- 阻断验证：临时以 `--coverage.thresholds.branches=101` 运行时退出 1；Playwright 失败场景生成 `trace.zip` 和错误上下文。
+- E2E 证据：系统 Chrome 中首页标题与一级标题断言通过；测试使用生产构建、语义定位和标准 Playwright `webServer`，CI 负责验证完整命令生命周期。
+- 环境限制：Codex 无 TTY 命令包装会在 pnpm 依赖预检阶段中止；直接运行 Playwright 时浏览器断言通过，但 Windows 子进程回收超出工具时限。未为此修改系统或增加自定义杀进程逻辑。
 
 ## FND-10 建立 GitHub Actions 门禁
 
