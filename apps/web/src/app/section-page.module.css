@@ -1,0 +1,73 @@
+/* Defines the quiet central workspace shared by initial module routes. */
+
+.page {
+  margin: 0 var(--space-auto);
+  max-width: 72rem;
+  padding: var(--space-8);
+  width: 100%;
+}
+
+.header {
+  border-bottom: 0.0625rem solid var(--border);
+  padding-block-end: var(--space-8);
+}
+
+.header h1,
+.placeholder h2 {
+  font-family: var(--font-reading);
+  font-weight: 600;
+  margin: 0;
+}
+
+.header h1 {
+  font-size: var(--text-title-page);
+  line-height: 1.25;
+}
+
+.placeholder p {
+  color: var(--ink-muted);
+  line-height: var(--leading-interface);
+  margin: var(--space-2) 0 var(--space-8);
+}
+
+.header > p:last-child {
+  color: var(--ink-muted);
+  line-height: var(--leading-interface);
+  margin: var(--space-3) 0 0;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  margin: 0 0 var(--space-2);
+}
+
+.placeholder {
+  padding-block: var(--space-12);
+}
+
+.placeholder h2 {
+  font-size: var(--text-title-medium);
+}
+
+.lines {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.lines span {
+  background: var(--border);
+  display: block;
+  height: 0.0625rem;
+  width: 100%;
+}
+
+.lines span:nth-child(2) {
+  width: 74%;
+}
+
+.lines span:nth-child(3) {
+  width: 48%;
+}

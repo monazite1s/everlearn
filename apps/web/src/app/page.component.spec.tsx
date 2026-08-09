@@ -1,34 +1,20 @@
-/** @fileoverview Verifies the theme specimen through accessible DOM semantics. */
+/** @fileoverview Verifies the initial workspace page heading and information hierarchy. */
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, expect, test } from 'vitest';
 
 import HomePage from './page';
-import { ThemeProvider } from './theme-provider';
 
 afterEach(cleanup);
 
-/** Confirms the specimen exposes one heading and labeled native theme controls. */
-function rendersThemeSpecimen(): void {
-  render(
-    <ThemeProvider>
-      <HomePage />
-    </ThemeProvider>,
-  );
+/** Confirms the home route exposes one focusable page title and stable workspace region. */
+function rendersWorkspaceEntry(): void {
+  render(<HomePage />);
 
-  expect(screen.getByRole('heading', { level: 1, name: '一套语义，四种光线' })).toBeVisible();
-  const theme = screen.getByRole('combobox', { name: '主题' });
-  const appearance = screen.getByRole('combobox', { name: '外观' });
-  fireEvent.change(theme, { target: { value: 'neutral' } });
-  expect(document.documentElement.dataset.theme).toBe('neutral');
-  fireEvent.change(theme, { target: { value: 'paper' } });
-  expect(document.documentElement.dataset.theme).toBe('paper');
-  fireEvent.change(appearance, { target: { value: 'dark' } });
-  expect(document.documentElement.dataset.colorMode).toBe('dark');
-  fireEvent.change(appearance, { target: { value: 'light' } });
-  expect(document.documentElement.dataset.colorMode).toBe('light');
-  fireEvent.change(appearance, { target: { value: 'system' } });
-  expect(document.documentElement.dataset.colorMode).toBe('light');
+  const heading = screen.getByRole('heading', { level: 1, name: '首页' });
+  expect(heading).toHaveAttribute('data-page-title');
+  expect(heading).toHaveAttribute('tabindex', '-1');
+  expect(screen.getByRole('heading', { level: 2, name: '工作区已就绪' })).toBeVisible();
 }
 
-test('renders the theme specimen and controls', rendersThemeSpecimen);
+test('renders the workspace entry', rendersWorkspaceEntry);
