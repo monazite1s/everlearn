@@ -4,6 +4,7 @@
 
 ## UI-01 实现 Design Tokens 与主题
 
+- 状态：已完成。
 - 依赖：FND-05。
 - 必读：`docs/01-design/design-system.md`、`docs/03-engineering/quality-gates.md`。
 - 目标：实现纸张棕金、中性预设及各自浅色/深色 Token，支持跟随系统和持久化选择。
@@ -11,6 +12,13 @@
 - 非目标：可视化主题编辑器和业务组件。
 - 验收：切换主题无需业务分支；刷新保持选择；对比度和 reduced motion 检查通过。
 - 验证：Token 单元检查、组件视觉截图、键盘切换测试。
+
+### UI-01 完成证据
+
+- 改动：拆分六类语义 Token，建立纸张棕金/雾灰中性两套浅深色主题、首屏恢复脚本、跟随系统、本地持久化及语义色展示页。
+- 验证：`pnpm check` 全部退出 0，17 个测试通过且全局分支覆盖率 80%；`pnpm test:e2e` 退出 0，1 个 Chromium E2E 通过。
+- 证据：`switches and persists semantic theme selection`、`opens the foundation page`；浏览器实测刷新后保持 `neutral:dark`，320px 视口无水平溢出。
+- 风险：当前仅提供预设主题；新增预设需同时补充主题元数据和 CSS Token 值，不影响业务组件。
 
 ## UI-02 封装 Radix 基础组件
 

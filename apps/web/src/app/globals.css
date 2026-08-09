@@ -1,14 +1,31 @@
-/* Establishes browser-level layout defaults before the design-token milestone. */
-
-:root {
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
-}
+/* Establishes browser-level layout defaults shared by every semantic theme. */
 
 * {
   box-sizing: border-box;
 }
 
 body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-interface);
   margin: 0;
+  transition:
+    background-color var(--duration-panel) var(--ease-standard),
+    color var(--duration-micro) var(--ease-standard);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 0.125rem solid var(--focus-ring);
+  outline-offset: 0.125rem;
+}
+
+::selection {
+  background: var(--accent-soft);
 }

@@ -6,6 +6,8 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 import './globals.css';
+import './theme.css';
+import { ThemeProvider, ThemeScript } from './theme-provider';
 
 export const metadata: Metadata = {
   description: '面向个人学习的知识库、资讯、教程与工作流平台。',
@@ -19,8 +21,13 @@ interface RootLayoutProps {
 /** Provides the Chinese-language HTML document shared by every route. */
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="zh-CN">
-      <body>{children}</body>
+    <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }
