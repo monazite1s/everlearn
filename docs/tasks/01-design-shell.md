@@ -22,6 +22,7 @@
 
 ## UI-02 封装 Radix 基础组件
 
+- 状态：已完成。
 - 依赖：UI-01。
 - 必读：`docs/01-design/design-system.md`、`docs/03-engineering/development.md`、`docs/03-engineering/research-and-dependencies.md`。
 - 目标：在 `packages/ui` 封装 Button、Dialog、Popover、Menu、Tooltip、Tabs、Select、Toast 和表单基础件。
@@ -29,6 +30,13 @@
 - 非目标：领域卡片、编辑器工具栏和 Workflow 节点。
 - 验收：键盘、焦点恢复和错误文本可用；无原子化 CSS；无空壳代理组件。
 - 验证：组件测试、axe 检查、浅/深主题视觉回归。
+
+### UI-02 完成证据
+
+- 改动：在 `packages/ui` 提供 Button、表单、Dialog、Popover、Menu、Tooltip、Tabs、Select 和 Toast；Web 标本页验证共享包编译及主题适配。
+- 验证：`pnpm check` 退出 0，26 个测试通过，全局分支覆盖率 86.32%，UI 包分支覆盖率 91.93%；Chrome 中基础页及 Dialog 的 axe 检查无违规。
+- 证据：组件测试覆盖键盘导航、焦点恢复、错误关联、选择和通知动作；人工检查纸张主题浅色、深色及 Dialog，页面无水平溢出。
+- 风险：当前 Codex 终端中 Playwright 在断言全部通过后未自动退出；测试结果有效，进程清理问题留待工程基础设施任务处理。
 
 ## UI-03 实现桌面应用壳
 

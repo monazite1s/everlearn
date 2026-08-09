@@ -4,6 +4,7 @@
 
 import type { ChangeEvent } from 'react';
 
+import { ComponentSpecimen } from './component-specimen';
 import { appearanceOptions, themeOptions, useTheme } from './theme-provider';
 import styles from './page.module.css';
 
@@ -137,6 +138,7 @@ export default function HomePage() {
         <ReadingSpecimen />
         <SemanticColors />
       </div>
+      <ComponentSpecimen />
       <footer className={styles.footer}>
         <span>Typography</span>
         <span>Space · Radius · Shadow · Motion</span>

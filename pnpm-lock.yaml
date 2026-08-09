@@ -210,6 +210,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@everlearn/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       next:
         specifier: 'catalog:'
         version: 16.2.9(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.62.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

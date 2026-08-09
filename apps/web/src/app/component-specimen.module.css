@@ -1,0 +1,56 @@
+/* Arranges shared primitives without defining component-level visual behavior. */
+
+.specimen {
+  border-top: 0.0625rem solid var(--border);
+  padding: var(--space-12) var(--space-8);
+}
+
+.specimen h2 {
+  font-family: var(--font-reading);
+  font-size: var(--text-title-large);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  margin: 0 0 var(--space-2);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-8);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: var(--space-8) 0;
+}
+
+.grid > div {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (width <= 768px) {
+  .specimen {
+    padding: var(--space-8) var(--space-6);
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
