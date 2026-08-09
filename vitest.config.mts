@@ -18,7 +18,7 @@ export default defineConfig({
       include: [
         'apps/{api,worker}/src/**/*.ts',
         'apps/web/src/app/**/*.{ts,tsx}',
-        'packages/*/src/**/*.ts',
+        'packages/*/src/**/*.{ts,tsx}',
       ],
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html'],
@@ -47,7 +47,10 @@ export default defineConfig({
         extends: true,
         test: {
           environment: 'jsdom',
-          include: ['apps/web/src/**/*.component.spec.tsx'],
+          include: [
+            'apps/web/src/**/*.component.spec.tsx',
+            'packages/ui/src/**/*.component.spec.tsx',
+          ],
           name: 'component',
           setupFiles: ['apps/web/src/test/setup.ts'],
         },
