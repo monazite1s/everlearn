@@ -38,3 +38,5 @@ export {
   TabsTrigger,
 } from './selection';
 export type { SelectTriggerProps } from './selection';
+export { Toast, ToastProvider } from './toast';
+export type { ToastActionSpec, ToastProps, ToastProviderProps } from './toast';

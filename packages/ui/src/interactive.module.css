@@ -225,6 +225,96 @@
   margin-inline-start: var(--space-4);
 }
 
+.toast-viewport {
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  max-width: min(26rem, calc(100vw - 2rem));
+  outline: none;
+  padding: var(--space-4);
+  position: fixed;
+  right: 0;
+  width: 100%;
+  z-index: 60;
+}
+
+.toast {
+  align-items: start;
+  animation: toast-in var(--duration-panel) var(--ease-standard);
+  background: var(--surface-raised);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-medium);
+  box-shadow: var(--shadow-float);
+  color: var(--ink);
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: var(--space-4);
+}
+
+.toast[data-state='closed'] {
+  animation: toast-out var(--duration-micro) var(--ease-standard);
+}
+
+.toast[data-swipe='move'] {
+  transform: translateX(var(--radix-toast-swipe-move-x));
+}
+
+.toast[data-swipe='end'] {
+  transform: translateX(var(--radix-toast-swipe-end-x));
+  transition: transform var(--duration-micro) var(--ease-standard);
+}
+
+.toast-body {
+  min-width: 0;
+}
+
+.toast-title {
+  font-size: var(--text-interface);
+  font-weight: 650;
+  line-height: var(--leading-interface);
+}
+
+.toast-description {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  line-height: var(--leading-interface);
+  margin-block-start: var(--space-1);
+}
+
+.toast-action,
+.toast-close {
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-small);
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  padding: var(--space-1) var(--space-2);
+}
+
+.toast-close {
+  color: var(--ink-muted);
+  padding-inline: var(--space-1);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-3));
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(var(--space-6));
+  }
+}
+
 @keyframes overlay-in {
   from {
     opacity: 0;
@@ -255,6 +345,10 @@
   }
 
   .select-content {
+    animation: none;
+  }
+
+  .toast {
     animation: none;
   }
 }
