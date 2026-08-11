@@ -10,10 +10,10 @@
 
 ### 2026-08-11 PostgreSQL 访问层与迁移
 
-- 采用候选：Kysely 0.29.x 与 node-postgres 8.x；待用户批准后由锁文件固定实际版本。Kysely 提供 PostgreSQL 方言、类型安全查询、事务和显式 up/down migration，同时允许树移动等少量复杂 SQL。
+- 采用候选：Kysely 0.29.2、node-postgres 8.22.0 与 `@types/pg` 8.20.0；待用户批准后由锁文件固定。npm 官方源元数据确认前两者分别要求 Node >=22 和 >=16，兼容项目 Node 24，三者均为 MIT。Kysely 提供 PostgreSQL 方言、类型安全查询、事务和显式 up/down migration，同时允许树移动等少量复杂 SQL。
 - 运行边界：API 和 Worker 各自只创建一个有上限的 `pg.Pool`；普通查询复用池，事务必须使用同一连接。所有动态值参数化，表名和列名不得来自用户输入。
 - 迁移边界：迁移按只含数字与下划线的 UTC 序号命名；生产只执行 up，down 用于本地恢复验证；应用启动不自动迁移。
-- 官方证据：[Kysely 官网](https://www.kysely.dev/)、[Kysely GitHub](https://github.com/kysely-org/kysely)、[node-postgres Pool](https://node-postgres.com/features/pooling)、[node-postgres Transactions](https://node-postgres.com/features/transactions)、[Parameterized Queries](https://node-postgres.com/features/queries)。查阅日期：2026-08-11。
+- 官方证据：[Kysely 官网](https://www.kysely.dev/)、[Kysely GitHub](https://github.com/kysely-org/kysely)、[node-postgres Pool](https://node-postgres.com/features/pooling)、[node-postgres Transactions](https://node-postgres.com/features/transactions)、[Parameterized Queries](https://node-postgres.com/features/queries)、[pg npm](https://www.npmjs.com/package/pg)、[@types/pg npm](https://www.npmjs.com/package/@types/pg)。查阅日期：2026-08-11。
 - 拒绝 Prisma：知识库树需要复合约束、批量路径更新和显式事务，主要操作仍会落到原生 SQL；引入生成客户端不能减少当前复杂度。
 - 拒绝 TypeORM：当前不需要 Active Record、实体生命周期或装饰器元数据；更宽的 ORM 表面积会增加隐式行为。
 - 拒绝自研 `pg` migration runner：重复建设迁移锁、执行记录和顺序校验，节省的依赖不足以抵消维护成本。
