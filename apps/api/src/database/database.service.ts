@@ -1,8 +1,8 @@
 /** @fileoverview Owns the API PostgreSQL client and its bounded connection pool lifecycle. */
 
-import { Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Kysely, PostgresDialect, type KyselyConfig } from 'kysely';
+import type { Kysely } from 'kysely' with { 'resolution-mode': 'import' };
 import { Pool } from 'pg';
 
 const databaseLogger = new Logger('DatabasePool');
@@ -17,8 +17,11 @@ function reportIdleClientError(error: Error): void {
   databaseLogger.error('Unexpected idle PostgreSQL client error', error.stack);
 }
 
-/** Builds the shared PostgreSQL dialect configuration with conservative pool limits. */
-function createDatabaseConfig(connectionString: string): KyselyConfig {
+/** Creates a standalone database client using the ESM-only Kysely boundary. */
+export async function createDatabaseClient(
+  connectionString: string,
+): Promise<Kysely<DatabaseSchema>> {
+  const { Kysely: KyselyClient, PostgresDialect } = await import('kysely');
   const pool = new Pool({
     connectionString,
     connectionTimeoutMillis: CONNECTION_TIMEOUT_MILLISECONDS,
@@ -26,23 +29,32 @@ function createDatabaseConfig(connectionString: string): KyselyConfig {
     max: MAX_POOL_CONNECTIONS,
   });
   pool.on('error', reportIdleClientError);
-  return { dialect: new PostgresDialect({ pool }) };
-}
-
-/** Creates a standalone database client for migration and maintenance processes. */
-export function createDatabaseClient(connectionString: string): Kysely<DatabaseSchema> {
-  return new Kysely<DatabaseSchema>(createDatabaseConfig(connectionString));
+  return new KyselyClient<DatabaseSchema>({ dialect: new PostgresDialect({ pool }) });
 }
 
 /** Provides one injectable database client and releases its pool during Nest shutdown. */
 @Injectable()
-export class DatabaseService extends Kysely<DatabaseSchema> implements OnModuleDestroy {
-  constructor(configService: ConfigService) {
-    super(createDatabaseConfig(configService.getOrThrow<string>('DATABASE_URL')));
+export class DatabaseService implements OnModuleDestroy, OnModuleInit {
+  private database: Kysely<DatabaseSchema> | undefined;
+
+  /** Initializes the API client from the validated server-only connection string. */
+  constructor(private readonly configService: ConfigService) {}
+
+  /** Exposes the initialized client while rejecting access before Nest startup completes. */
+  get client(): Kysely<DatabaseSchema> {
+    if (this.database === undefined) throw new Error('Database client is not initialized');
+    return this.database;
+  }
+
+  /** Loads Kysely through its ESM boundary before controllers accept requests. */
+  async onModuleInit(): Promise<void> {
+    this.database = await createDatabaseClient(
+      this.configService.getOrThrow<string>('DATABASE_URL'),
+    );
   }
 
   /** Waits for checked-out clients before closing the API connection pool. */
   async onModuleDestroy(): Promise<void> {
-    await this.destroy();
+    await this.database?.destroy();
   }
 }

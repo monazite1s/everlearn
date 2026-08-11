@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "build": "nest build",
+    "db:migrate": "nest build && node dist/database/migrate.js up",
+    "db:migrate:down": "nest build && node dist/database/migrate.js down",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit && tsc --project tsconfig.spec.json"
