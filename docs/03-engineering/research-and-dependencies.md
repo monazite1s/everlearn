@@ -8,6 +8,17 @@
 
 ## 研究记录
 
+### 2026-08-11 PostgreSQL 访问层与迁移
+
+- 采用候选：Kysely 0.29.x 与 node-postgres 8.x；待用户批准后由锁文件固定实际版本。Kysely 提供 PostgreSQL 方言、类型安全查询、事务和显式 up/down migration，同时允许树移动等少量复杂 SQL。
+- 运行边界：API 和 Worker 各自只创建一个有上限的 `pg.Pool`；普通查询复用池，事务必须使用同一连接。所有动态值参数化，表名和列名不得来自用户输入。
+- 迁移边界：迁移按只含数字与下划线的 UTC 序号命名；生产只执行 up，down 用于本地恢复验证；应用启动不自动迁移。
+- 官方证据：[Kysely 官网](https://www.kysely.dev/)、[Kysely GitHub](https://github.com/kysely-org/kysely)、[node-postgres Pool](https://node-postgres.com/features/pooling)、[node-postgres Transactions](https://node-postgres.com/features/transactions)、[Parameterized Queries](https://node-postgres.com/features/queries)。查阅日期：2026-08-11。
+- 拒绝 Prisma：知识库树需要复合约束、批量路径更新和显式事务，主要操作仍会落到原生 SQL；引入生成客户端不能减少当前复杂度。
+- 拒绝 TypeORM：当前不需要 Active Record、实体生命周期或装饰器元数据；更宽的 ORM 表面积会增加隐式行为。
+- 拒绝自研 `pg` migration runner：重复建设迁移锁、执行记录和顺序校验，节省的依赖不足以抵消维护成本。
+- 替换成本：领域服务不暴露 Kysely 类型；数据访问只存在于模块仓储和迁移层，替换时不改变 HTTP 契约。
+
 ### 2026-08-09 测试反馈与进程退出
 
 - Playwright 官方 `webServer` 支持复用已有服务并管理启动进程；Windows 不支持其 `SIGTERM`/`SIGINT` 优雅关闭选项。本机测试场景约 4 秒完成，但系统 Chrome teardown 无法正常退出；前期按产品决策停用 E2E，保留直接启动 Next CLI 与全局超时供后续恢复。
