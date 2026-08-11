@@ -31,15 +31,17 @@
 
 ### KB-00 确认数据库访问层
 
-- 状态：进行中。
+- 状态：已完成。
 - 依赖：KB-P02。
 - 必读：`docs/03-engineering/research-and-dependencies.md`、`docs/02-architecture/data-model.md`、`docs/02-architecture/system.md`。
 - 目标：批准 Kysely、node-postgres 和迁移边界，使后续任务不再临时选择数据层方案。
 - 实施：候选生产依赖 `kysely`、`pg`，开发依赖 `@types/pg`；锁文件固定版本，API 与 Worker 各自只有一个连接池。
 - 非目标：安装依赖、创建表或实现通用 Repository 基类。
 - 失败恢复：未获批准时不得安装；重新选型只修改本任务与研究记录。
-- 验收：用户明确批准依赖；研究记录包含证据、限制、拒绝方案与替换成本。
-- 验证：`pnpm format:check`、`git diff --check`。
+- 验收：用户于 2026-08-12 明确批准依赖；研究记录包含证据、限制、拒绝方案与替换成本。
+- 改动：`@everlearn/api` 固定 `kysely@0.29.2`、`pg@8.22.0` 与 `@types/pg@8.20.0`，锁文件记录完整依赖图和完整性哈希。
+- 验证：`pnpm.cmd --filter @everlearn/api list kysely pg @types/pg --depth 0` 解析版本正确；`pnpm.cmd --filter @everlearn/api typecheck` 通过；`pnpm format:check` 与 `git diff --check` 通过。
+- 风险：pnpm 输出已有 `glob@10.5.0` 与 `ini@1.3.5` 间接依赖弃用警告，本次新增包未执行脚本且供应链策略校验通过；警告留待依赖维护任务统一处理。
 
 ### KB-01 建立数据库模块与迁移执行器
 
