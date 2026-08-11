@@ -60,7 +60,7 @@
 
 ### KB-02 建立 Identity 与 Knowledge Schema
 
-- 状态：未开始。
+- 状态：已完成。
 - 依赖：KB-01。
 - 必读：`docs/02-architecture/data-model.md`、`docs/00-product/product-spec.md`、`docs/02-architecture/system.md`。
 - 目标：创建 User、KnowledgeBase、Document、DocumentRevision、InboxItem 和 IdempotencyRecord，并写入固定本地用户。
@@ -69,7 +69,9 @@
 - 非目标：Tag、DocumentLink、Attachment、认证、分享、全文或向量索引。
 - 失败恢复：迁移提供 down；种子使用固定 UUID 和冲突忽略，允许重复执行。
 - 验收：数据库拒绝跨所有者/跨知识库父子关系和非法状态；本地用户种子唯一。
-- 验证：迁移恢复测试、PostgreSQL 约束集成测试、文件限制。
+- 改动：新增六张 Identity/Knowledge 表及 Kysely 类型契约；Schema 与固定本地用户种子使用两个独立迁移；复合外键约束文档、修订和 Inbox 所有权。
+- 验证：真实 PostgreSQL 集成测试 `4 passed / 0 skipped`，覆盖生产迁移 up、重复 up、双 down、再次 up、种子唯一、受控状态、正文形状及跨范围父子关系；本地数据库首次执行两个迁移、重复执行零迁移；API typecheck 与聚焦 ESLint 通过。
+- 风险：`updatedAt`、树路径和排序值由后续应用服务维护；本任务不添加触发器或 Repository 抽象。
 
 ### KB-03 建立 HTTP 公共边界与本地身份
 

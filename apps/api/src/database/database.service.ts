@@ -5,12 +5,14 @@ import { ConfigService } from '@nestjs/config';
 import type { Kysely } from 'kysely' with { 'resolution-mode': 'import' };
 import { Pool } from 'pg';
 
+import type { DatabaseSchema } from './database.types';
+
+export type { DatabaseSchema } from './database.types';
+
 const databaseLogger = new Logger('DatabasePool');
 const MAX_POOL_CONNECTIONS = 10;
 const CONNECTION_TIMEOUT_MILLISECONDS = 5_000;
 const IDLE_TIMEOUT_MILLISECONDS = 30_000;
-
-export type DatabaseSchema = Record<never, never>;
 
 /** Reports unexpected idle-client failures without exposing connection details. */
 function reportIdleClientError(error: Error): void {

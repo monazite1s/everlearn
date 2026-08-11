@@ -9,6 +9,13 @@ import type {
 } from 'kysely/migration' with { 'resolution-mode': 'import' };
 
 import type { DatabaseSchema } from './database.service';
+import { identityKnowledgeSchemaMigration } from './migrations/20260812010000_identity_knowledge_schema';
+import { localUserSeedMigration } from './migrations/20260812010100_local_user_seed';
+
+const applicationMigrations = {
+  '20260812010000_identity_knowledge_schema': identityKnowledgeSchemaMigration,
+  '20260812010100_local_user_seed': localUserSeedMigration,
+} satisfies Record<string, Migration>;
 
 export type MigrationDirection = 'down' | 'up';
 
@@ -29,7 +36,7 @@ export interface MigrationExecutionSummary {
 class ApplicationMigrationProvider implements MigrationProvider {
   /** Returns a fresh registry so callers cannot mutate the application definition. */
   getMigrations(): Promise<Record<string, Migration>> {
-    return Promise.resolve({});
+    return Promise.resolve({ ...applicationMigrations });
   }
 }
 
