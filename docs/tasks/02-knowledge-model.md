@@ -45,7 +45,7 @@
 
 ### KB-01 建立数据库模块与迁移执行器
 
-- 状态：未开始。
+- 状态：已完成。
 - 依赖：KB-00。
 - 必读：`docs/03-engineering/research-and-dependencies.md`、`docs/03-engineering/development.md`、`docs/02-architecture/system.md`。
 - 目标：API 可注入类型安全数据库连接，并可显式执行 up/down migration。
@@ -54,7 +54,9 @@
 - 非目标：业务表、Repository、读写分离或连接代理。
 - 失败恢复：连接和迁移失败必须返回非零退出码；down 只供本地恢复验证。
 - 验收：空数据库 up、重复 up、down 后再次 up 均成功；缺失连接串启动失败。
-- 验证：数据库模块单元测试、迁移集成测试、API typecheck。
+- 改动：新增受 NestJS 管理的 PostgreSQL 连接池、显式迁移 CLI 与隔离测试 Schema；Kysely ESM 通过动态导入边界接入 CommonJS API。
+- 验证：真实 PostgreSQL 集成测试 `3 passed / 0 skipped`，覆盖 up、重复 up、down 后再次 up；生产 CLI 连续两次 up 成功；缺失 `DATABASE_URL` 返回非零退出码；API typecheck、lint、格式、文件限制与构建通过。
+- 风险：生产迁移注册表尚为空，业务 Schema 由 KB-02 在单独批准后建立。
 
 ### KB-02 建立 Identity 与 Knowledge Schema
 
