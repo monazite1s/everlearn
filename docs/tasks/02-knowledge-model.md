@@ -18,13 +18,15 @@
 
 ### KB-P02 拆分应用壳职责
 
-- 状态：未开始。
+- 状态：已完成。
 - 依赖：KB-P01。
 - 必读：`docs/01-design/layout-and-navigation.md`、`docs/03-engineering/quality-gates.md`。
 - 目标：将导航和面板持久化从 `app-shell.tsx` 提取为按职责命名的模块，外部行为保持不变。
 - 非目标：修改视觉、引入状态库或创建通用 Shell 框架。
 - 验收：`AppShell` 只负责编排；导航、焦点、面板持久化与移动端限制测试保持通过。
-- 验证：聚焦组件测试、Web typecheck、ESLint、文件限制和生产构建。
+- 改动：新增 `workspace-navigation.tsx` 与 `workspace-shell-state.ts`，`app-shell.tsx` 从 327 行降至 159 行。
+- 验证：组件项目 8 个文件、20 项测试通过；Web typecheck、ESLint、Prettier、文件限制和生产构建通过。
+- 风险：无。
 
 ## KB-01 建立 Identity 与 Knowledge Schema
 

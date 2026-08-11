@@ -2,38 +2,24 @@
 
 'use client';
 
-import {
-  Button,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTrigger,
-  Tooltip,
-  TooltipProvider,
-} from '@everlearn/ui';
+import { Button, Tooltip, TooltipProvider } from '@everlearn/ui';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 
 import styles from './app-shell.module.css';
 import { appearanceOptions, themeOptions, useTheme } from './theme-provider';
-import {
-  getMobileRoutePolicy,
-  getWorkspaceRoute,
-  isWorkspaceRouteCurrent,
-  workspaceRoutes,
-} from './workspace-routes';
+import { CreationAction, MobileNavigation, PrimaryNavigation } from './workspace-navigation';
+import { getWorkspaceRoute } from './workspace-routes';
 import type { WorkspaceRoute } from './workspace-routes';
+import {
+  usePageTitleFocus,
+  usePersistedLeftPanel,
+  useRouteContextPanel,
+} from './workspace-shell-state';
 
 interface AppShellProps {
   children: ReactNode;
-}
-
-interface PrimaryNavigationProps {
-  collapsed: boolean;
-  dismissOnNavigate?: boolean;
-  pathname: string;
 }
 
 interface TopbarProps {
@@ -48,169 +34,6 @@ interface WorkspacePanelsProps extends AppShellProps {
   pathname: string;
   route: WorkspaceRoute;
   toggleLeftPanel: () => void;
-}
-
-const LEFT_PANEL_KEY = 'everlearn-left-panel-collapsed';
-
-/** Focuses the new page title after a client-side route transition. */
-function usePageTitleFocus(pathname: string): void {
-  useEffect(
-    /** Moves keyboard and screen-reader context to the unique page heading. */
-    function focusPageTitle(): void {
-      document.querySelector<HTMLElement>('[data-page-title]')?.focus();
-    },
-    [pathname],
-  );
-}
-
-/** Restores the device-local left panel preference after hydration. */
-function usePersistedLeftPanel(): [boolean, () => void] {
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(
-    /** Defers browser persistence until after the hydrated frame is stable. */
-    function scheduleLeftPanelLoad(): () => void {
-      /** Loads a valid local panel preference without blocking hydration. */
-      function loadLeftPanel(): void {
-        setCollapsed(localStorage.getItem(LEFT_PANEL_KEY) === 'true');
-      }
-      const timer = window.setTimeout(loadLeftPanel, 0);
-      /** Cancels stale persistence work if the shell unmounts immediately. */
-      function cancelLeftPanelLoad(): void {
-        window.clearTimeout(timer);
-      }
-      return cancelLeftPanelLoad;
-    },
-    [],
-  );
-
-  /** Toggles and persists the left panel for this browser. */
-  function toggleLeftPanel(): void {
-    setCollapsed(
-      /** Persists the next state derived from the current panel state. */
-      function persistNextState(current): boolean {
-        const next = !current;
-        localStorage.setItem(LEFT_PANEL_KEY, String(next));
-        return next;
-      },
-    );
-  }
-  return [collapsed, toggleLeftPanel];
-}
-
-/** Tracks the right context panel per route for the current browser session. */
-function useRouteContextPanel(pathname: string): [boolean, () => void] {
-  const [open, setOpen] = useState(true);
-  useEffect(
-    /** Defers route restoration until after the hydrated frame is stable. */
-    function scheduleRightPanelLoad(): () => void {
-      /** Restores the saved choice or applies the documented desktop default. */
-      function loadRightPanel(): void {
-        const stored = sessionStorage.getItem(`everlearn-right-panel:${pathname}`);
-        const desktop =
-          typeof window.matchMedia === 'function'
-            ? window.matchMedia('(width > 1280px)').matches
-            : window.innerWidth > 1280;
-        setOpen(stored === null ? desktop : stored === 'true');
-      }
-      const timer = window.setTimeout(loadRightPanel, 0);
-      /** Cancels stale route restoration when navigation changes quickly. */
-      function cancelRightPanelLoad(): void {
-        window.clearTimeout(timer);
-      }
-      return cancelRightPanelLoad;
-    },
-    [pathname],
-  );
-
-  /** Toggles the current route context without leaking its state to other pages. */
-  function toggleRightPanel(): void {
-    setOpen(
-      /** Persists the next route-specific context state. */
-      function persistNextState(current): boolean {
-        const next = !current;
-        sessionStorage.setItem(`everlearn-right-panel:${pathname}`, String(next));
-        return next;
-      },
-    );
-  }
-  return [open, toggleRightPanel];
-}
-
-/** Renders the six stable primary destinations with visible current-page state. */
-function PrimaryNavigation({
-  collapsed,
-  dismissOnNavigate = false,
-  pathname,
-}: PrimaryNavigationProps) {
-  /** Renders one route using text, aria-current, and the knowledge-spine marker. */
-  function renderRoute(route: WorkspaceRoute) {
-    const current = isWorkspaceRouteCurrent(pathname, route);
-    const link = (
-      <Link
-        className={styles['nav-link']}
-        href={route.href}
-        aria-current={current ? 'page' : undefined}
-      >
-        <span className={styles['short-label']} aria-hidden="true">
-          {route.shortLabel}
-        </span>
-        <span className={collapsed ? styles['visually-hidden'] : undefined}>{route.label}</span>
-      </Link>
-    );
-    return (
-      <li key={route.id}>{dismissOnNavigate ? <DialogClose asChild>{link}</DialogClose> : link}</li>
-    );
-  }
-  return (
-    <nav aria-label="一级导航">
-      <ul className={styles.navigation}>{workspaceRoutes.map(renderRoute)}</ul>
-    </nav>
-  );
-}
-
-/** Renders the mobile navigation as a modal drawer with managed focus. */
-function MobileNavigation({ pathname }: Pick<PrimaryNavigationProps, 'pathname'>) {
-  return (
-    <div className={styles['mobile-navigation']}>
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button aria-label="打开导航" size="small" variant="ghost">
-            菜单
-          </Button>
-        </DialogTrigger>
-        <DialogContent className={styles['mobile-drawer']} heading="导航">
-          <PrimaryNavigation collapsed={false} dismissOnNavigate pathname={pathname} />
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-/** Replaces mobile creation with an explicit desktop requirement. */
-function CreationAction({ route }: Pick<TopbarProps, 'route'>) {
-  const mobilePolicy = getMobileRoutePolicy(route);
-  return (
-    <>
-      <Link
-        className={`${styles['primary-action']} ${styles['desktop-creation']}`}
-        href="/knowledge?create=document"
-      >
-        新建
-      </Link>
-      <div className={styles['mobile-creation']}>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button size="small">新建</Button>
-          </DialogTrigger>
-          <DialogContent description={mobilePolicy.creationDescription} heading="请在桌面端创作">
-            <DialogClose asChild>
-              <Button>返回阅读</Button>
-            </DialogClose>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </>
-  );
 }
 
 /** Exposes compact persisted theme controls without leaking palette values. */
