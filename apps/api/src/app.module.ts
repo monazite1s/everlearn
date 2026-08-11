@@ -5,6 +5,7 @@
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+import { DatabaseModule } from './database/database.module';
 import { HealthController } from './health.controller';
 import { RequestCorrelationMiddleware } from './request-correlation.middleware';
 import { validateRuntimeEnvironment } from './runtime-config';
@@ -18,6 +19,7 @@ import { validateRuntimeEnvironment } from './runtime-config';
       isGlobal: true,
       validate: validateRuntimeEnvironment,
     }),
+    DatabaseModule,
   ],
 })
 export class AppModule implements NestModule {
