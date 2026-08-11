@@ -18,7 +18,12 @@ import type { ChangeEvent, ReactNode } from 'react';
 
 import styles from './app-shell.module.css';
 import { appearanceOptions, themeOptions, useTheme } from './theme-provider';
-import { getWorkspaceRoute, workspaceRoutes } from './workspace-routes';
+import {
+  getMobileRoutePolicy,
+  getWorkspaceRoute,
+  isWorkspaceRouteCurrent,
+  workspaceRoutes,
+} from './workspace-routes';
 import type { WorkspaceRoute } from './workspace-routes';
 
 interface AppShellProps {
@@ -32,6 +37,7 @@ interface PrimaryNavigationProps {
 }
 
 interface TopbarProps {
+  pathname: string;
   rightOpen: boolean;
   route: WorkspaceRoute;
   toggleRightPanel: () => void;
@@ -138,7 +144,7 @@ function PrimaryNavigation({
 }: PrimaryNavigationProps) {
   /** Renders one route using text, aria-current, and the knowledge-spine marker. */
   function renderRoute(route: WorkspaceRoute) {
-    const current = pathname === route.href;
+    const current = isWorkspaceRouteCurrent(pathname, route);
     const link = (
       <Link
         className={styles['nav-link']}
@@ -181,7 +187,8 @@ function MobileNavigation({ pathname }: Pick<PrimaryNavigationProps, 'pathname'>
 }
 
 /** Replaces mobile creation with an explicit desktop requirement. */
-function CreationAction() {
+function CreationAction({ route }: Pick<TopbarProps, 'route'>) {
+  const mobilePolicy = getMobileRoutePolicy(route);
   return (
     <>
       <Link
@@ -195,10 +202,7 @@ function CreationAction() {
           <DialogTrigger asChild>
             <Button size="small">新建</Button>
           </DialogTrigger>
-          <DialogContent
-            description="移动端保留阅读、搜索和运行状态，暂不提供内容创作。"
-            heading="请在桌面端创作"
-          >
+          <DialogContent description={mobilePolicy.creationDescription} heading="请在桌面端创作">
             <DialogClose asChild>
               <Button>返回阅读</Button>
             </DialogClose>
@@ -237,17 +241,17 @@ function ThemeControls() {
 }
 
 /** Renders global location, search, creation, status, theme, and context actions. */
-function Topbar({ rightOpen, route, toggleRightPanel }: TopbarProps) {
+function Topbar({ pathname, rightOpen, route, toggleRightPanel }: TopbarProps) {
   return (
     <header className={styles.topbar}>
-      <MobileNavigation pathname={route.href} />
+      <MobileNavigation pathname={pathname} />
       <Link className={styles.brand} href="/">
         Everlearn
       </Link>
       <span className={styles.location}>{route.label}</span>
       <div className={styles['top-actions']}>
         <Link href="/knowledge?search=open">搜索</Link>
-        <CreationAction />
+        <CreationAction route={route} />
         <Link href={`${route.href}?view=runs`}>运行中 2</Link>
         <div className={styles['desktop-controls']}>
           <ThemeControls />
@@ -313,7 +317,12 @@ export function AppShell({ children }: AppShellProps) {
         跳到主要内容
       </a>
       <div className={styles.shell} data-left-collapsed={leftCollapsed} data-right-open={rightOpen}>
-        <Topbar rightOpen={rightOpen} route={route} toggleRightPanel={toggleRightPanel} />
+        <Topbar
+          pathname={pathname}
+          rightOpen={rightOpen}
+          route={route}
+          toggleRightPanel={toggleRightPanel}
+        />
         <WorkspacePanels
           leftCollapsed={leftCollapsed}
           pathname={pathname}

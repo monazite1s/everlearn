@@ -2,6 +2,30 @@
 
 完成后可通过 API 创建多个知识库、管理文档树、Inbox 和回收站；尚不实现富文本编辑器。
 
+## 阶段前置修复
+
+### KB-P01 统一嵌套路由与移动端策略
+
+- 状态：已完成。
+- 依赖：UI-05。
+- 必读：`docs/01-design/layout-and-navigation.md`。
+- 目标：深层页面继续归属正确一级导航，并由路由能力表提供移动端限制文案。
+- 非目标：拆分应用壳、实现知识库页面或移动端创作。
+- 改动：`workspace-routes.ts`、`app-shell.tsx`、`app-shell.component.spec.tsx`。
+- 验证：`pnpm.cmd test:component -- apps/web/src/app/app-shell.component.spec.tsx`，8 个文件、20 项测试通过；Web typecheck、ESLint、文件限制和生产构建通过。
+- 证据：`/knowledge/library-1/documents/document-1` 的“知识库”链接包含 `aria-current="page"`；移动端限制文案来自当前路由策略。
+- 风险：无。
+
+### KB-P02 拆分应用壳职责
+
+- 状态：未开始。
+- 依赖：KB-P01。
+- 必读：`docs/01-design/layout-and-navigation.md`、`docs/03-engineering/quality-gates.md`。
+- 目标：将导航和面板持久化从 `app-shell.tsx` 提取为按职责命名的模块，外部行为保持不变。
+- 非目标：修改视觉、引入状态库或创建通用 Shell 框架。
+- 验收：`AppShell` 只负责编排；导航、焦点、面板持久化与移动端限制测试保持通过。
+- 验证：聚焦组件测试、Web typecheck、ESLint、文件限制和生产构建。
+
 ## KB-01 建立 Identity 与 Knowledge Schema
 
 - 依赖：FND-08、FND-09。

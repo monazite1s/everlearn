@@ -6,9 +6,11 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { AppShell } from './app-shell';
 import { ThemeProvider } from './theme-provider';
 
+let mockPathname = '/knowledge';
+
 /** Returns the stable pathname used by the shell component test. */
 function useMockPathname(): string {
-  return '/knowledge';
+  return mockPathname;
 }
 
 /** Provides the narrow App Router surface consumed by the shell. */
@@ -22,6 +24,7 @@ vi.mock('next/navigation', createNavigationMock);
 function resetShell(): void {
   cleanup();
   localStorage.clear();
+  mockPathname = '/knowledge';
   sessionStorage.clear();
 }
 
@@ -80,5 +83,16 @@ async function rendersMobileReadingControls(): Promise<void> {
   expect(screen.queryByRole('dialog', { name: '请在桌面端创作' })).not.toBeInTheDocument();
 }
 
+/** Confirms nested routes retain their primary destination and mobile policy. */
+function rendersNestedRoutePolicy(): void {
+  mockPathname = '/knowledge/library-1/documents/document-1';
+  renderShell();
+
+  expect(screen.getByRole('link', { name: '知识库' })).toHaveAttribute('aria-current', 'page');
+  fireEvent.click(screen.getByRole('button', { name: '新建' }));
+  expect(screen.getByText('移动端保留阅读、搜索和运行状态，暂不提供内容创作。')).toBeVisible();
+}
+
 test('renders the accessible desktop shell', rendersDesktopShell);
 test('renders mobile reading controls', rendersMobileReadingControls);
+test('keeps nested routes inside their primary destination', rendersNestedRoutePolicy);

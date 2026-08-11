@@ -15,6 +15,16 @@ export interface WorkspaceRoute {
   shortLabel: string;
 }
 
+export interface MobileRoutePolicy {
+  creationDescription: string;
+}
+
+const mobileRoutePolicies: Readonly<Record<MobileRouteCapability, MobileRoutePolicy>> = {
+  limited: { creationDescription: '移动端只提供基础查看，完整配置请使用桌面端。' },
+  read: { creationDescription: '移动端保留阅读、搜索和运行状态，暂不提供内容创作。' },
+  status: { creationDescription: '移动端可查看内容与运行状态，暂不提供新建和配置。' },
+};
+
 export const homeRoute: WorkspaceRoute = {
   context: '继续最近学习，并查看跨模块运行状态。',
   description: '从最近文档继续学习，进入知识库或快速记录。',
@@ -86,4 +96,15 @@ export function findWorkspaceRoute(id: string): WorkspaceRoute | undefined {
 export function getWorkspaceRoute(pathname: string): WorkspaceRoute {
   const id = pathname.split('/')[1] ?? 'home';
   return findWorkspaceRoute(id) ?? homeRoute;
+}
+
+/** Tests whether a pathname belongs to one primary workspace destination. */
+export function isWorkspaceRouteCurrent(pathname: string, route: WorkspaceRoute): boolean {
+  if (route.href === '/') return pathname === '/';
+  return pathname === route.href || pathname.startsWith(`${route.href}/`);
+}
+
+/** Returns the mobile interaction policy declared by a workspace route. */
+export function getMobileRoutePolicy(route: WorkspaceRoute): MobileRoutePolicy {
+  return mobileRoutePolicies[route.mobileCapability];
 }
