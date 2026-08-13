@@ -5,6 +5,8 @@ import type {
   KnowledgeBaseErrorCode,
   KnowledgeBaseListResponse,
   KnowledgeBaseSummary,
+  KnowledgeBaseVersionRequest,
+  UpdateKnowledgeBaseRequest,
 } from './index';
 
 type Assert<T extends true> = T;
@@ -14,6 +16,10 @@ type Equal<Left, Right> =
     : false;
 
 type CreateKeys = Assert<Equal<keyof CreateKnowledgeBaseRequest, 'description' | 'name'>>;
+type UpdateKeys = Assert<
+  Equal<keyof UpdateKnowledgeBaseRequest, 'description' | 'name' | 'version'>
+>;
+type VersionKeys = Assert<Equal<keyof KnowledgeBaseVersionRequest, 'version'>>;
 type SummaryKeys = Assert<
   Equal<
     keyof KnowledgeBaseSummary,
@@ -32,8 +38,22 @@ type PageShape = Assert<
 type ErrorCodes = Assert<
   Equal<
     KnowledgeBaseErrorCode,
-    'BAD_REQUEST' | 'INTERNAL_ERROR' | 'NOT_FOUND' | 'UNSUPPORTED_MEDIA_TYPE' | 'VALIDATION_FAILED'
+    | 'BAD_REQUEST'
+    | 'CONFLICT'
+    | 'IDEMPOTENCY_CONFLICT'
+    | 'INTERNAL_ERROR'
+    | 'NOT_FOUND'
+    | 'UNSUPPORTED_MEDIA_TYPE'
+    | 'VALIDATION_FAILED'
+    | 'VERSION_CONFLICT'
   >
 >;
 
-export type KnowledgeBaseContractAssertions = [CreateKeys, SummaryKeys, PageShape, ErrorCodes];
+export type KnowledgeBaseContractAssertions = [
+  CreateKeys,
+  UpdateKeys,
+  VersionKeys,
+  SummaryKeys,
+  PageShape,
+  ErrorCodes,
+];

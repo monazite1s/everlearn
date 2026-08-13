@@ -165,15 +165,20 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-05 实现知识库更新、删除与恢复 API
 
-- 状态：未开始。
+- 状态：已完成（2026-08-14）。
 - 依赖：KB-04。
 - 必读：`docs/02-architecture/api-and-events.md`、`docs/02-architecture/data-model.md`、`docs/01-design/pages/knowledge-base.md`。
 - 目标：实现 `PATCH/DELETE /knowledge-bases/:id` 及 `POST /knowledge-bases/:id/restore`。
-- 契约：更新、删除和恢复提交 `version`；成功后版本加一；其他所有者对象统一不可探测。
+- 契约：更新、删除和恢复提交 `version`；恢复额外要求 `Idempotency-Key`；成功后版本加一；其他所有者对象统一不可探测。
 - 非目标：永久删除、文档 API 和页面。
-- 失败恢复：版本冲突不写入；重复删除/恢复返回规定稳定结果，不产生第二次副作用。
-- 验收：软删除库及其文档不出现在正常查询；恢复后树结构保留。
+- 失败恢复：版本冲突不写入；删除以请求版本与当前版本的精确关系识别重放；恢复以所有者、操作和幂等键保存请求指纹与首次响应，相同请求返回原响应，不同请求复用键返回冲突。
+- 验收：软删除只标记知识库，正常文档查询必须同时校验所属知识库未删除；恢复不改写文档行，树结构保留且此前单独删除的文档不会被误恢复。
 - 验证：领域状态测试、Controller 契约测试、PostgreSQL 集成测试。
+- 完成证据：共享契约已增加更新/生命周期请求与 `VERSION_CONFLICT`、`IDEMPOTENCY_CONFLICT`；Nest DTO 严格拒绝空 PATCH、系统字段、非法版本和非 JSON 写入；owner-scoped 行锁串行化更新、删除和恢复，恢复用 PostgreSQL transaction advisory lock 与 `idempotency_records` 原子保存首次响应。删除只修改知识库行，不引入迁移或设计模式；后续文档正常查询必须 join active 知识库。
+- 验证结果：`pnpm.cmd --filter @everlearn/contracts typecheck`、`pnpm.cmd --filter @everlearn/api typecheck`、聚焦 ESLint、Prettier 与 `git diff --check` 通过；`node --env-file=.env node_modules/vitest/vitest.mjs run --project integration apps/api/src/knowledge-bases/knowledge-base-lifecycle.integration.spec.ts apps/api/src/knowledge-bases/knowledge-bases.integration.spec.ts` 在本地 PostgreSQL 通过 2 个文件、10 个场景；复审补强后的生命周期 6 个场景额外锁定非精确删除重放与恢复前后文档全部生命周期/树字段不变。
+- 范围说明：公共契约、两个职责单一的 DTO、可信冲突映射、读取投影、生命周期事务和真实 PostgreSQL 测试必须同一纵向切片落地；因此超过通常 8 个手写文件。拆分后所有手写文件均不超过 400 行，未引入 Repository、ADR、新依赖或假想扩展点。
+- Skill 影响：API Contract 明确恢复必须使用 `Idempotency-Key` 并稳定重放首次响应；PostgreSQL Design 将知识库行锁、幂等键 advisory lock 和业务变更放入同一事务；Pragmatic Architecture 将读取与生命周期按真实职责拆分，未登记设计模式。
+- 独立复审：Sub-agent 终审最初指出关键负向回归与失真注释；补齐非精确删除重放、文档生命周期/树字段快照并修正文档后复核为 `APPROVE`，CRITICAL/HIGH/MEDIUM/LOW 均为 0。
 
 ### KB-05W 接入知识库概览与管理
 

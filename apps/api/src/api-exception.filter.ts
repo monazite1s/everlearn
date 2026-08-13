@@ -13,6 +13,7 @@ import {
 import type { ValidationError } from 'class-validator';
 import type { Request, Response } from 'express';
 
+import { ApiConflictException, type ApiConflictCode } from './api-conflict.exception';
 import { REQUEST_ID_HEADER, resolveRequestId } from './request-correlation.middleware';
 
 interface ValidationFieldIssue {
@@ -55,6 +56,17 @@ const PUBLIC_PROBLEMS: Readonly<Record<number, Omit<PublicProblem, 'status'>>> =
   [HttpStatus.SERVICE_UNAVAILABLE]: {
     code: 'SERVICE_UNAVAILABLE',
     message: '服务暂时不可用，请稍后重试。',
+  },
+};
+
+const PUBLIC_CONFLICTS: Readonly<Record<ApiConflictCode, Omit<PublicProblem, 'status'>>> = {
+  IDEMPOTENCY_CONFLICT: {
+    code: 'IDEMPOTENCY_CONFLICT',
+    message: '幂等键已用于另一个请求。',
+  },
+  VERSION_CONFLICT: {
+    code: 'VERSION_CONFLICT',
+    message: '资源已被其他操作更新，请刷新后重试。',
   },
 };
 
@@ -116,6 +128,9 @@ function resolvePublicProblem(error: unknown): PublicProblem {
   }
   if (!(error instanceof HttpException)) {
     return { code: 'INTERNAL_ERROR', message: '服务暂时无法完成请求。', status: 500 };
+  }
+  if (error instanceof ApiConflictException) {
+    return { ...PUBLIC_CONFLICTS[error.conflictCode], status: HttpStatus.CONFLICT };
   }
   const validation = readValidationProblem(error);
   if (validation !== undefined) {

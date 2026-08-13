@@ -1,0 +1,261 @@
+/** @fileoverview Implements optimistic knowledge-base updates and soft-delete lifecycle changes. */
+
+import { createHash, randomUUID } from 'node:crypto';
+
+import type { KnowledgeBaseSummary } from '@everlearn/contracts' with {
+  'resolution-mode': 'import',
+};
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import type { Transaction } from 'kysely' with { 'resolution-mode': 'import' };
+
+import { ApiConflictException } from '../api-conflict.exception';
+import type { DatabaseSchema, JsonValue } from '../database/database.types';
+import { DatabaseService } from '../database/database.service';
+import { LocalIdentityContext } from '../local-identity.context';
+import type { KnowledgeBaseVersionDto } from './knowledge-base-version.dto';
+import { readActiveKnowledgeBaseSummary } from './knowledge-base-summary.query';
+import type { UpdateKnowledgeBaseDto } from './update-knowledge-base.dto';
+
+const RESTORE_OPERATION = 'knowledge-base.restore';
+const SUMMARY_KEYS = 'description,documentCount,id,kind,name,updatedAt,version';
+
+interface LockedKnowledgeBase {
+  deleted_at: Date | null;
+  id: string;
+  version: number;
+}
+
+interface RestoreInput {
+  id: string;
+  idempotencyKey: string;
+  ownerId: string;
+  version: number;
+}
+
+/** Creates a stable request fingerprint without persisting user-controlled JSON. */
+function createRestoreHash(id: string, version: number): string {
+  return createHash('sha256').update(`${RESTORE_OPERATION}\0${id}\0${version}`).digest('hex');
+}
+
+/** Accepts only safe non-negative integer counts from the stored public projection. */
+function isDocumentCount(value: JsonValue | undefined): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+/** Accepts only positive integer versions from the stored public projection. */
+function isVersion(value: JsonValue | undefined): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 1;
+}
+
+/** Reconstructs only the exact public projection written by this service. */
+function readStoredSummary(value: JsonValue): KnowledgeBaseSummary {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new TypeError('Stored idempotency response is invalid');
+  }
+  const candidate = value as Record<string, JsonValue>;
+  const primitivesValid = [
+    typeof candidate.description === 'string',
+    isDocumentCount(candidate.documentCount),
+    typeof candidate.id === 'string',
+    typeof candidate.name === 'string',
+    typeof candidate.updatedAt === 'string',
+    isVersion(candidate.version),
+  ].every(Boolean);
+  const kindValid =
+    candidate.kind === 'news' || candidate.kind === 'normal' || candidate.kind === 'tutorial';
+  const keysValid = Object.keys(candidate).sort().join(',') === SUMMARY_KEYS;
+  if (!primitivesValid || !kindValid || !keysValid) {
+    throw new TypeError('Stored idempotency response is invalid');
+  }
+  return {
+    description: candidate.description as string,
+    documentCount: candidate.documentCount as number,
+    id: candidate.id as string,
+    kind: candidate.kind as 'news' | 'normal' | 'tutorial',
+    name: candidate.name as string,
+    updatedAt: candidate.updatedAt as string,
+    version: candidate.version as number,
+  };
+}
+
+/** Applies serialized lifecycle transitions within the trusted owner boundary. */
+@Injectable()
+export class KnowledgeBaseLifecycleService {
+  /** Receives the database client and server-owned actor context. */
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly identityContext: LocalIdentityContext,
+  ) {}
+
+  /** Updates editable metadata when the caller still holds the current version. */
+  async update(id: string, input: UpdateKnowledgeBaseDto): Promise<KnowledgeBaseSummary> {
+    const { ownerId } = this.identityContext.getActor();
+    return this.databaseService.client.transaction().execute(async (transaction) => {
+      const row = await this.lockKnowledgeBase(transaction, id, ownerId);
+      if (row?.deleted_at !== null) throw new NotFoundException();
+      this.requireVersion(row.version, input.version);
+      const { sql } = await import('kysely');
+      await transaction
+        .updateTable('knowledge_bases')
+        .set({
+          ...(input.description === undefined ? {} : { description: input.description }),
+          ...(input.name === undefined ? {} : { name: input.name }),
+          updated_at: sql`transaction_timestamp()`,
+          version: sql`version + 1`,
+        })
+        .where('id', '=', id)
+        .where('owner_id', '=', ownerId)
+        .executeTakeFirstOrThrow();
+      return readActiveKnowledgeBaseSummary(transaction, id, ownerId);
+    });
+  }
+
+  /** Soft-deletes one knowledge base while making an exact retry side-effect free. */
+  async remove(id: string, input: KnowledgeBaseVersionDto): Promise<void> {
+    const { ownerId } = this.identityContext.getActor();
+    await this.databaseService.client.transaction().execute(async (transaction) => {
+      const row = await this.lockKnowledgeBase(transaction, id, ownerId);
+      if (row === undefined) throw new NotFoundException();
+      if (row.deleted_at !== null) return this.acceptDeleteReplay(row.version, input.version);
+      this.requireVersion(row.version, input.version);
+      const { sql } = await import('kysely');
+      await transaction
+        .updateTable('knowledge_bases')
+        .set({
+          deleted_at: sql`transaction_timestamp()`,
+          updated_at: sql`transaction_timestamp()`,
+          version: sql`version + 1`,
+        })
+        .where('id', '=', id)
+        .where('owner_id', '=', ownerId)
+        .executeTakeFirstOrThrow();
+    });
+  }
+
+  /** Restores one knowledge base exactly once for the owner-scoped idempotency key. */
+  async restore(
+    id: string,
+    input: KnowledgeBaseVersionDto,
+    idempotencyKey: string,
+  ): Promise<KnowledgeBaseSummary> {
+    const { ownerId } = this.identityContext.getActor();
+    return this.databaseService.client.transaction().execute((transaction) =>
+      this.restoreInTransaction(transaction, {
+        id,
+        idempotencyKey,
+        ownerId,
+        version: input.version,
+      }),
+    );
+  }
+
+  /** Resolves a restore replay or commits the transition and response atomically. */
+  private async restoreInTransaction(
+    transaction: Transaction<DatabaseSchema>,
+    input: RestoreInput,
+  ): Promise<KnowledgeBaseSummary> {
+    const requestHash = createRestoreHash(input.id, input.version);
+    await this.lockIdempotencyKey(transaction, input);
+    const replay = await this.readIdempotentResponse(transaction, input, requestHash);
+    if (replay !== undefined) return replay;
+    const row = await this.lockKnowledgeBase(transaction, input.id, input.ownerId);
+    if (row === undefined) throw new NotFoundException();
+    if (row.deleted_at === null) throw new ConflictException();
+    this.requireVersion(row.version, input.version);
+    const { sql } = await import('kysely');
+    await transaction
+      .updateTable('knowledge_bases')
+      .set({
+        deleted_at: null,
+        updated_at: sql`transaction_timestamp()`,
+        version: sql`version + 1`,
+      })
+      .where('id', '=', input.id)
+      .where('owner_id', '=', input.ownerId)
+      .executeTakeFirstOrThrow();
+    const summary = await readActiveKnowledgeBaseSummary(transaction, input.id, input.ownerId);
+    await this.storeIdempotentResponse(transaction, input, requestHash, summary);
+    return summary;
+  }
+
+  /** Persists the first successful public response in the same transaction. */
+  private async storeIdempotentResponse(
+    transaction: Transaction<DatabaseSchema>,
+    input: RestoreInput,
+    requestHash: string,
+    summary: KnowledgeBaseSummary,
+  ): Promise<void> {
+    await transaction
+      .insertInto('idempotency_records')
+      .values({
+        id: randomUUID(),
+        idempotency_key: input.idempotencyKey,
+        operation: RESTORE_OPERATION,
+        owner_id: input.ownerId,
+        request_hash: requestHash,
+        response_json: { ...summary },
+      })
+      .executeTakeFirstOrThrow();
+  }
+
+  /** Serializes one owner-scoped idempotency key for concurrent callers. */
+  private async lockIdempotencyKey(
+    transaction: Transaction<DatabaseSchema>,
+    input: RestoreInput,
+  ): Promise<void> {
+    const { sql } = await import('kysely');
+    const lockKey = `${input.ownerId}:${RESTORE_OPERATION}:${input.idempotencyKey}`;
+    await sql`
+      SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}::text, 0::bigint))
+    `.execute(transaction);
+  }
+
+  /** Returns a stored response or rejects reuse of the key with another request. */
+  private async readIdempotentResponse(
+    transaction: Transaction<DatabaseSchema>,
+    input: RestoreInput,
+    requestHash: string,
+  ): Promise<KnowledgeBaseSummary | undefined> {
+    const record = await transaction
+      .selectFrom('idempotency_records')
+      .select(['request_hash', 'response_json'])
+      .where('owner_id', '=', input.ownerId)
+      .where('operation', '=', RESTORE_OPERATION)
+      .where('idempotency_key', '=', input.idempotencyKey)
+      .executeTakeFirst();
+    if (record === undefined) return;
+    if (record.request_hash !== requestHash) {
+      throw new ApiConflictException('IDEMPOTENCY_CONFLICT');
+    }
+    return readStoredSummary(record.response_json);
+  }
+
+  /** Locks one owner-scoped row so concurrent lifecycle transitions serialize. */
+  private lockKnowledgeBase(
+    transaction: Transaction<DatabaseSchema>,
+    id: string,
+    ownerId: string,
+  ): Promise<LockedKnowledgeBase | undefined> {
+    return transaction
+      .selectFrom('knowledge_bases')
+      .select(['id', 'version', 'deleted_at'])
+      .where('id', '=', id)
+      .where('owner_id', '=', ownerId)
+      .forUpdate()
+      .executeTakeFirst();
+  }
+
+  /** Accepts only the exact replay relation produced by a successful delete. */
+  private acceptDeleteReplay(currentVersion: number, requestedVersion: number): void {
+    if (currentVersion !== requestedVersion + 1) {
+      throw new ApiConflictException('VERSION_CONFLICT');
+    }
+  }
+
+  /** Rejects stale mutations using the stable public conflict category. */
+  private requireVersion(currentVersion: number, requestedVersion: number): void {
+    if (currentVersion !== requestedVersion) {
+      throw new ApiConflictException('VERSION_CONFLICT');
+    }
+  }
+}

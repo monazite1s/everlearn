@@ -1,0 +1,365 @@
+/** @fileoverview Verifies optimistic knowledge-base lifecycle behavior against real PostgreSQL. */
+
+import type { Server } from 'node:http';
+
+import type { KnowledgeBaseSummary } from '@everlearn/contracts' with {
+  'resolution-mode': 'import',
+};
+import type { INestApplication } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import type { Insertable, Kysely, Selectable } from 'kysely' with { 'resolution-mode': 'import' };
+import request from 'supertest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+
+import type { DatabaseSchema, DocumentTable, KnowledgeBaseTable } from '../database/database.types';
+import { createDatabaseClient } from '../database/database.service';
+import { runMigrations } from '../database/migration-runner';
+import { LOCAL_USER_ID } from '../local-identity.constants';
+import { REQUEST_ID_HEADER } from '../request-correlation.middleware';
+
+const databaseUrl = process.env.DATABASE_URL;
+const schemaName = `knowledge_lifecycle_${process.pid}`;
+const ownId = '41000000-0000-4000-8000-000000000001';
+const otherId = '41000000-0000-4000-8000-000000000002';
+const otherUserId = '41000000-0000-4000-8000-000000000003';
+let application: INestApplication | undefined;
+let database: Kysely<DatabaseSchema> | undefined;
+
+/** Adds a per-connection search path without changing credentials. */
+function createScopedDatabaseUrl(connectionString: string): string {
+  const url = new URL(connectionString);
+  url.searchParams.set('options', `-csearch_path=${schemaName}`);
+  return url.toString();
+}
+
+/** Supplies required non-production configuration before importing AppModule. */
+function applyFixtureEnvironment(scopedDatabaseUrl: string): void {
+  process.env.DATABASE_URL = scopedDatabaseUrl;
+  process.env.REDIS_URL = 'redis://127.0.0.1:6379';
+  process.env.S3_ACCESS_KEY = 'integration-test-access';
+  process.env.S3_BUCKET = 'integration-test';
+  process.env.S3_ENDPOINT = 'http://127.0.0.1:8333';
+  process.env.S3_FORCE_PATH_STYLE = 'true';
+  process.env.S3_REGION = 'local';
+  process.env.S3_SECRET_KEY = 'integration-test-secret';
+}
+
+/** Creates an isolated migrated schema and the production Nest application. */
+async function prepareApplication(): Promise<void> {
+  const adminDatabase = await createDatabaseClient(databaseUrl!);
+  await adminDatabase.schema.createSchema(schemaName).execute();
+  await adminDatabase.destroy();
+  const scopedDatabaseUrl = createScopedDatabaseUrl(databaseUrl!);
+  database = await createDatabaseClient(scopedDatabaseUrl);
+  await runMigrations(database, {
+    direction: 'up',
+    migrationLockTableName: 'migration_lock',
+    migrationTableName: 'migration_history',
+    migrationTableSchema: schemaName,
+  });
+  applyFixtureEnvironment(scopedDatabaseUrl);
+  const { AppModule } = await import('../app.module');
+  application = await NestFactory.create(AppModule, { logger: false });
+  application.setGlobalPrefix('api/v1');
+  await application.init();
+}
+
+/** Stops owned pools and drops the isolated test schema. */
+async function cleanApplication(): Promise<void> {
+  await application?.close();
+  await database?.destroy();
+  const adminDatabase = await createDatabaseClient(databaseUrl!);
+  await adminDatabase.schema.dropSchema(schemaName).cascade().execute();
+  await adminDatabase.destroy();
+}
+
+/** Restores a deterministic owner-scoped fixture before each scenario. */
+async function resetFixtures(): Promise<void> {
+  await database!.deleteFrom('idempotency_records').execute();
+  await database!.deleteFrom('documents').execute();
+  await database!.deleteFrom('knowledge_bases').execute();
+  await database!.deleteFrom('users').where('id', '!=', LOCAL_USER_ID).execute();
+  await database!
+    .insertInto('users')
+    .values({ id: otherUserId, display_name: '其他用户', timezone: 'Asia/Shanghai' })
+    .execute();
+  await insertKnowledgeBase({ id: ownId, owner_id: LOCAL_USER_ID });
+  await insertKnowledgeBase({ id: otherId, owner_id: otherUserId });
+}
+
+/** Inserts one lifecycle fixture with explicit ownership and deletion state. */
+async function insertKnowledgeBase(
+  input: Pick<Insertable<KnowledgeBaseTable>, 'id' | 'owner_id'> &
+    Partial<Pick<Insertable<KnowledgeBaseTable>, 'deleted_at' | 'version'>>,
+): Promise<void> {
+  await database!
+    .insertInto('knowledge_bases')
+    .values({
+      description: '原说明',
+      id: input.id,
+      kind: 'normal',
+      name: '原名称',
+      owner_id: input.owner_id,
+      ...(input.deleted_at === undefined ? {} : { deleted_at: input.deleted_at }),
+      ...(input.version === undefined ? {} : { version: input.version }),
+    })
+    .execute();
+}
+
+/** Returns the initialized HTTP adapter accepted by Supertest. */
+function getHttpServer(): Server {
+  if (application === undefined) throw new Error('Test application is not initialized');
+  return application.getHttpServer() as Server;
+}
+
+/** Parses one JSON response into the expected projection. */
+function parseBody<ResponseBody>(response: { text: string }): ResponseBody {
+  return JSON.parse(response.text) as ResponseBody;
+}
+
+/** Asserts one stable correlated public error. */
+function expectApiError(
+  response: { get(field: string): string | undefined; status: number; text: string },
+  status: number,
+  code: string,
+): void {
+  const body = parseBody<Record<string, unknown>>(response);
+  expect(response.status).toBe(status);
+  expect(body.code).toBe(code);
+  expect(body.requestId).toBe(response.get(REQUEST_ID_HEADER));
+}
+
+/** Reads the persisted lifecycle row for exact no-write assertions. */
+function readKnowledgeBase(id = ownId): Promise<Selectable<KnowledgeBaseTable>> {
+  return database!
+    .selectFrom('knowledge_bases')
+    .selectAll()
+    .where('id', '=', id)
+    .executeTakeFirstOrThrow();
+}
+
+/** Inserts active and independently deleted documents, then returns their lifecycle facts. */
+async function insertLifecycleDocuments(): Promise<readonly object[]> {
+  const activeId = '42000000-0000-4000-8000-000000000001';
+  const deletedId = '42000000-0000-4000-8000-000000000002';
+  const documents: Insertable<DocumentTable>[] = [
+    {
+      id: activeId,
+      knowledge_base_id: ownId,
+      owner_id: LOCAL_USER_ID,
+      parent_id: null,
+      path: `/${activeId}`,
+      position: 0,
+      title: '活跃文档',
+    },
+    {
+      deleted_at: new Date('2026-08-13T00:00:00Z'),
+      deleted_parent_id: null,
+      deleted_position: 1,
+      id: deletedId,
+      knowledge_base_id: ownId,
+      owner_id: LOCAL_USER_ID,
+      parent_id: null,
+      path: `/${deletedId}`,
+      position: 1,
+      title: '此前已删除',
+    },
+  ];
+  await database!.insertInto('documents').values(documents).execute();
+  return readDocumentLifecycleFacts();
+}
+
+/** Reads only document fields that knowledge-base lifecycle operations must preserve. */
+function readDocumentLifecycleFacts(): Promise<readonly object[]> {
+  return database!
+    .selectFrom('documents')
+    .select([
+      'id',
+      'deleted_at',
+      'deleted_parent_id',
+      'deleted_position',
+      'parent_id',
+      'path',
+      'position',
+      'version',
+    ])
+    .orderBy('position')
+    .execute();
+}
+
+/** Updates trimmed fields once and rejects stale, empty, or unsafe writes. */
+async function updatesOptimistically(): Promise<void> {
+  const response = await request(getHttpServer())
+    .patch(`/api/v1/knowledge-bases/${ownId}`)
+    .send({ description: '  新说明  ', name: '  新名称  ', version: 1 });
+  expect(response.status).toBe(200);
+  expect(parseBody<KnowledgeBaseSummary>(response)).toMatchObject({
+    description: '新说明',
+    name: '新名称',
+    version: 2,
+  });
+  const stale = await request(getHttpServer())
+    .patch(`/api/v1/knowledge-bases/${ownId}`)
+    .send({ name: '不应写入', version: 1 });
+  expectApiError(stale, 409, 'VERSION_CONFLICT');
+  expect(await readKnowledgeBase()).toMatchObject({ name: '新名称', version: 2 });
+  for (const body of [{ version: 2 }, { ownerId: otherUserId, version: 2 }]) {
+    const invalid = await request(getHttpServer())
+      .patch(`/api/v1/knowledge-bases/${ownId}`)
+      .send(body);
+    expectApiError(invalid, 400, 'VALIDATION_FAILED');
+  }
+}
+
+/** Makes foreign, missing, and deleted update targets indistinguishable. */
+async function hidesInaccessibleUpdates(): Promise<void> {
+  await database!
+    .updateTable('knowledge_bases')
+    .set({ deleted_at: new Date(), version: 2 })
+    .where('id', '=', ownId)
+    .execute();
+  for (const id of [ownId, otherId, '41000000-0000-4000-8000-000000000099']) {
+    const response = await request(getHttpServer())
+      .patch(`/api/v1/knowledge-bases/${id}`)
+      .send({ name: '不可探测', version: 2 });
+    expectApiError(response, 404, 'NOT_FOUND');
+  }
+}
+
+/** Soft-deletes only the base row and accepts an exact retry without another version bump. */
+async function deletesWithoutRewritingDocuments(): Promise<void> {
+  const documentFacts = await insertLifecycleDocuments();
+  const first = await request(getHttpServer())
+    .delete(`/api/v1/knowledge-bases/${ownId}`)
+    .send({ version: 1 });
+  expect(first.status).toBe(204);
+  const deleted = await readKnowledgeBase();
+  expect(deleted.version).toBe(2);
+  expect(deleted.deleted_at).not.toBeNull();
+  expect(await readDocumentLifecycleFacts()).toEqual(documentFacts);
+  const replay = await request(getHttpServer())
+    .delete(`/api/v1/knowledge-bases/${ownId}`)
+    .send({ version: 1 });
+  expect(replay.status).toBe(204);
+  const afterReplay = await readKnowledgeBase();
+  expect(afterReplay.version).toBe(2);
+  expect(afterReplay.deleted_at?.toISOString()).toBe(deleted.deleted_at?.toISOString());
+  const invalidReplay = await request(getHttpServer())
+    .delete(`/api/v1/knowledge-bases/${ownId}`)
+    .send({ version: 2 });
+  expectApiError(invalidReplay, 409, 'VERSION_CONFLICT');
+  expect(await readKnowledgeBase()).toEqual(afterReplay);
+  expect((await request(getHttpServer()).get(`/api/v1/knowledge-bases/${ownId}`)).status).toBe(404);
+}
+
+/** Restores once, replays the first response, and rejects conflicting key reuse. */
+async function restoresIdempotently(): Promise<void> {
+  const documentFacts = await insertLifecycleDocuments();
+  await database!
+    .updateTable('knowledge_bases')
+    .set({ deleted_at: new Date('2026-08-14T00:00:00Z'), version: 2 })
+    .where('id', '=', ownId)
+    .execute();
+  /** Sends one restore with the scenario's stable idempotency key. */
+  const sendRestore = (version: number): Promise<request.Response> =>
+    request(getHttpServer())
+      .post(`/api/v1/knowledge-bases/${ownId}/restore`)
+      .set('Idempotency-Key', 'restore-own-1')
+      .send({ version });
+  const [first, concurrentReplay] = await Promise.all([sendRestore(2), sendRestore(2)]);
+  expect(first.status).toBe(200);
+  expect(concurrentReplay.status).toBe(200);
+  expect(concurrentReplay.text).toBe(first.text);
+  expect((await readKnowledgeBase()).version).toBe(3);
+  expect(await readDocumentLifecycleFacts()).toEqual(documentFacts);
+  const records = await database!
+    .selectFrom('idempotency_records')
+    .select(({ fn }) => fn.countAll<number>().as('count'))
+    .executeTakeFirstOrThrow();
+  expect(Number(records.count)).toBe(1);
+  const keyConflict = await sendRestore(3);
+  expectApiError(keyConflict, 409, 'IDEMPOTENCY_CONFLICT');
+  const newKeyActive = await request(getHttpServer())
+    .post(`/api/v1/knowledge-bases/${ownId}/restore`)
+    .set('Idempotency-Key', 'restore-own-2')
+    .send({ version: 3 });
+  expectApiError(newKeyActive, 409, 'CONFLICT');
+}
+
+/** Rejects missing keys, non-JSON writes, stale versions, and foreign restore targets. */
+async function rejectsUnsafeLifecycleRequests(): Promise<void> {
+  await database!
+    .updateTable('knowledge_bases')
+    .set({ deleted_at: new Date(), version: 2 })
+    .where('id', '=', ownId)
+    .execute();
+  const missingKey = await request(getHttpServer())
+    .post(`/api/v1/knowledge-bases/${ownId}/restore`)
+    .send({ version: 2 });
+  expectApiError(missingKey, 400, 'BAD_REQUEST');
+  const stale = await request(getHttpServer())
+    .post(`/api/v1/knowledge-bases/${ownId}/restore`)
+    .set('Idempotency-Key', 'stale')
+    .send({ version: 1 });
+  expectApiError(stale, 409, 'VERSION_CONFLICT');
+  expect(
+    Number(
+      (
+        await database!
+          .selectFrom('idempotency_records')
+          .select(({ fn }) => fn.countAll<number>().as('count'))
+          .executeTakeFirstOrThrow()
+      ).count,
+    ),
+  ).toBe(0);
+  const foreign = await request(getHttpServer())
+    .post(`/api/v1/knowledge-bases/${otherId}/restore`)
+    .set('Idempotency-Key', 'foreign')
+    .send({ version: 1 });
+  expectApiError(foreign, 404, 'NOT_FOUND');
+  const nonJson = await request(getHttpServer())
+    .patch(`/api/v1/knowledge-bases/${ownId}`)
+    .set('Content-Type', 'text/plain')
+    .send('version=2');
+  expectApiError(nonJson, 415, 'UNSUPPORTED_MEDIA_TYPE');
+  const deleteNonJson = await request(getHttpServer())
+    .delete(`/api/v1/knowledge-bases/${ownId}`)
+    .set('Content-Type', 'text/plain')
+    .send('version=2');
+  expectApiError(deleteNonJson, 415, 'UNSUPPORTED_MEDIA_TYPE');
+}
+
+/** Rejects stale and foreign delete targets without changing their database facts. */
+async function rejectsUnsafeDeletes(): Promise<void> {
+  const stale = await request(getHttpServer())
+    .delete(`/api/v1/knowledge-bases/${ownId}`)
+    .send({ version: 2 });
+  expectApiError(stale, 409, 'VERSION_CONFLICT');
+  expect(await readKnowledgeBase()).toMatchObject({ deleted_at: null, version: 1 });
+  const foreign = await request(getHttpServer())
+    .delete(`/api/v1/knowledge-bases/${otherId}`)
+    .send({ version: 1 });
+  expectApiError(foreign, 404, 'NOT_FOUND');
+  const missing = await request(getHttpServer())
+    .delete('/api/v1/knowledge-bases/41000000-0000-4000-8000-000000000099')
+    .send({ version: 1 });
+  expectApiError(missing, 404, 'NOT_FOUND');
+}
+
+/** Registers real-database scenarios only when PostgreSQL is configured. */
+function defineLifecycleIntegrationTests(): void {
+  beforeAll(prepareApplication, 30_000);
+  beforeEach(resetFixtures);
+  afterAll(cleanApplication);
+  test('updates metadata with optimistic concurrency', updatesOptimistically);
+  test('hides inaccessible update targets', hidesInaccessibleUpdates);
+  test('soft-deletes without rewriting documents', deletesWithoutRewritingDocuments);
+  test('restores once with concurrent idempotent replay', restoresIdempotently);
+  test('rejects unsafe lifecycle requests', rejectsUnsafeLifecycleRequests);
+  test('rejects stale and inaccessible deletes', rejectsUnsafeDeletes);
+}
+
+describe.skipIf(databaseUrl === undefined)(
+  'Knowledge-base lifecycle HTTP integration',
+  defineLifecycleIntegrationTests,
+);

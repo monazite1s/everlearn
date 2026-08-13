@@ -1,16 +1,21 @@
-/** @fileoverview Implements owner-scoped knowledge-base persistence and cursor reads. */
+/** @fileoverview Implements owner-scoped knowledge-base creation and summary reads. */
 
 import { randomUUID } from 'node:crypto';
 
 import type { KnowledgeBaseListResponse, KnowledgeBaseSummary } from '@everlearn/contracts' with {
   'resolution-mode': 'import',
 };
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { Sql } from 'kysely' with { 'resolution-mode': 'import' };
 
 import { DatabaseService } from '../database/database.service';
 import { LocalIdentityContext } from '../local-identity.context';
 import type { CreateKnowledgeBaseDto } from './create-knowledge-base.dto';
+import {
+  readActiveKnowledgeBaseSummary,
+  toKnowledgeBaseSummary,
+  type KnowledgeBaseProjectionRow,
+} from './knowledge-base-summary.query';
 import {
   decodeKnowledgeBaseCursor,
   encodeKnowledgeBaseCursor,
@@ -21,45 +26,9 @@ import type { ListKnowledgeBasesQueryDto } from './list-knowledge-bases-query.dt
 const DEFAULT_PAGE_LIMIT = 20;
 const MICROS_PER_SECOND = 1_000_000n;
 
-interface KnowledgeBaseProjectionRow {
-  description: string;
-  documentCount: unknown;
-  id: string;
-  kind: 'news' | 'normal' | 'tutorial';
-  name: string;
-  updatedAt: string;
-  updatedAtMicros: string;
-  version: number;
-}
-
 /** Loads the ESM-only Kysely SQL tag across the API's Node16/CommonJS boundary. */
 async function loadSql(): Promise<Sql> {
   return (await import('kysely')).sql;
-}
-
-/** Converts PostgreSQL count text without admitting overflow or invalid values. */
-function parseDocumentCount(value: unknown): number {
-  if (typeof value !== 'string' || !/^(0|[1-9]\d*)$/u.test(value)) {
-    throw new TypeError('Database returned an invalid document count');
-  }
-  const count = Number(value);
-  if (!Number.isSafeInteger(count) || count < 0) {
-    throw new RangeError('Database document count exceeds the supported range');
-  }
-  return count;
-}
-
-/** Maps a database projection to the exact public summary contract. */
-function toSummary(row: KnowledgeBaseProjectionRow): KnowledgeBaseSummary {
-  return {
-    description: row.description,
-    documentCount: parseDocumentCount(row.documentCount),
-    id: row.id,
-    kind: row.kind,
-    name: row.name,
-    updatedAt: row.updatedAt,
-    version: row.version,
-  };
 }
 
 /** Resolves a cursor already accepted by the global DTO boundary. */
@@ -99,7 +68,7 @@ export class KnowledgeBasesService {
     `.execute(this.databaseService.client);
     const row = result.rows[0];
     if (row === undefined) throw new Error('Knowledge-base insert returned no row');
-    return toSummary(row);
+    return toKnowledgeBaseSummary(row);
   }
 
   /** Lists active owner records in stable recent-activity cursor order. */
@@ -145,26 +114,12 @@ export class KnowledgeBasesService {
             updatedAtMicros: lastRow.updatedAtMicros,
             v: 1,
           });
-    return { items: pageRows.map(toSummary), nextCursor };
+    return { items: pageRows.map(toKnowledgeBaseSummary), nextCursor };
   }
 
   /** Reads one active owner record while hiding missing and foreign resources alike. */
   async read(id: string): Promise<KnowledgeBaseSummary> {
-    const sql = await loadSql();
     const { ownerId } = this.identityContext.getActor();
-    const result = await sql<KnowledgeBaseProjectionRow>`
-      SELECT kb.id, kb.name, kb.description, kb.kind, kb.version,
-        to_char(kb.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "updatedAt",
-        (extract(epoch FROM kb.updated_at) * 1000000)::bigint::text AS "updatedAtMicros",
-        (SELECT count(*) FROM documents d
-          WHERE d.knowledge_base_id = kb.id AND d.owner_id = ${ownerId}::uuid
-            AND d.deleted_at IS NULL)::text AS "documentCount"
-      FROM knowledge_bases kb
-      WHERE kb.id = ${id}::uuid AND kb.owner_id = ${ownerId}::uuid
-        AND kb.deleted_at IS NULL
-    `.execute(this.databaseService.client);
-    const row = result.rows[0];
-    if (row === undefined) throw new NotFoundException();
-    return toSummary(row);
+    return readActiveKnowledgeBaseSummary(this.databaseService.client, id, ownerId);
   }
 }

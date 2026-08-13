@@ -6,4 +6,6 @@ export type {
   KnowledgeBaseKind,
   KnowledgeBaseListResponse,
   KnowledgeBaseSummary,
+  KnowledgeBaseVersionRequest,
+  UpdateKnowledgeBaseRequest,
 } from './knowledge-base.js';

@@ -9,6 +9,18 @@ export interface CreateKnowledgeBaseRequest {
   readonly name: string;
 }
 
+/** Carries editable fields and the last observed version for an optimistic update. */
+export interface UpdateKnowledgeBaseRequest {
+  readonly description?: string;
+  readonly name?: string;
+  readonly version: number;
+}
+
+/** Carries the last observed version for a knowledge-base lifecycle transition. */
+export interface KnowledgeBaseVersionRequest {
+  readonly version: number;
+}
+
 /** Projects one knowledge base without persistence or ownership fields. */
 export interface KnowledgeBaseSummary {
   readonly description: string;
@@ -28,4 +40,11 @@ export interface KnowledgeBaseListResponse {
 
 /** Enumerates stable client decisions exposed by the first knowledge-base API slice. */
 export type KnowledgeBaseErrorCode =
-  'BAD_REQUEST' | 'INTERNAL_ERROR' | 'NOT_FOUND' | 'UNSUPPORTED_MEDIA_TYPE' | 'VALIDATION_FAILED';
+  | 'BAD_REQUEST'
+  | 'CONFLICT'
+  | 'IDEMPOTENCY_CONFLICT'
+  | 'INTERNAL_ERROR'
+  | 'NOT_FOUND'
+  | 'UNSUPPORTED_MEDIA_TYPE'
+  | 'VALIDATION_FAILED'
+  | 'VERSION_CONFLICT';

@@ -11,12 +11,13 @@ import {
 
 import { DatabaseModule } from '../database/database.module';
 import { LocalIdentityContext } from '../local-identity.context';
+import { KnowledgeBaseLifecycleService } from './knowledge-base-lifecycle.service';
 import { KnowledgeBasesController } from './knowledge-bases.controller';
 import { KnowledgeBasesService } from './knowledge-bases.service';
 
 /** Rejects browser form writes before controller validation reaches the fixed local identity. */
 function requireJsonContentType(request: Request, _response: Response, next: NextFunction): void {
-  if (request.method !== 'POST') return next();
+  if (!['DELETE', 'PATCH', 'POST'].includes(request.method)) return next();
   const mediaType = request.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase();
   if (mediaType !== 'application/json') throw new UnsupportedMediaTypeException();
   next();
@@ -26,10 +27,10 @@ function requireJsonContentType(request: Request, _response: Response, next: Nex
 @Module({
   controllers: [KnowledgeBasesController],
   imports: [DatabaseModule],
-  providers: [KnowledgeBasesService, LocalIdentityContext],
+  providers: [KnowledgeBaseLifecycleService, KnowledgeBasesService, LocalIdentityContext],
 })
 export class KnowledgeBasesModule implements NestModule {
-  /** Applies the JSON-only rule solely to knowledge-base creation. */
+  /** Applies the JSON-only rule to every knowledge-base write route. */
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(requireJsonContentType).forRoutes(KnowledgeBasesController);
   }
