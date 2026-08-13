@@ -1,4 +1,4 @@
-/* Defines the knowledge-first home layout around Mantine-owned controls and states. */
+/* Defines the quiet knowledge-first home layout around real data states. */
 
 .page {
   margin-inline: var(--space-auto);
@@ -24,97 +24,22 @@
   padding-block: var(--space-8);
 }
 
-.section-heading {
-  min-height: 2.5rem;
-}
-
 .supporting-copy {
   margin-block-start: var(--space-1);
 }
 
-.document-list,
-.knowledge-list,
-.run-list {
-  list-style: none;
-  margin: var(--space-4) 0 0;
-  padding: 0;
-}
-
-.document-list {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.summary-card,
-.run-card {
-  color: var(--ink);
-  height: 100%;
-  text-decoration: none;
-  transition:
-    border-color var(--duration-feedback) var(--ease-standard),
-    transform var(--duration-feedback) var(--ease-standard);
-}
-
-.summary-card:hover,
-.run-card:hover {
-  border-color: var(--accent);
-  transform: translateY(-0.0625rem);
-}
-
-.summary-copy {
-  display: grid;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.columns {
+.knowledge {
   border-top: 0.0625rem solid var(--border);
-  display: grid;
-  gap: var(--space-8);
-  grid-template-columns: minmax(0, 2fr) minmax(14rem, 1fr);
   padding-block-start: var(--space-8);
-}
-
-.columns[data-has-runs='false'] {
-  grid-template-columns: 1fr;
-}
-
-.knowledge-column {
-  display: grid;
-  gap: var(--space-12);
 }
 
 .knowledge-list {
   display: grid;
   gap: var(--space-3);
   grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.quick-capture {
-  border-top: 0.0625rem solid var(--border);
-  display: grid;
-  gap: var(--space-4);
-  grid-template-columns: minmax(10rem, 1fr) minmax(20rem, 2fr);
-  padding-block-start: var(--space-6);
-}
-
-.capture-form > :first-child {
-  flex: 1;
-}
-
-.runs {
-  border-left: 0.0625rem solid var(--border);
-  padding-inline-start: var(--space-6);
-}
-
-.run-list {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.run-status {
-  color: var(--warning);
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
 }
 
 @media (width <= 768px) {
@@ -122,31 +47,11 @@
     padding: var(--space-6) var(--space-4);
   }
 
-  .document-list,
-  .knowledge-list,
-  .columns {
+  .knowledge-list {
     grid-template-columns: 1fr;
   }
 
-  .runs {
-    border-left: 0;
-    border-top: 0.0625rem solid var(--border);
-    padding: var(--space-6) 0 0;
-  }
-
-  .quick-capture {
+  .desktop-create {
     display: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .summary-card,
-  .run-card {
-    transition: none;
-  }
-
-  .summary-card:hover,
-  .run-card:hover {
-    transform: none;
   }
 }

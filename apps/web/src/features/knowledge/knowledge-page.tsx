@@ -4,9 +4,7 @@
 
 import {
   Alert,
-  Badge,
   Button,
-  Card,
   Group,
   Modal,
   Skeleton,
@@ -19,19 +17,18 @@ import {
 import type { KnowledgeBaseSummary } from '@everlearn/contracts';
 import {
   AlertCircleIcon,
-  BookOpenIcon,
   LibraryBigIcon,
   PlusIcon,
   RefreshCwIcon,
   WifiOffIcon,
 } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 
 import { createKnowledgeBase } from './knowledge-api';
 import type { KnowledgeApiFailure } from './knowledge-api';
+import { KnowledgeBaseCard } from './knowledge-base-card';
 import { useKnowledgeList, useOnline } from './knowledge-list-state';
 import type { KnowledgeLoadState } from './knowledge-list-state';
 import styles from './knowledge-page.module.css';
@@ -43,47 +40,6 @@ interface CreateFormState {
 
 const EMPTY_FORM: CreateFormState = { description: '', name: '' };
 const ICON_SIZE = 18;
-
-/** Converts one UTC timestamp into concise local reading metadata. */
-function formatUpdatedAt(value: string): string {
-  return new Intl.DateTimeFormat('zh-CN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
-
-/** Renders one real knowledge-base destination and its current server summary. */
-function KnowledgeBaseCard({ knowledgeBase }: { knowledgeBase: KnowledgeBaseSummary }) {
-  return (
-    <li>
-      <Card
-        className={styles.card}
-        component={Link}
-        href={`/knowledge/${knowledgeBase.id}`}
-        padding="lg"
-        withBorder
-      >
-        <Group align="flex-start" justify="space-between" wrap="nowrap">
-          <div className={styles['card-copy']}>
-            <Text fw={650} lineClamp={1} size="lg">
-              {knowledgeBase.name}
-            </Text>
-            <Text c="dimmed" lineClamp={2} size="sm">
-              {knowledgeBase.description || '还没有说明。'}
-            </Text>
-          </div>
-          {knowledgeBase.kind !== 'normal' && <Badge variant="light">系统</Badge>}
-        </Group>
-        <Group className={styles.meta} gap="xs">
-          <BookOpenIcon aria-hidden="true" size={15} />
-          <Text c="dimmed" size="xs">
-            {knowledgeBase.documentCount} 篇文档 · 更新于 {formatUpdatedAt(knowledgeBase.updatedAt)}
-          </Text>
-        </Group>
-      </Card>
-    </li>
-  );
-}
 
 /** Preserves the final list geometry while the first page is loading. */
 function KnowledgeLoading() {
@@ -239,7 +195,9 @@ function KnowledgeListContent(props: {
     <>
       <ul className={styles.list}>
         {items.map((item) => (
-          <KnowledgeBaseCard key={item.id} knowledgeBase={item} />
+          <li key={item.id}>
+            <KnowledgeBaseCard knowledgeBase={item} />
+          </li>
         ))}
       </ul>
       {load.error && <LoadFailure failure={load.error} onRetry={onRetry} />}

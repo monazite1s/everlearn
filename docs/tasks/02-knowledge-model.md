@@ -145,7 +145,7 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-04H 替换首页知识库静态数据
 
-- 状态：未开始。
+- 状态：已完成。
 - 依赖：KB-04W。
 - 必读：`docs/01-design/pages/home.md`、`docs/01-design/design-system.md`、`docs/02-architecture/api-and-events.md`。
 - 目标：首页知识库区域读取真实列表，并把生产 `home-data` fixture 限定为测试数据。
@@ -154,6 +154,12 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 - 失败恢复：API 失败只替换知识库区域；请求恢复后重新读取，不缓存伪成功状态。
 - 验收：首页创建/列表与 `/knowledge` 数据一致；生产路由不导入任何 fixture；无真实运行时不显示运行卡片。
 - 验证：首页组件测试、生产依赖搜索、Web typecheck、生产构建和桌面/移动走查。
+- 改动：首页知识库区域直接复用 KB-04W 的真实 API、游标状态与共享知识库卡片；删除生产 `home-data` fixture，最近文档显示尚未接入的诚实说明，运行摘要与快速记录在对应真实 API 前不渲染。
+- 复用：直接使用 Mantine、Lucide、`useKnowledgeList`、`useOnline`、`KnowledgeBaseCard` 和共享 `KnowledgeBaseSummary`，没有新增依赖、重复 DTO、第二套 API 客户端或通用状态框架。
+- 第二视角评审：独立代码审查确认生产 fixture 退出、共享 API/Hook/Card 复用、状态覆盖、移动端只读和任务边界均符合要求，CRITICAL/HIGH/MEDIUM/LOW 均为 0，结论 `APPROVE`。
+- 验证结果：聚焦 ESLint、Stylelint、Prettier、Web typecheck、文件限制与 production build 通过；Home/Knowledge/Route 3 个组件测试文件共 `8 passed`；生产依赖搜索确认不再存在 `home-data`、`readyHomeModel` 或运行/最近文档 fixture 引用。
+- 真实证据：同一本地 PostgreSQL 中，首页和 `/knowledge` 均显示“Everlearn 开发记录”；390px 视口不显示首页知识库创建链接，也不存在快速记录输入；桌面创建入口统一进入 `/knowledge?create=knowledge-base`。
+- 风险：最近打开文档、运行摘要和快速记录仍待各自真实 API 任务，当前以明确说明或完全隐藏避免伪数据；AppShell 顶栏的阶段性“运行中 2”与首页本任务无关，必须由运行聚合任务替换，不能视为真实状态。
 
 ## 第二纵向切片：知识库详情与文档树
 

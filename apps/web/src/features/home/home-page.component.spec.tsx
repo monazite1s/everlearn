@@ -1,71 +1,89 @@
-/** @fileoverview Verifies every documented static home-page state. */
+/** @fileoverview Verifies real home knowledge loading, empty, and recovery behavior. */
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import type { KnowledgeBaseSummary } from '@everlearn/contracts';
 import { EverlearnUiProvider } from '@everlearn/ui';
-import type { ReactElement } from 'react';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 
-import { homeStateFixtures, readyHomeModel } from './home-data';
 import { HomePage } from './home-page';
 
-afterEach(cleanup);
-
-/** Renders one home state inside the application UI provider used in production. */
-function renderHome(element: ReactElement): void {
-  render(<EverlearnUiProvider colorMode="light">{element}</EverlearnUiProvider>);
+/** Builds one exact public knowledge summary for the real response boundary. */
+function summary(): KnowledgeBaseSummary {
+  return {
+    description: '沉淀本项目的架构决策与学习笔记。',
+    documentCount: 0,
+    id: '11111111-1111-4111-8111-111111111111',
+    kind: 'normal',
+    name: 'Everlearn 开发记录',
+    updatedAt: '2026-08-13T08:00:00.000000Z',
+    version: 1,
+  };
 }
 
-/** Confirms knowledge remains primary and active runs expose text status. */
-function rendersReadyState(): void {
-  renderHome(<HomePage model={readyHomeModel} />);
+/** Returns the minimal response surface consumed by the shared API adapter. */
+function jsonResponse(body: unknown, status = 200): Response {
+  return {
+    /** Resolves the deterministic body without transport parsing. */
+    json: () => Promise.resolve(body),
+    status,
+  } as Response;
+}
 
-  expect(screen.getByRole('heading', { level: 1, name: '首页' })).toHaveAttribute(
-    'data-page-title',
+/** Renders the production home page inside its standard UI provider. */
+function renderHome(): void {
+  render(
+    <EverlearnUiProvider colorMode="light">
+      <HomePage />
+    </EverlearnUiProvider>,
   );
-  expect(screen.getByRole('heading', { level: 2, name: '知识库' })).toBeVisible();
-  expect(screen.getByRole('link', { name: /^Agent 工程26 篇文档/ })).toBeVisible();
-  expect(screen.getByText('等待确认')).toBeVisible();
 }
 
-/** Confirms first use explains knowledge bases without rendering an empty run card. */
-function rendersFirstUseState(): void {
-  renderHome(<HomePage model={homeStateFixtures.empty} />);
-
-  expect(screen.getByRole('link', { name: '创建第一个知识库' })).toBeVisible();
-  expect(screen.getByText(/还没有最近文档/)).toBeVisible();
-  expect(screen.queryByRole('heading', { level: 2, name: '进行中' })).not.toBeInTheDocument();
-  expect(screen.queryByText('等待确认')).not.toBeInTheDocument();
+/** Restores DOM, connectivity, and request state after each scenario. */
+function resetScenario(): void {
+  cleanup();
+  vi.unstubAllGlobals();
 }
 
-/** Confirms independent failures preserve successful knowledge content and retries. */
-function rendersPartialFailureState(): void {
-  renderHome(<HomePage model={homeStateFixtures.partialFailure} />);
+afterEach(resetScenario);
 
-  expect(screen.getByRole('link', { name: /^Agent 工程26 篇文档/ })).toBeVisible();
-  expect(screen.getByRole('link', { name: '重试最近文档' })).toBeVisible();
-  expect(screen.getByRole('link', { name: '重试运行状态' })).toBeVisible();
+/** Confirms production renders only real knowledge data and no inactive fixture regions. */
+async function rendersRealKnowledge(): Promise<void> {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(jsonResponse({ items: [summary()], nextCursor: null })),
+  );
+  renderHome();
+
+  expect(await screen.findByText('Everlearn 开发记录')).toBeVisible();
+  expect(screen.getByText('最近打开记录将在文档阅读能力接入后显示。')).toBeVisible();
+  expect(screen.queryByRole('heading', { name: '进行中' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: '记录内容' })).not.toBeInTheDocument();
 }
 
-/** Confirms loading regions announce progress without replacing the page frame. */
-function rendersLoadingState(): void {
-  renderHome(<HomePage model={homeStateFixtures.loading} />);
+/** Confirms first use links to the canonical creation flow. */
+async function rendersFirstUse(): Promise<void> {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ items: [], nextCursor: null })));
+  renderHome();
 
-  expect(screen.getAllByLabelText('正在加载')).toHaveLength(3);
-  expect(screen.getByRole('heading', { level: 1, name: '首页' })).toBeVisible();
+  const action = await screen.findByRole('link', { name: '创建第一个知识库' });
+  expect(action).toHaveAttribute('href', '/knowledge?create=knowledge-base');
 }
 
-/** Confirms offline reading remains available while write controls are disabled. */
-function rendersOfflineState(): void {
-  renderHome(<HomePage model={homeStateFixtures.offline} />);
+/** Confirms a failed first read can recover without replacing the page frame. */
+async function retriesKnowledgeFailure(): Promise<void> {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse({ code: 'INTERNAL_ERROR', message: '服务暂不可用。' }, 500))
+    .mockResolvedValueOnce(jsonResponse({ items: [summary()], nextCursor: null }));
+  vi.stubGlobal('fetch', fetchMock);
+  renderHome();
 
-  expect(screen.getByRole('status')).toHaveTextContent('当前离线');
-  expect(screen.getByRole('textbox', { name: '记录内容' })).toBeDisabled();
-  expect(screen.getByRole('button', { name: '放入 Inbox' })).toBeDisabled();
-  expect(screen.getByRole('link', { name: /可恢复 Agent 的状态设计/ })).toBeVisible();
+  expect(await screen.findByText('服务暂不可用。')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '重新读取' }));
+  expect(await screen.findByText('Everlearn 开发记录')).toBeVisible();
+  expect(fetchMock).toHaveBeenCalledTimes(2);
 }
 
-test('renders the ready home state', rendersReadyState);
-test('renders the first-use home state', rendersFirstUseState);
-test('renders a partial-failure home state', rendersPartialFailureState);
-test('renders the loading home state', rendersLoadingState);
-test('renders the offline home state', rendersOfflineState);
+test('renders real knowledge without production fixtures', rendersRealKnowledge);
+test('renders the canonical first-use creation entry', rendersFirstUse);
+test('retries a failed home knowledge read', retriesKnowledgeFailure);
