@@ -44,23 +44,13 @@
 
 ## ED-05 实现编辑器页面与工具栏
 
-- 依赖：ED-01..04、KB-06。
+- 依赖：ED-01..04、KB-06W。
 - 必读：`docs/01-design/pages/editor.md`、`docs/01-design/design-system.md`、`docs/01-design/layout-and-navigation.md`。
 - 目标：接入文档树、面包屑、编辑器、保存状态、属性和修订侧栏。
 - 实施：桌面完整编辑；移动只加载只读渲染器；表格和代码局部滚动；键盘覆盖工具栏和 Slash Menu。
 - 非目标：AI 与反向链接面板。
 - 验收：编辑不中断导航；保存/冲突/删除/离线状态符合规格；移动端无编辑实例。
 - 验证：组件、axe、Playwright 桌面/移动与视觉回归。
-
-## ED-06 接入首页快速记录
-
-- 依赖：KB-04、UI-05。
-- 必读：`docs/01-design/pages/home.md`、`docs/01-design/pages/knowledge-base.md`。
-- 目标：首页快速记录真实写入 Inbox，并提供成功跳转和失败保留。
-- 实施：支持纯文本或单 URL；防重复提交；局部更新最近活动。
-- 非目标：抓取 URL、AI 摘要和移动端记录。
-- 验收：提交成功清空输入；失败保留原值；重复点击只产生一条记录。
-- 验证：首页组件测试、Playwright 快速记录到 Inbox。
 
 ## 检查点
 

@@ -133,7 +133,7 @@ const DOWN_STATEMENTS = [
   'DROP TABLE users',
 ] as const;
 
-/** Executes checked-in static SQL without accepting runtime interpolation. */
+/** Executes checked-in static SQL inside the transaction already owned by Kysely Migrator. */
 async function executeStatements(
   database: Kysely<DatabaseSchema>,
   statements: readonly string[],

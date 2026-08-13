@@ -2,7 +2,9 @@
 
 import type { Migration } from 'kysely/migration' with { 'resolution-mode': 'import' };
 
-export const LOCAL_USER_ID = '00000000-0000-4000-8000-000000000001';
+import { LOCAL_USER_ID } from '../../local-identity.constants';
+
+export { LOCAL_USER_ID };
 
 export const localUserSeedMigration: Migration = {
   /** Inserts the stable local user once without overwriting an existing identity. */

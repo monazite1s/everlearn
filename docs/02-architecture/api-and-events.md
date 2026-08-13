@@ -3,6 +3,8 @@
 ## 传输约定
 
 - API 前缀 `/api/v1`；资源名使用复数名词，行为仅用于无法表示为资源状态转换的端点。
+- 浏览器只请求当前 Web Origin 下的 `/api/v1/*`；Next 使用透明 rewrite 转发到服务端 `API_INTERNAL_URL`。Rewrite 不转换 DTO、错误或状态码，不构成第二个业务 API 层。
+- Server Component 可经同一服务端 API 地址读取，但页面不得直接查询数据库；客户端代码不得读取内部 API 地址、数据库凭据或 Provider 密钥。
 - JSON 字段使用 camelCase；ID 为 UUID；时间为 UTC ISO 8601；用户时区为 IANA 字符串。
 - 列表使用 `limit` 与不透明 `cursor`，响应为 `{ items, nextCursor }`；默认 20，最大 100。
 - 成功创建返回 201；异步运行创建返回 202；无正文删除返回 204。
@@ -101,5 +103,6 @@ SSE 信封固定为：
 
 - Controller DTO 使用 `class-validator`，应用服务继续校验所有权、状态迁移和跨实体不变量。
 - Agent Runtime 内部 Zod Schema 不得直接作为公开 HTTP DTO。
-- 写端点支持 `Idempotency-Key`；服务端保存所有者、操作类型和响应资源，键不能跨用户复用。
+- 异步运行、外部副作用以及任务明确标注的转换、移动或恢复写入必须支持 `Idempotency-Key`；服务端保存所有者、操作类型和响应资源，键不能跨用户复用。
+- 简单同步创建默认不具备幂等语义；除非对应任务另有约定，响应结果未知时客户端必须重新读取资源，不得盲目重放创建请求。
 - 公开分享端点限流并返回统一不可访问响应；私有 API 不允许通过 ID 探测其他用户对象。

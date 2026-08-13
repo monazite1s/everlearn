@@ -1,5 +1,9 @@
-/**
- * @fileoverview Defines the public boundary for transport contracts shared by applications.
- */
+/** @fileoverview Exposes stable transport contracts shared by Everlearn applications. */
 
-export {};
+export type {
+  CreateKnowledgeBaseRequest,
+  KnowledgeBaseErrorCode,
+  KnowledgeBaseKind,
+  KnowledgeBaseListResponse,
+  KnowledgeBaseSummary,
+} from './knowledge-base.js';

@@ -70,7 +70,9 @@ API 与 Worker 在 Nest 应用创建前校验同一基础契约，缺少、空�
 | LLM        | `LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL`                                                       | 可省略；提供任一字段时必须提供完整组合。                  |
 | Search     | `SEARCH_PROVIDER`、`SEARCH_API_KEY`                                                              | 可省略；提供任一字段时必须完整，首个 Provider 为 Tavily。 |
 
-服务端只选择上述白名单字段；其他进程环境变量不得进入应用配置对象。Web 构建不得读取这些变量。
+API 与 Worker 只选择上述白名单字段；其他进程环境变量不得进入应用配置对象。这些变量不得进入 Web 客户端 Bundle。
+
+Web 构建和服务端运行只额外读取 `API_INTERNAL_URL`，值为 Nest API Origin，例如本地 `http://127.0.0.1:3001` 或 Compose 内 `http://api:3001`。浏览器不接触该值，只使用同源 `/api/v1`；该转发不得承载业务校验、DTO 映射或错误改写。
 
 ## 本地依赖环境
 

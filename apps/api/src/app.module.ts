@@ -1,12 +1,12 @@
-/**
- * @fileoverview Declares the infrastructure-only root module for the HTTP API.
- */
+/** @fileoverview Composes API infrastructure and explicit domain modules. */
 
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 
-import { DatabaseModule } from './database/database.module';
+import { ApiExceptionFilter, createApiValidationPipe } from './api-exception.filter';
 import { HealthController } from './health.controller';
+import { KnowledgeBasesModule } from './knowledge-bases/knowledge-bases.module';
 import { RequestCorrelationMiddleware } from './request-correlation.middleware';
 import { validateRuntimeEnvironment } from './runtime-config';
 
@@ -19,7 +19,11 @@ import { validateRuntimeEnvironment } from './runtime-config';
       isGlobal: true,
       validate: validateRuntimeEnvironment,
     }),
-    DatabaseModule,
+    KnowledgeBasesModule,
+  ],
+  providers: [
+    { provide: APP_PIPE, useFactory: createApiValidationPipe },
+    { provide: APP_FILTER, useClass: ApiExceptionFilter },
   ],
 })
 export class AppModule implements NestModule {
