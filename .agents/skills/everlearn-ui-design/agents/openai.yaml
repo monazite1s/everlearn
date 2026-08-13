@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Everlearn UI Design'
+  short_description: '设计、实现并验收精致一致、可访问且高度复用的 Everlearn 产品界面'
+  default_prompt: 'Use $everlearn-ui-design to design or review this Everlearn interface before implementation.'

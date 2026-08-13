@@ -9,6 +9,7 @@
 | 架构 | [系统架构](02-architecture/system.md)、[数据模型](02-architecture/data-model.md)、[API 与事件](02-architecture/api-and-events.md)、[AI 与 Workflow Runtime](02-architecture/ai-workflow-runtime.md) | 修改模块、数据、接口、异步任务或外部集成。 |
 | 工程 | [开发规范](03-engineering/development.md)、[质量门禁](03-engineering/quality-gates.md)、[研究与依赖](03-engineering/research-and-dependencies.md)                                                   | 执行任何代码任务或引入依赖。               |
 | 施工 | [任务入口](tasks/README.md)                                                                                                                                                                         | 领取任务、确认依赖和记录验收证据。         |
+| 附录 | [项目 Skill 指南](99-appendix/agent-skills.md)                                                                                                                                                      | 了解 Skill 路由、职责边界和维护规则。      |
 
 ## 冲突处理
 

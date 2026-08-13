@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Everlearn Pragmatic Architecture'
+  short_description: '设计可扩展但不过度设计的模块边界，并明确记录必要设计模式'
+  default_prompt: 'Use $everlearn-pragmatic-architecture to make and record a pragmatic architecture decision.'

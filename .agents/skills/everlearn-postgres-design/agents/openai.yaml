@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Everlearn PostgreSQL Design'
+  short_description: '设计并审查可维护的数据模型、业务约束、索引策略和安全迁移'
+  default_prompt: 'Use $everlearn-postgres-design to design or review this PostgreSQL schema change.'

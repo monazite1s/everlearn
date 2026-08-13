@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Everlearn Requirements'
+  short_description: '把模糊需求转化为无歧义、可追踪、可拆分并且可验收的项目规格'
+  default_prompt: 'Use $everlearn-requirements to refine this feature into an implementation-ready specification.'
