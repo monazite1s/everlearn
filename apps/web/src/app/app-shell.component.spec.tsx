@@ -66,6 +66,7 @@ async function rendersDesktopShell(): Promise<void> {
 
 /** Confirms mobile drawers expose navigation and explain desktop-only creation. */
 async function rendersMobileReadingControls(): Promise<void> {
+  mockPathname = '/tutorials';
   renderShell();
   await waitFor(
     /** Waits for route focus before simulating a later user interaction. */
@@ -94,14 +95,15 @@ async function rendersMobileReadingControls(): Promise<void> {
 }
 
 /** Confirms nested routes retain their primary destination and mobile policy. */
-async function rendersNestedRoutePolicy(): Promise<void> {
+function rendersNestedRoutePolicy(): void {
   mockPathname = '/knowledge/library-1/documents/document-1';
   renderShell();
 
   expect(screen.getByRole('link', { name: '知识库' })).toHaveAttribute('aria-current', 'page');
-  fireEvent.click(screen.getByRole('button', { name: '新建' }));
-  const dialog = await screen.findByRole('dialog', { name: '请在桌面端创作' });
-  expect(dialog).toHaveTextContent('移动端保留阅读、搜索和运行状态，暂不提供内容创作。');
+  expect(screen.getByRole('link', { name: '新建' })).toHaveAttribute(
+    'href',
+    '/knowledge?create=knowledge-base',
+  );
 }
 
 test('renders the accessible desktop shell', rendersDesktopShell);

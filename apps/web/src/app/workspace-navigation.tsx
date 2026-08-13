@@ -101,19 +101,23 @@ export function MobileNavigation({ pathname }: Pick<PrimaryNavigationProps, 'pat
 export function CreationAction({ route }: { route: WorkspaceRoute }) {
   const [opened, { close, open }] = useDisclosure(false);
   const mobilePolicy = getMobileRoutePolicy(route);
+  const creationHref =
+    route.id === 'knowledge' ? '/knowledge?create=knowledge-base' : '/knowledge?create=document';
   return (
     <>
       <Button
         className={styles['desktop-creation']}
         component={Link}
-        href="/knowledge?create=document"
+        href={creationHref}
         leftSection={<PlusIcon aria-hidden="true" size={18} />}
       >
         新建
       </Button>
-      <Button className={styles['mobile-creation']} onClick={open}>
-        新建
-      </Button>
+      {route.id !== 'knowledge' && (
+        <Button className={styles['mobile-creation']} onClick={open}>
+          新建
+        </Button>
+      )}
       <Modal
         closeButtonProps={{ 'aria-label': '关闭创作说明' }}
         onClose={close}

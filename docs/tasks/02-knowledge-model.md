@@ -126,7 +126,7 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-04W 接入真实知识库列表与创建页面
 
-- 状态：未开始。
+- 状态：已完成。
 - 依赖：KB-04。
 - 必读：`docs/01-design/pages/knowledge-base.md`、`docs/01-design/design-system.md`、`docs/02-architecture/api-and-events.md`。
 - 目标：让 `/knowledge` 使用真实 API 完成列表、首次使用创建和创建后进入知识库的最小闭环。
@@ -136,6 +136,12 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 - 失败恢复：列表失败可局部重试；创建响应丢失时重新读取列表，不在前端合成成功对象。
 - 验收：空数据库可创建并自动进入 `/knowledge/:id`；刷新后对象仍存在；移动端不渲染创建控件。
 - 验证：Knowledge 聚焦组件测试、Web/API typecheck、ESLint、生产构建和真实 API 页面走查。
+- 改动：`/knowledge` 接入同源真实 API、严格响应校验、游标追加、创建与不确定写入恢复；新增最小只读 `/knowledge/:knowledgeBaseId` 目的地，保证创建后跳转与刷新闭环但不提前实现 KB-05W 管理能力；Next rewrite 只读取服务端 `API_INTERNAL_URL`。
+- 复用与评审：直接使用 Mantine `Card/Button/Modal/TextInput/Textarea/Alert/Skeleton`、Lucide 与既有 AppShell，没有新增依赖、通用 API SDK、表单框架或重复基础控件；独立 UI/API 只读预审提出的真实目的地、同源 rewrite、移动端入口与失败恢复问题均已落实。
+- 验证结果：聚焦 ESLint、Stylelint、Prettier、Web/API typecheck、文件限制与 Web production build 通过；3 个组件测试文件共 `8 passed`；真实 PostgreSQL 迁移、API readiness 与 Web rewrite 200 通过；真实浏览器完成桌面创建、自动进入、刷新持久化、返回列表，并确认 390px 视口创建按钮与顶栏新建入口均为 `0`。
+- 完成证据：本地创建“Everlearn 开发记录”，进入 `/knowledge/a085f7ca-fabc-4467-ac50-24babd6deaaa`；刷新后名称、说明与 `0` 篇文档仍来自服务端，返回列表后真实卡片可见。桌面与移动端截图已在当次验收会话人工检查，未提交临时产物。
+- 范围说明：本切片触及 12 个手写/配置文件，超过通常 8 个文件；不可安全拆分的原因是同源 rewrite、列表/创建页、真实目的地路由、移动端全局入口、现有路由测试和任务证据共同组成单一可运行验收闭环，任何再拆分都会产生 404、Mock-only 或移动端错误入口的半成品。
+- 风险：`pnpm --filter @everlearn/api dev` 以 `apps/api` 为工作目录，当前不会自动读取根 `.env`；本次使用 Node 24 官方 `--env-file=.env` 完成真实验收。影响仅为本地启动便利性，后续独立工程任务在不混入业务切片的前提下统一开发启动命令。固定本地身份仍不是生产认证；公开部署前必须补认证与 CSRF/Origin 防护。
 
 ### KB-04H 替换首页知识库静态数据
 

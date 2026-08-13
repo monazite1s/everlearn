@@ -5,7 +5,6 @@ import { createElement } from 'react';
 import type { ComponentType } from 'react';
 import { afterEach, expect, test } from 'vitest';
 
-import KnowledgePage from './knowledge/page';
 import NewsPage from './news/page';
 import SettingsPage from './settings/page';
 import TutorialsPage from './tutorials/page';
@@ -17,7 +16,6 @@ interface ExplicitPageCase {
 }
 
 const explicitPages: readonly ExplicitPageCase[] = [
-  { component: KnowledgePage, title: '知识库' },
   { component: NewsPage, title: '资讯' },
   { component: TutorialsPage, title: '教程' },
   { component: WorkflowsPage, title: '工作流' },
