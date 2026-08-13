@@ -1,9 +1,6 @@
-/* Defines the persistent desktop workspace shell with independently collapsible side panels. */
+/* Defines the Mantine workspace shell and Everlearn-specific knowledge navigation styling. */
 
 .shell {
-  --left-panel-width: 16.5rem;
-  --right-panel-width: 20rem;
-
   background: var(--canvas);
   min-height: 100vh;
 }
@@ -16,25 +13,30 @@
   position: fixed;
   top: var(--space-2);
   transform: translateY(-200%);
-  z-index: 100;
+  z-index: 1000;
 }
 
 .skip-link:focus {
   transform: translateY(0);
 }
 
+.header,
+.navbar,
+.aside {
+  background: var(--surface);
+}
+
+.header {
+  border-bottom: 0.0625rem solid var(--border);
+}
+
 .topbar {
   align-items: center;
-  background: var(--surface);
-  border-bottom: 0.0625rem solid var(--border);
   display: grid;
   gap: var(--space-4);
   grid-template-columns: auto 1fr auto;
-  height: 3rem;
+  height: 100%;
   padding-inline: var(--space-4);
-  position: sticky;
-  top: 0;
-  z-index: 30;
 }
 
 .brand {
@@ -58,118 +60,64 @@
   gap: var(--space-2);
 }
 
+.theme-controls > div {
+  width: 7rem;
+}
+
 .mobile-navigation,
 .mobile-creation {
   display: none;
 }
 
-.top-actions > a {
-  color: var(--ink-muted);
-  font-size: var(--text-interface);
-  padding: var(--space-1) var(--space-2);
-  text-decoration: none;
-}
-
-.top-actions > a:hover {
-  color: var(--ink);
-}
-
-.top-actions .primary-action {
-  background: var(--accent);
-  border-radius: var(--radius-small);
-  color: var(--surface-raised);
-}
-
-.theme-controls select {
-  background: var(--surface);
-  border: 0.0625rem solid var(--border);
-  border-radius: var(--radius-small);
-  color: var(--ink);
-  font-size: 0.75rem;
-  max-width: 7rem;
-  padding: var(--space-1) var(--space-2);
-}
-
-.workspace {
-  display: grid;
-  grid-template-columns: var(--left-panel-width) minmax(40rem, 1fr) var(--right-panel-width);
-  min-height: calc(100vh - 3rem);
-}
-
-.shell[data-left-collapsed='true'] {
-  --left-panel-width: 3.5rem;
-}
-
-.shell[data-right-open='false'] {
-  --right-panel-width: 0rem;
-}
-
-.left-panel,
-.right-panel {
-  background: var(--surface);
-  min-width: 0;
-  overflow: hidden;
-  padding: var(--space-4);
-}
-
-.left-panel {
+.navbar {
   border-right: 0.0625rem solid var(--border);
+  overflow: hidden;
+  padding: var(--space-3) var(--space-2);
 }
 
-.right-panel {
-  border-left: 0.0625rem solid var(--border);
+.navbar-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-end: var(--space-3);
 }
 
-.shell[data-left-collapsed='true'] .left-panel {
-  padding-inline: var(--space-2);
-}
-
-.shell[data-right-open='false'] .right-panel {
-  border: 0;
-  padding: 0;
-  visibility: hidden;
+.shell[data-left-collapsed='true'] .navbar-header {
+  justify-content: center;
 }
 
 .navigation {
   display: grid;
   gap: var(--space-1);
-  list-style: none;
-  margin: var(--space-4) 0 0;
-  padding: 0;
 }
 
 .nav-link {
-  align-items: center;
-  border-left: 0.125rem solid transparent;
-  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+  border-inline-start: 0.125rem solid transparent;
   color: var(--ink-muted);
-  display: flex;
-  font-size: var(--text-interface);
-  gap: var(--space-3);
   min-height: 2.5rem;
-  padding: var(--space-2) var(--space-3);
-  text-decoration: none;
 }
 
-.nav-link[aria-current='page'] {
+.nav-link[data-active] {
   background: var(--accent-soft);
-  border-left-color: var(--accent);
+  border-inline-start-color: var(--accent);
   color: var(--ink);
   font-weight: 650;
 }
 
-.short-label {
-  display: none;
-}
-
-.shell[data-left-collapsed='true'] .short-label {
-  display: inline;
+.shell[data-left-collapsed='true'] .nav-link {
+  justify-content: center;
+  padding-inline: var(--space-2);
 }
 
 .main {
   background: var(--canvas);
   min-width: 0;
   overflow: auto;
+}
+
+.aside {
+  border-left: 0.0625rem solid var(--border);
+  overflow: hidden;
+  padding: var(--space-4);
 }
 
 .context-label {
@@ -180,98 +128,84 @@
   margin: 0 0 var(--space-2);
 }
 
-.right-panel h2 {
+.aside h2 {
   font-family: var(--font-reading);
   font-size: var(--text-title-small);
   margin: 0;
 }
 
-.right-panel > p:last-child {
+.aside > p:last-child,
+.creation-description {
   color: var(--ink-muted);
   font-size: var(--text-interface);
   line-height: var(--leading-interface);
 }
 
-.visually-hidden {
-  clip-path: inset(50%);
-  height: 0.0625rem;
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
-  width: 0.0625rem;
+.creation-description {
+  margin-block: 0 var(--space-4);
 }
 
-@media (width <= 1280px) {
-  .shell {
-    --right-panel-width: 0rem;
-  }
+.mobile-drawer {
+  background: var(--surface-raised);
+  border-radius: 0;
+  max-width: calc(100vw - 2rem);
+}
 
-  .right-panel {
-    border: 0;
-    padding: 0;
-    visibility: hidden;
+@media (prefers-reduced-motion: no-preference) {
+  .navbar,
+  .aside,
+  .skip-link {
+    transition-duration: var(--motion-fast);
+    transition-property: transform, width;
   }
 }
 
-@media (width <= 768px) {
-  .shell {
-    min-width: 0;
+@media (width <= 68rem) {
+  .location {
+    display: none;
   }
 
+  .topbar {
+    grid-template-columns: auto 1fr;
+  }
+}
+
+@media (width <= 48rem) {
   .topbar {
     gap: var(--space-2);
     grid-template-columns: auto auto 1fr;
     padding-inline: var(--space-2);
   }
 
-  .mobile-navigation,
-  .mobile-creation {
+  .mobile-navigation {
     display: block;
   }
 
-  .location,
+  .mobile-creation {
+    display: inline-flex;
+  }
+
   .desktop-creation,
   .desktop-controls {
     display: none;
   }
 
   .top-actions {
-    gap: 0;
     justify-content: end;
     min-width: 0;
   }
 
-  .top-actions > a {
-    padding-inline: var(--space-2);
-    white-space: nowrap;
-  }
-
-  .workspace {
-    display: block;
+  .top-actions > a:first-child {
     min-width: 0;
+    padding-inline: var(--space-2);
   }
 
-  .left-panel,
-  .right-panel {
+  .top-actions > a:last-of-type {
     display: none;
   }
 
   .main {
     min-height: calc(100vh - 3rem);
     overflow-x: hidden;
-  }
-
-  .mobile-drawer {
-    border-radius: 0;
-    height: 100dvh;
-    inset: 0 auto 0 0;
-    max-height: none;
-    max-width: min(20rem, calc(100vw - 2rem));
-    transform: none;
-    width: 100%;
-  }
-
-  .mobile-drawer .navigation {
-    margin-block-start: var(--space-6);
   }
 }

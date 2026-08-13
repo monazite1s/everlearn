@@ -1,42 +1,4 @@
-/** @fileoverview Exposes stable UI primitives without leaking library-specific APIs to features. */
+/** @fileoverview Exposes the Everlearn theme provider as the shared UI package boundary. */
 
-export { Button, TextArea, TextInput } from './primitives';
-export {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTrigger,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuSeparator,
-  MenuTrigger,
-  Popover,
-  PopoverClose,
-  PopoverContent,
-  PopoverTrigger,
-  Tooltip,
-  TooltipProvider,
-} from './overlays';
-export type {
-  ButtonProps,
-  ButtonSize,
-  ButtonVariant,
-  TextAreaProps,
-  TextInputProps,
-} from './primitives';
-export type { DialogContentProps, TooltipProps } from './overlays';
-export {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from './selection';
-export type { SelectTriggerProps } from './selection';
-export { Toast, ToastProvider } from './toast';
-export type { ToastActionSpec, ToastProps, ToastProviderProps } from './toast';
+export { EverlearnUiProvider } from './mantine';
+export type { EverlearnColorMode } from './mantine';

@@ -1,11 +1,19 @@
-/** @fileoverview Provides the persistent desktop workspace shell and navigation behavior. */
+/** @fileoverview Provides the persistent Mantine workspace shell and navigation behavior. */
 
 'use client';
 
-import { Button, Tooltip, TooltipProvider } from '@everlearn/ui';
+import { ActionIcon, AppShell as MantineAppShell, Button, Select, Tooltip } from '@mantine/core';
+import {
+  ActivityIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
+  PanelRightCloseIcon,
+  PanelRightOpenIcon,
+  SearchIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ChangeEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import styles from './app-shell.module.css';
 import { appearanceOptions, themeOptions, useTheme } from './theme-provider';
@@ -36,94 +44,127 @@ interface WorkspacePanelsProps extends AppShellProps {
   toggleLeftPanel: () => void;
 }
 
-/** Exposes compact persisted theme controls without leaking palette values. */
+const ICON_SIZE = 18;
+
+/** Exposes compact theme controls backed by the single application theme store. */
 function ThemeControls() {
   const theme = useTheme();
   /** Applies one validated semantic palette. */
-  function handleThemeChange(event: ChangeEvent<HTMLSelectElement>): void {
-    theme.setTheme(event.target.value === 'neutral' ? 'neutral' : 'paper');
+  function handleThemeChange(value: string | null): void {
+    theme.setTheme(value === 'neutral' ? 'neutral' : 'paper');
   }
   /** Applies one validated appearance preference. */
-  function handleAppearanceChange(event: ChangeEvent<HTMLSelectElement>): void {
-    const value = event.target.value;
+  function handleAppearanceChange(value: string | null): void {
     theme.setAppearance(value === 'dark' || value === 'light' ? value : 'system');
   }
   return (
     <div className={styles['theme-controls']}>
-      <select value={theme.theme} onChange={handleThemeChange} aria-label="主题">
-        <option value={themeOptions[0].id}>{themeOptions[0].label}</option>
-        <option value={themeOptions[1].id}>{themeOptions[1].label}</option>
-      </select>
-      <select value={theme.appearance} onChange={handleAppearanceChange} aria-label="外观">
-        <option value={appearanceOptions[0].id}>{appearanceOptions[0].label}</option>
-        <option value={appearanceOptions[1].id}>{appearanceOptions[1].label}</option>
-        <option value={appearanceOptions[2].id}>{appearanceOptions[2].label}</option>
-      </select>
+      <Select
+        allowDeselect={false}
+        aria-label="主题"
+        data={themeOptions.map(({ id, label }) => ({ label, value: id }))}
+        onChange={handleThemeChange}
+        size="xs"
+        value={theme.theme}
+      />
+      <Select
+        allowDeselect={false}
+        aria-label="外观"
+        data={appearanceOptions.map(({ id, label }) => ({ label, value: id }))}
+        onChange={handleAppearanceChange}
+        size="xs"
+        value={theme.appearance}
+      />
     </div>
   );
 }
 
 /** Renders global location, search, creation, status, theme, and context actions. */
 function Topbar({ pathname, rightOpen, route, toggleRightPanel }: TopbarProps) {
+  const contextLabel = rightOpen ? '收起上下文' : '展开上下文';
+  const ContextIcon = rightOpen ? PanelRightCloseIcon : PanelRightOpenIcon;
   return (
-    <header className={styles.topbar}>
+    <div className={styles.topbar}>
       <MobileNavigation pathname={pathname} />
       <Link className={styles.brand} href="/">
         Everlearn
       </Link>
       <span className={styles.location}>{route.label}</span>
       <div className={styles['top-actions']}>
-        <Link href="/knowledge?search=open">搜索</Link>
+        <Button
+          component={Link}
+          href="/knowledge?search=open"
+          leftSection={<SearchIcon aria-hidden="true" size={ICON_SIZE} />}
+          variant="subtle"
+        >
+          搜索
+        </Button>
         <CreationAction route={route} />
-        <Link href={`${route.href}?view=runs`}>运行中 2</Link>
+        <Button
+          component={Link}
+          href={`${route.href}?view=runs`}
+          leftSection={<ActivityIcon aria-hidden="true" size={ICON_SIZE} />}
+          variant="subtle"
+        >
+          运行中 2
+        </Button>
         <div className={styles['desktop-controls']}>
           <ThemeControls />
-          <Tooltip content={rightOpen ? '收起上下文' : '展开上下文'}>
-            <Button
+          <Tooltip label={contextLabel}>
+            <ActionIcon
               aria-controls="context-panel"
               aria-expanded={rightOpen}
-              aria-label={rightOpen ? '收起上下文' : '展开上下文'}
+              aria-label={contextLabel}
               onClick={toggleRightPanel}
-              size="small"
-              variant="ghost"
+              size="lg"
+              variant="subtle"
             >
-              ◫
-            </Button>
+              <ContextIcon aria-hidden="true" size={ICON_SIZE} />
+            </ActionIcon>
           </Tooltip>
         </div>
       </div>
-    </header>
+    </div>
   );
 }
 
 /** Arranges the current page between persistent navigation and contextual information. */
 function WorkspacePanels(props: WorkspacePanelsProps) {
   const { children, leftCollapsed, pathname, route, toggleLeftPanel } = props;
+  const CollapseIcon = leftCollapsed ? PanelLeftOpenIcon : PanelLeftCloseIcon;
+  const collapseLabel = leftCollapsed ? '展开导航' : '收起导航';
   return (
-    <div className={styles.workspace}>
-      <aside className={styles['left-panel']} aria-label="工作区导航">
-        <Button
-          aria-controls="primary-navigation"
-          aria-expanded={!leftCollapsed}
-          onClick={toggleLeftPanel}
-          size="small"
-          variant="ghost"
-        >
-          {leftCollapsed ? '展开' : '收起'}
-        </Button>
-        <div id="primary-navigation">
-          <PrimaryNavigation collapsed={leftCollapsed} pathname={pathname} />
+    <>
+      <MantineAppShell.Navbar aria-label="工作区导航" className={styles.navbar} component="aside">
+        <div className={styles['navbar-header']}>
+          <Tooltip label={collapseLabel} position="right">
+            <ActionIcon
+              aria-controls="primary-navigation"
+              aria-expanded={!leftCollapsed}
+              aria-label={collapseLabel}
+              onClick={toggleLeftPanel}
+              size="lg"
+              variant="subtle"
+            >
+              <CollapseIcon aria-hidden="true" size={ICON_SIZE} />
+            </ActionIcon>
+          </Tooltip>
         </div>
-      </aside>
-      <main className={styles.main} id="main-content">
+        <PrimaryNavigation
+          collapsed={leftCollapsed}
+          navigationId="primary-navigation"
+          pathname={pathname}
+        />
+      </MantineAppShell.Navbar>
+      <MantineAppShell.Main className={styles.main} id="main-content">
         {children}
-      </main>
-      <aside className={styles['right-panel']} id="context-panel" aria-label="当前上下文">
+      </MantineAppShell.Main>
+      <MantineAppShell.Aside aria-label="当前上下文" className={styles.aside} id="context-panel">
         <p className={styles['context-label']}>当前上下文</p>
         <h2>{route.label}</h2>
         <p>{route.context}</p>
-      </aside>
-    </div>
+      </MantineAppShell.Aside>
+    </>
   );
 }
 
@@ -135,17 +176,35 @@ export function AppShell({ children }: AppShellProps) {
   const [rightOpen, toggleRightPanel] = useRouteContextPanel(pathname);
   usePageTitleFocus(pathname);
   return (
-    <TooltipProvider delayDuration={200}>
+    <Tooltip.Group closeDelay={100} openDelay={200}>
       <a className={styles['skip-link']} href="#main-content">
         跳到主要内容
       </a>
-      <div className={styles.shell} data-left-collapsed={leftCollapsed} data-right-open={rightOpen}>
-        <Topbar
-          pathname={pathname}
-          rightOpen={rightOpen}
-          route={route}
-          toggleRightPanel={toggleRightPanel}
-        />
+      <MantineAppShell
+        aside={{
+          breakpoint: '80em',
+          collapsed: { desktop: !rightOpen, mobile: true },
+          width: 320,
+        }}
+        className={styles.shell}
+        data-left-collapsed={leftCollapsed}
+        header={{ height: 48 }}
+        navbar={{
+          breakpoint: '48em',
+          collapsed: { mobile: true },
+          width: leftCollapsed ? 56 : 264,
+        }}
+        padding={0}
+        withBorder={false}
+      >
+        <MantineAppShell.Header className={styles.header}>
+          <Topbar
+            pathname={pathname}
+            rightOpen={rightOpen}
+            route={route}
+            toggleRightPanel={toggleRightPanel}
+          />
+        </MantineAppShell.Header>
         <WorkspacePanels
           leftCollapsed={leftCollapsed}
           pathname={pathname}
@@ -154,7 +213,7 @@ export function AppShell({ children }: AppShellProps) {
         >
           {children}
         </WorkspacePanels>
-      </div>
-    </TooltipProvider>
+      </MantineAppShell>
+    </Tooltip.Group>
   );
 }

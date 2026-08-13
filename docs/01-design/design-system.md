@@ -40,10 +40,13 @@ Everlearn 是长期阅读与写作的私人书房，不是聊天窗口或指标�
 
 - 内容区域以留白、发丝分割线和层级缩进组织，禁止把每段内容都装进卡片。
 - 阴影只用于浮层、拖拽对象和需要与背景脱离的临时表面。
-- Dialog、Popover、Select、Tooltip、Tabs、Menu 等以 Radix Primitives 提供行为，由 CSS Modules 完成视觉。
-- 语义与交互均稳定且至少复用两处的组件才进入 `packages/ui`；业务组件留在对应 feature。
+- Button、Input、Menu、Select、Modal、Drawer、Tooltip、Tabs、Breadcrumbs、Card、Skeleton 和 AppShell 优先直接采用 Mantine；业务不得重写其交互与可访问行为。
+- Mantine 通过 Theme 与 CSS variables 映射项目语义 Token；业务布局和产品视觉继续使用 CSS Modules，禁止 Style Props 堆叠替代可读样式文件。
+- `packages/ui` 只承载主题配置、Provider 和至少两处复用且具有产品语义的组合组件；禁止为每个 Mantine 组件建立同名转发包装。
+- 页面专用组合留在对应 feature；通用组件进入共享包前必须明确语义、状态和复用位置。
 - 按钮只允许一个页面级主操作；危险操作不使用品牌强调色。
 - 表单标签持续可见；Placeholder 不承担标签职责；错误紧邻字段并说明修复方法。
+- 图标统一使用 Lucide React；装饰图标隐藏于辅助技术，图标按钮必须提供可访问名称。
 
 ## 状态语言
 
@@ -64,15 +67,32 @@ Everlearn 是长期阅读与写作的私人书房，不是聊天窗口或指标�
 - `MotionConfig` 使用 `reducedMotion="user"`；减少动效时取消位移、缩放和路径运动，仅保留即时状态或短透明度变化。
 - Workflow 运行用边进度与节点状态表达，不用无限循环光效；教程生成用阶段递进，不伪造确定百分比。
 
+## 商业化精致度
+
+保留安静书房气质，但所有可见界面必须达到商业产品的打磨水准（对标 Linear、Notion、Raycast 的细节密度）。本节是交付门槛，具体数值遵循相应章节，此处只列验收视角。
+
+- **一致性**：间距、圆角、阴影、颜色、字号只引用语义 Token，禁止写死具体值；同一控件跨页面外观与行为一致；图标同一行内垂直居中且尺寸统一。
+- **状态完备**：每个可交互元素覆盖 hover、active、focus-visible、disabled、loading、error；每个数据区域覆盖加载、空、失败、部分成功、无权限、离线；空态说明缺失对象并给出主行动。
+- **焦点与键盘**：焦点环始终可见，不因“美观”移除；浮层关闭后焦点回触发器、打开时进入浮层；主流程可仅用键盘完成。
+- **文案语气**：文案一致、可行动、面向任务；错误说明对象、原因类别与下一步；按钮动词明确，状态名词统一走状态语言表。
+- **密度与主操作**：信息密度适中、留白有节奏；每页只有一个主操作，次级操作按优先级降级；避免无意义卡片堆叠。
+- **加载体验**：Skeleton 保持最终布局尺寸避免跳动；优先局部加载，不整屏 Spinner 遮盖可用导航；失败区域就地重试。
+- **对比度与降级**：正文、控件、焦点满足 WCAG 2.1 AA；正文 16px、行高 1.75 不因“紧凑”降级；浅色/深色与 reduced motion 下关键页面各走查一次。
+
 ## 禁止项
 
 - Tailwind CSS、UnoCSS 和其他原子化 CSS。
 - 紫蓝霓虹、玻璃拟态、大面积渐变和聊天气泡主布局。
 - 为“高级感”降低正文对比度、隐藏标签或移除键盘焦点。
 - 同时引入职责重叠的组件库。
+- 用原生字符、Emoji 或手写 SVG 代替组件库与统一图标库已有能力。
 
 ## 依据
 
-- [Radix Primitives](https://www.radix-ui.com/primitives/docs/overview/introduction)
+- [Mantine](https://mantine.dev/)
+- [Mantine CSS Modules](https://mantine.dev/styles/css-modules/)
+- [Mantine AppShell](https://mantine.dev/core/app-shell/)
+- [Mantine Next.js](https://mantine.dev/guides/next/)
+- [Lucide React](https://lucide.dev/guide/packages/lucide-react)
 - [Motion reduced motion](https://motion.dev/docs/react-use-reduced-motion)
 - [React Flow accessibility](https://reactflow.dev/learn/advanced-use/accessibility)

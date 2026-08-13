@@ -19,7 +19,7 @@ Next.js Web ── HTTP/SSE ── NestJS API ───── PostgreSQL + pgvec
 | `apps/api`               | 业务 API、鉴权边界、事务、Provider Gateway 和运行查询。        |
 | `apps/worker`            | BullMQ 消费、LangGraph 执行、调度任务、索引和到期清理。        |
 | `packages/contracts`     | API DTO 派生类型、错误码、事件信封和共享枚举。                 |
-| `packages/ui`            | Design Tokens、Radix 封装和稳定通用组件。                      |
+| `packages/ui`            | Mantine Theme、Provider、Design Tokens 和稳定产品组合组件。    |
 | `packages/agent-runtime` | LangGraph 定义、工具注册、检查点协议和 Agent 专用 Zod Schema。 |
 
 Docker Compose 是首个部署基线，包含 Web、API、Worker、PostgreSQL、Redis 和 SeaweedFS。Web、API 与 Worker 使用同一源码版本；部署不得让不同版本同时处理同一 Workflow 定义格式。
@@ -71,6 +71,16 @@ Docker Compose 是首个部署基线，包含 Web、API、Worker、PostgreSQL、
 - HTML 渲染采用允许列表；URL 仅允许批准协议；服务端请求防 SSRF 并限制响应大小和超时。
 - 普通查询始终按 `ownerId` 限定；本地固定用户也不得省略所有权条件。
 - 公开分享使用独立读取路径和最小投影，不复用私有实体序列化器。
+
+## 工程不变量
+
+以下约束是跨模块的结构性红线，违反即视为架构债，必须在引入时修复或记录为待办。
+
+- 禁止职责重叠的组件库或框架并存；同一职责只保留一个已批准实现（例如不保留两套 Button、Select 或浮层系统）。
+- 迁移 DDL 必须事务原子化；一个迁移内的多条语句包在单个事务中，失败不留半建结构。
+- 服务端运行时配置必须单一来源；API 与 Worker 不得逐字复制同一份校验逻辑。
+- 端口与宿主必须来自环境变量，禁止硬编码监听地址。
+- 禁止空壳包；`packages/contracts`、`packages/agent-runtime` 必须有明确激活里程碑与首个真实内容，否则不预建。
 
 ## 非目标
 

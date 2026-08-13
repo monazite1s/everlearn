@@ -1,6 +1,8 @@
 /** @fileoverview Verifies every documented static home-page state. */
 
 import { cleanup, render, screen } from '@testing-library/react';
+import { EverlearnUiProvider } from '@everlearn/ui';
+import type { ReactElement } from 'react';
 import { afterEach, expect, test } from 'vitest';
 
 import { homeStateFixtures, readyHomeModel } from './home-data';
@@ -8,9 +10,14 @@ import { HomePage } from './home-page';
 
 afterEach(cleanup);
 
+/** Renders one home state inside the application UI provider used in production. */
+function renderHome(element: ReactElement): void {
+  render(<EverlearnUiProvider colorMode="light">{element}</EverlearnUiProvider>);
+}
+
 /** Confirms knowledge remains primary and active runs expose text status. */
 function rendersReadyState(): void {
-  render(<HomePage model={readyHomeModel} />);
+  renderHome(<HomePage model={readyHomeModel} />);
 
   expect(screen.getByRole('heading', { level: 1, name: '首页' })).toHaveAttribute(
     'data-page-title',
@@ -22,7 +29,7 @@ function rendersReadyState(): void {
 
 /** Confirms first use explains knowledge bases without rendering an empty run card. */
 function rendersFirstUseState(): void {
-  render(<HomePage model={homeStateFixtures.empty} />);
+  renderHome(<HomePage model={homeStateFixtures.empty} />);
 
   expect(screen.getByRole('link', { name: '创建第一个知识库' })).toBeVisible();
   expect(screen.getByText(/还没有最近文档/)).toBeVisible();
@@ -32,7 +39,7 @@ function rendersFirstUseState(): void {
 
 /** Confirms independent failures preserve successful knowledge content and retries. */
 function rendersPartialFailureState(): void {
-  render(<HomePage model={homeStateFixtures.partialFailure} />);
+  renderHome(<HomePage model={homeStateFixtures.partialFailure} />);
 
   expect(screen.getByRole('link', { name: /^Agent 工程26 篇文档/ })).toBeVisible();
   expect(screen.getByRole('link', { name: '重试最近文档' })).toBeVisible();
@@ -41,7 +48,7 @@ function rendersPartialFailureState(): void {
 
 /** Confirms loading regions announce progress without replacing the page frame. */
 function rendersLoadingState(): void {
-  render(<HomePage model={homeStateFixtures.loading} />);
+  renderHome(<HomePage model={homeStateFixtures.loading} />);
 
   expect(screen.getAllByLabelText('正在加载')).toHaveLength(3);
   expect(screen.getByRole('heading', { level: 1, name: '首页' })).toBeVisible();
@@ -49,7 +56,7 @@ function rendersLoadingState(): void {
 
 /** Confirms offline reading remains available while write controls are disabled. */
 function rendersOfflineState(): void {
-  render(<HomePage model={homeStateFixtures.offline} />);
+  renderHome(<HomePage model={homeStateFixtures.offline} />);
 
   expect(screen.getByRole('status')).toHaveTextContent('当前离线');
   expect(screen.getByRole('textbox', { name: '记录内容' })).toBeDisabled();

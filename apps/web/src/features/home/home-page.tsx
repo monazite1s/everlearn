@@ -1,12 +1,37 @@
-/** @fileoverview Renders the knowledge-first home page from a typed view model. */
+/** @fileoverview Renders the knowledge-first home page with Mantine primitives and typed states. */
 
-import { Button, TextInput } from '@everlearn/ui';
+'use client';
+
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Group,
+  Skeleton,
+  Stack,
+  Text,
+  TextInput,
+  ThemeIcon,
+  Title,
+} from '@mantine/core';
+import {
+  AlertCircleIcon,
+  BookOpenIcon,
+  InboxIcon,
+  LibraryIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  WifiOffIcon,
+} from 'lucide-react';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 import type {
   ActiveRunSummary,
   HomePageModel,
   KnowledgeBaseSummary,
+  Loadable,
   RecentDocument,
 } from './home-data';
 import { readyHomeModel } from './home-data';
@@ -16,136 +41,213 @@ interface HomePageProps {
   model?: HomePageModel;
 }
 
-interface ErrorStateProps {
-  message: string;
+interface HomeSectionHeadingProps {
+  action?: ReactNode;
+  description?: string;
+  id: string;
+  title: string;
+}
+
+interface HomeRegionStateProps<T> {
+  emptyContent: ReactNode;
   retryLabel: string;
+  state: Loadable<T>;
 }
 
-/** Renders a local error with a reload-based retry until data fetching is connected. */
-function ErrorState({ message, retryLabel }: ErrorStateProps) {
+interface HomeSummaryCardProps {
+  href: string;
+  icon: ReactNode;
+  meta: string;
+  title: string;
+}
+
+const ICON_SIZE = 18;
+
+/** Keeps section titles, supporting copy, and actions aligned across home regions. */
+function HomeSectionHeading({ action, description, id, title }: HomeSectionHeadingProps) {
   return (
-    <div className={styles.error} role="alert">
-      <p className={styles['state-copy']}>{message}</p>
-      <Link className={styles['retry-link']} href="/">
-        {retryLabel}
-      </Link>
-    </div>
+    <Group align="flex-end" className={styles['section-heading']} justify="space-between">
+      <div>
+        <Title id={id} order={2}>
+          {title}
+        </Title>
+        {description && (
+          <Text c="dimmed" className={styles['supporting-copy']} size="sm">
+            {description}
+          </Text>
+        )}
+      </div>
+      {action}
+    </Group>
   );
 }
 
-/** Preserves section geometry while static home data is loading. */
-function SectionSkeleton() {
+/** Renders consistent loading, failure, and empty feedback for one independent home region. */
+function HomeRegionState<T>({ emptyContent, retryLabel, state }: HomeRegionStateProps<T>) {
+  if (state.status === 'loading') {
+    return (
+      <Stack aria-label="正在加载" gap="sm" mt="md">
+        {[0, 1, 2].map((index) => (
+          <Skeleton height={48} key={index} radius="md" />
+        ))}
+      </Stack>
+    );
+  }
+  if (state.status === 'error') {
+    return (
+      <Alert
+        color="red"
+        icon={<AlertCircleIcon aria-hidden="true" size={ICON_SIZE} />}
+        mt="md"
+        title={state.message}
+      >
+        <Button
+          component={Link}
+          href="/"
+          leftSection={<RefreshCwIcon aria-hidden="true" size={16} />}
+          size="compact-sm"
+          variant="light"
+        >
+          {retryLabel}
+        </Button>
+      </Alert>
+    );
+  }
+  return state.items.length === 0 ? emptyContent : null;
+}
+
+/** Presents one document-like home destination with consistent hierarchy and focus behavior. */
+function HomeSummaryCard({ href, icon, meta, title }: HomeSummaryCardProps) {
   return (
-    <div className={styles.skeleton} aria-busy="true" aria-label="正在加载">
-      <span />
-      <span />
-      <span />
-    </div>
+    <Card className={styles['summary-card']} component={Link} href={href} padding="md" withBorder>
+      <Group align="flex-start" gap="sm" wrap="nowrap">
+        <ThemeIcon aria-hidden="true" radius="md" variant="light">
+          {icon}
+        </ThemeIcon>
+        <div className={styles['summary-copy']}>
+          <Text component="span" fw={650} lineClamp={1}>
+            {title}
+          </Text>
+          <Text c="dimmed" component="span" lineClamp={2} size="xs">
+            {meta}
+          </Text>
+        </div>
+      </Group>
+    </Card>
   );
 }
 
-/** Renders one recently opened document as a quiet reading row. */
-function RecentDocumentRow(document: RecentDocument) {
+/** Renders one consistent knowledge-base creation action, including offline behavior. */
+function CreateKnowledgeBaseButton({ label, offline }: { label: string; offline: boolean }) {
+  const icon = <PlusIcon aria-hidden="true" size={ICON_SIZE} />;
+  if (offline)
+    return (
+      <Button disabled leftSection={icon}>
+        {label}
+      </Button>
+    );
+  return (
+    <Button component={Link} href="/knowledge?create=knowledge-base" leftSection={icon}>
+      {label}
+    </Button>
+  );
+}
+
+/** Renders one recently opened document as a quiet reading destination. */
+function RecentDocumentCard(document: RecentDocument) {
+  const meta = `${document.knowledgeBase} · ${document.path} · ${document.updatedAt}`;
   return (
     <li key={document.id}>
-      <Link className={styles['row-link']} href={document.href}>
-        <span className={styles['item-title']}>{document.title}</span>
-        <span className={styles.meta}>
-          {document.knowledgeBase} · {document.path} · {document.updatedAt}
-        </span>
-      </Link>
+      <HomeSummaryCard
+        href={document.href}
+        icon={<BookOpenIcon size={ICON_SIZE} />}
+        meta={meta}
+        title={document.title}
+      />
     </li>
   );
 }
 
-/** Renders recent reading, loading, empty, or local failure state. */
+/** Renders recent reading for the ready state and delegates all other region states. */
 function RecentDocuments({ state }: { state: HomePageModel['recentDocuments'] }) {
-  if (state.status === 'loading') return <SectionSkeleton />;
-  if (state.status === 'error') {
-    return <ErrorState message={state.message} retryLabel="重试最近文档" />;
-  }
-  if (state.items.length === 0) {
-    return <p className={styles.empty}>还没有最近文档，从知识库开始第一次阅读。</p>;
-  }
-  return <ul className={styles['document-list']}>{state.items.map(RecentDocumentRow)}</ul>;
+  const empty = (
+    <Text c="dimmed" mt="md">
+      还没有最近文档，从知识库开始第一次阅读。
+    </Text>
+  );
+  const feedback = <HomeRegionState emptyContent={empty} retryLabel="重试最近文档" state={state} />;
+  if (state.status !== 'ready' || state.items.length === 0) return feedback;
+  return <ul className={styles['document-list']}>{state.items.map(RecentDocumentCard)}</ul>;
 }
 
 /** Renders one knowledge base with activity and document count. */
-function KnowledgeBaseRow(knowledgeBase: KnowledgeBaseSummary) {
+function KnowledgeBaseCard(knowledgeBase: KnowledgeBaseSummary) {
+  const meta = `${knowledgeBase.documentCount} 篇文档 · ${knowledgeBase.updatedAt}`;
   return (
     <li key={knowledgeBase.id}>
-      <Link
-        className={`${styles['row-link']} ${styles['knowledge-link']}`}
+      <HomeSummaryCard
         href={knowledgeBase.href}
-      >
-        <span className={styles['item-title']}>{knowledgeBase.name}</span>
-        <span className={styles.meta}>
-          {knowledgeBase.documentCount} 篇文档 · {knowledgeBase.updatedAt}
-        </span>
-      </Link>
+        icon={<LibraryIcon size={ICON_SIZE} />}
+        meta={meta}
+        title={knowledgeBase.name}
+      />
     </li>
   );
 }
 
-/** Renders the primary knowledge-base area for all documented states. */
+/** Renders the primary knowledge-base region for every documented data state. */
 function KnowledgeBases({ model }: { model: HomePageModel }) {
+  const empty = (
+    <Alert
+      icon={<LibraryIcon aria-hidden="true" size={ICON_SIZE} />}
+      mt="md"
+      title="建立你的第一个知识库"
+    >
+      <Text c="dimmed" mb="sm" size="sm">
+        知识库用于长期沉淀文档、教程与资讯简报。
+      </Text>
+      <CreateKnowledgeBaseButton label="创建第一个知识库" offline={model.isOffline} />
+    </Alert>
+  );
   const state = model.knowledgeBases;
-  if (state.status === 'loading') return <SectionSkeleton />;
-  if (state.status === 'error') {
-    return <ErrorState message={state.message} retryLabel="重试知识库" />;
-  }
-  if (state.items.length === 0) {
-    return (
-      <div className={styles['first-use']}>
-        <p className={styles['state-copy']}>知识库用于长期沉淀文档、教程与资讯简报。</p>
-        <Link className={styles['primary-link']} href="/knowledge?create=knowledge-base">
-          创建第一个知识库
-        </Link>
-      </div>
-    );
-  }
-  return <ul className={styles['knowledge-list']}>{state.items.map(KnowledgeBaseRow)}</ul>;
+  const feedback = <HomeRegionState emptyContent={empty} retryLabel="重试知识库" state={state} />;
+  if (state.status !== 'ready' || state.items.length === 0) return feedback;
+  return <ul className={styles['knowledge-list']}>{state.items.map(KnowledgeBaseCard)}</ul>;
 }
 
 /** Keeps one page-level creation action and defers to the first-use call to action. */
 function KnowledgeAction({ model }: { model: HomePageModel }) {
   const state = model.knowledgeBases;
   if (state.status === 'ready' && state.items.length === 0) return null;
-  if (model.isOffline) {
-    return (
-      <span aria-disabled="true" className={styles['disabled-action']}>
-        新建知识库
-      </span>
-    );
-  }
-  return (
-    <Link className={styles['primary-link']} href="/knowledge?create=knowledge-base">
-      新建知识库
-    </Link>
-  );
+  return <CreateKnowledgeBaseButton label="新建知识库" offline={model.isOffline} />;
 }
 
-/** Renders one active cross-module run with text status. */
-function RunRow(run: ActiveRunSummary) {
+/** Renders one active cross-module run with explicit kind and status. */
+function RunCard(run: ActiveRunSummary) {
   return (
     <li key={run.id}>
-      <Link className={`${styles['row-link']} ${styles['run-link']}`} href={run.href}>
-        <span className={styles['run-kind']}>{run.kind}</span>
-        <span className={styles['item-title']}>{run.title}</span>
-        <span className={styles['run-status']}>{run.status}</span>
-      </Link>
+      <Card className={styles['run-card']} component={Link} href={run.href} padding="sm" withBorder>
+        <Group gap="xs" justify="space-between" wrap="nowrap">
+          <Badge size="sm" variant="light">
+            {run.kind}
+          </Badge>
+          <Badge className={styles['run-status']} size="sm" variant="outline">
+            {run.status}
+          </Badge>
+        </Group>
+        <Text fw={650} mt="xs" size="sm">
+          {run.title}
+        </Text>
+      </Card>
     </li>
   );
 }
 
 /** Omits empty run decoration and otherwise renders the current run state. */
 function ActiveRuns({ state }: { state: HomePageModel['runs'] }) {
-  if (state.status === 'loading') return <SectionSkeleton />;
-  if (state.status === 'error') {
-    return <ErrorState message={state.message} retryLabel="重试运行状态" />;
-  }
-  if (state.items.length === 0) return null;
-  return <ul className={styles['run-list']}>{state.items.map(RunRow)}</ul>;
+  const feedback = <HomeRegionState emptyContent={null} retryLabel="重试运行状态" state={state} />;
+  if (state.status !== 'ready' || state.items.length === 0) return feedback;
+  return <ul className={styles['run-list']}>{state.items.map(RunCard)}</ul>;
 }
 
 /** Reports whether the run region has content or a visible transitional state. */
@@ -158,13 +260,17 @@ function QuickCapture({ disabled }: { disabled: boolean }) {
   return (
     <section className={styles['quick-capture']} aria-labelledby="quick-capture-title">
       <div>
-        <h2 id="quick-capture-title">快速记录</h2>
-        <p className={styles['supporting-copy']}>纯文本或一个链接会进入 Inbox，稍后再整理。</p>
+        <HomeSectionHeading id="quick-capture-title" title="快速记录" />
+        <Text c="dimmed" mt="xs" size="sm">
+          纯文本或一个链接会进入 Inbox，稍后再整理。
+        </Text>
       </div>
-      <div className={styles['capture-form']}>
+      <Group align="flex-end" className={styles['capture-form']} gap="sm" wrap="nowrap">
         <TextInput disabled={disabled} label="记录内容" placeholder="写下想法或粘贴链接" />
-        <Button disabled={disabled}>放入 Inbox</Button>
-      </div>
+        <Button disabled={disabled} leftSection={<InboxIcon aria-hidden="true" size={ICON_SIZE} />}>
+          放入 Inbox
+        </Button>
+      </Group>
     </section>
   );
 }
@@ -175,38 +281,39 @@ export function HomePage({ model = readyHomeModel }: HomePageProps) {
   return (
     <article className={styles.page}>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>Everlearn · 首页</p>
-        <h1 data-page-title tabIndex={-1}>
+        <Text className={styles.eyebrow}>Everlearn · 首页</Text>
+        <Title data-page-title order={1} tabIndex={-1}>
           首页
-        </h1>
-        <p className={styles['header-description']}>继续最近学习，把新的资料沉淀到知识库。</p>
+        </Title>
+        <Text c="dimmed" mt="sm">
+          继续最近学习，把新的资料沉淀到知识库。
+        </Text>
       </header>
       {model.isOffline && (
-        <p className={styles['offline-notice']} role="status">
+        <Alert icon={<WifiOffIcon aria-hidden="true" size={ICON_SIZE} />} mt="lg" role="status">
           当前离线：可以阅读缓存内容，新建与快速记录暂不可用。
-        </p>
+        </Alert>
       )}
       <section className={styles.recent} aria-labelledby="recent-title">
-        <h2 id="recent-title">继续学习</h2>
+        <HomeSectionHeading id="recent-title" title="继续学习" />
         <RecentDocuments state={model.recentDocuments} />
       </section>
       <div className={styles.columns} data-has-runs={showRuns}>
         <div className={styles['knowledge-column']}>
           <section aria-labelledby="knowledge-title">
-            <div className={styles['section-heading']}>
-              <div>
-                <h2 id="knowledge-title">知识库</h2>
-                <p className={styles['supporting-copy']}>按最近活动排序</p>
-              </div>
-              <KnowledgeAction model={model} />
-            </div>
+            <HomeSectionHeading
+              action={<KnowledgeAction model={model} />}
+              description="按最近活动排序"
+              id="knowledge-title"
+              title="知识库"
+            />
             <KnowledgeBases model={model} />
           </section>
           <QuickCapture disabled={model.isOffline} />
         </div>
         {showRuns && (
           <aside className={styles.runs} aria-labelledby="runs-title">
-            <h2 id="runs-title">进行中</h2>
+            <HomeSectionHeading id="runs-title" title="进行中" />
             <ActiveRuns state={model.runs} />
           </aside>
         )}

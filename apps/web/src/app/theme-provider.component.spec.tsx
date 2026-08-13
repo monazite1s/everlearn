@@ -11,6 +11,7 @@ function resetTheme(): void {
   localStorage.clear();
   delete document.documentElement.dataset.appearance;
   delete document.documentElement.dataset.colorMode;
+  delete document.documentElement.dataset.mantineColorScheme;
   delete document.documentElement.dataset.theme;
 }
 
@@ -32,7 +33,9 @@ function ThemeHarness() {
 
   return (
     <>
-      <output aria-label="当前外观">{`${theme.theme}:${theme.appearance}`}</output>
+      <output aria-label="当前外观">
+        {`${theme.theme}:${theme.appearance}:${theme.colorMode}`}
+      </output>
       <button type="button" onClick={chooseNeutral}>
         中性主题
       </button>
@@ -59,6 +62,7 @@ async function switchesAndPersistsTheme(): Promise<void> {
     () => {
       expect(document.documentElement.dataset.theme).toBe('neutral');
       expect(document.documentElement.dataset.colorMode).toBe('dark');
+      expect(document.documentElement.dataset.mantineColorScheme).toBe('dark');
       expect(localStorage.getItem('everlearn-theme')).toBe('neutral:dark');
     },
   );
@@ -78,7 +82,9 @@ async function loadsPersistedTheme(): Promise<void> {
   await waitFor(
     /** Checks that the external store refreshed from browser persistence. */
     () =>
-      expect(screen.getByRole('status', { name: '当前外观' })).toHaveTextContent('neutral:dark'),
+      expect(screen.getByRole('status', { name: '当前外观' })).toHaveTextContent(
+        'neutral:dark:dark',
+      ),
   );
 }
 

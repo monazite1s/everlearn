@@ -49,6 +49,7 @@ async function rendersDesktopShell(): Promise<void> {
   renderShell();
 
   expect(screen.getByRole('link', { name: '知识库' })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('link', { name: '知识库' }).querySelector('svg')).not.toBeNull();
   expect(screen.getByRole('banner').className).not.toBe('');
   expect(screen.getByRole('complementary', { name: '工作区导航' }).className).not.toBe('');
   await waitFor(
@@ -56,7 +57,7 @@ async function rendersDesktopShell(): Promise<void> {
     () => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus(),
   );
 
-  const leftToggle = screen.getByRole('button', { name: '收起' });
+  const leftToggle = screen.getByRole('button', { name: '收起导航' });
   fireEvent.click(leftToggle);
   expect(localStorage.getItem('everlearn-left-panel-collapsed')).toBe('true');
   expect(leftToggle).toHaveAttribute('aria-expanded', 'false');
@@ -66,31 +67,41 @@ async function rendersDesktopShell(): Promise<void> {
 /** Confirms mobile drawers expose navigation and explain desktop-only creation. */
 async function rendersMobileReadingControls(): Promise<void> {
   renderShell();
+  await waitFor(
+    /** Waits for route focus before simulating a later user interaction. */
+    () => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus(),
+  );
 
   const menuTrigger = screen.getByRole('button', { name: '打开导航' });
+  menuTrigger.focus();
   fireEvent.click(menuTrigger);
-  expect(screen.getByRole('dialog', { name: '导航' })).toBeVisible();
-  expect(screen.getByRole('link', { name: '资讯' })).toBeVisible();
-  fireEvent.click(screen.getByRole('button', { name: '关闭对话框' }));
+  const drawer = await screen.findByRole('dialog', { name: '导航' });
+  expect(drawer).toBeVisible();
+  expect(drawer).toHaveTextContent('资讯');
+  fireEvent.click(screen.getByRole('button', { name: '关闭导航' }));
   await waitFor(
-    /** Verifies the shared Dialog restores focus to the mobile trigger. */
+    /** Verifies the Mantine Drawer restores focus to the mobile trigger. */
     () => expect(menuTrigger).toHaveFocus(),
   );
 
   fireEvent.click(screen.getByRole('button', { name: '新建' }));
-  expect(screen.getByRole('dialog', { name: '请在桌面端创作' })).toBeVisible();
+  expect(await screen.findByRole('dialog', { name: '请在桌面端创作' })).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: '返回阅读' }));
-  expect(screen.queryByRole('dialog', { name: '请在桌面端创作' })).not.toBeInTheDocument();
+  await waitFor(
+    /** Waits for Mantine's exit transition to unmount the dialog. */
+    () => expect(screen.queryByRole('dialog', { name: '请在桌面端创作' })).not.toBeInTheDocument(),
+  );
 }
 
 /** Confirms nested routes retain their primary destination and mobile policy. */
-function rendersNestedRoutePolicy(): void {
+async function rendersNestedRoutePolicy(): Promise<void> {
   mockPathname = '/knowledge/library-1/documents/document-1';
   renderShell();
 
   expect(screen.getByRole('link', { name: '知识库' })).toHaveAttribute('aria-current', 'page');
   fireEvent.click(screen.getByRole('button', { name: '新建' }));
-  expect(screen.getByText('移动端保留阅读、搜索和运行状态，暂不提供内容创作。')).toBeVisible();
+  const dialog = await screen.findByRole('dialog', { name: '请在桌面端创作' });
+  expect(dialog).toHaveTextContent('移动端保留阅读、搜索和运行状态，暂不提供内容创作。');
 }
 
 test('renders the accessible desktop shell', rendersDesktopShell);

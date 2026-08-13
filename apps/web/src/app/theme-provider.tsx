@@ -4,6 +4,7 @@
 
 'use client';
 
+import { EverlearnUiProvider } from '@everlearn/ui';
 import { createContext, useContext, useEffect, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 
@@ -26,6 +27,7 @@ interface ThemeSelection {
 }
 
 interface ThemeContextValue extends ThemeSelection {
+  colorMode: 'dark' | 'light';
   persistenceAvailable: boolean;
   setAppearance: (appearance: Appearance) => void;
   setTheme: (theme: ThemeId) => void;
@@ -36,13 +38,18 @@ interface ThemeProviderProps {
 }
 
 interface ThemeState {
+  colorMode: 'dark' | 'light';
   persistenceAvailable: boolean;
   selection: ThemeSelection;
 }
 
 const STORAGE_KEY = 'everlearn-theme';
 const DEFAULT_SELECTION: ThemeSelection = { appearance: 'system', theme: 'paper' };
-const DEFAULT_STATE: ThemeState = { persistenceAvailable: true, selection: DEFAULT_SELECTION };
+const DEFAULT_STATE: ThemeState = {
+  colorMode: 'light',
+  persistenceAvailable: true,
+  selection: DEFAULT_SELECTION,
+};
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 const themeListeners = new Set<() => void>();
 let clientState: ThemeState | undefined;
@@ -60,6 +67,7 @@ export const themeInitializer = `
   root.dataset.theme = theme;
   root.dataset.appearance = appearance;
   root.dataset.colorMode = dark ? 'dark' : 'light';
+  root.dataset.mantineColorScheme = dark ? 'dark' : 'light';
 }());`;
 
 /** Resolves system appearance without assuming matchMedia exists in tests. */
@@ -68,34 +76,46 @@ function resolveSystemAppearance(): 'dark' | 'light' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-/** Applies semantic theme attributes consumed exclusively by CSS tokens. */
-function applyTheme(selection: ThemeSelection): void {
+/** Applies semantic theme attributes and returns the resolved color mode. */
+function applyTheme(selection: ThemeSelection): 'dark' | 'light' {
   const colorMode =
     selection.appearance === 'system' ? resolveSystemAppearance() : selection.appearance;
   document.documentElement.dataset.appearance = selection.appearance;
   document.documentElement.dataset.colorMode = colorMode;
+  document.documentElement.dataset.mantineColorScheme = colorMode;
   document.documentElement.dataset.theme = selection.theme;
+  return colorMode;
+}
+
+/** Checks whether persisted input names a supported appearance. */
+function isAppearance(value: string | undefined): value is Appearance {
+  return value === 'dark' || value === 'light' || value === 'system';
+}
+
+/** Parses persisted input into a validated theme selection. */
+function parseThemeSelection(value: string | null): ThemeSelection {
+  const [theme, appearance] = value?.split(':') ?? [];
+  return {
+    appearance: isAppearance(appearance) ? appearance : DEFAULT_SELECTION.appearance,
+    theme: theme === 'neutral' || theme === 'paper' ? theme : DEFAULT_SELECTION.theme,
+  };
 }
 
 /** Reads and validates the compact local theme preference. */
 function readTheme(): ThemeState {
   if (typeof window === 'undefined') {
-    return { persistenceAvailable: true, selection: DEFAULT_SELECTION };
+    return DEFAULT_STATE;
   }
   try {
-    const [theme, appearance] = localStorage.getItem(STORAGE_KEY)?.split(':') ?? [];
+    const selection = parseThemeSelection(localStorage.getItem(STORAGE_KEY));
     return {
+      colorMode:
+        selection.appearance === 'system' ? resolveSystemAppearance() : selection.appearance,
       persistenceAvailable: true,
-      selection: {
-        appearance:
-          appearance === 'dark' || appearance === 'light' || appearance === 'system'
-            ? appearance
-            : DEFAULT_SELECTION.appearance,
-        theme: theme === 'neutral' || theme === 'paper' ? theme : DEFAULT_SELECTION.theme,
-      },
+      selection,
     };
   } catch {
-    return { persistenceAvailable: false, selection: DEFAULT_SELECTION };
+    return { ...DEFAULT_STATE, persistenceAvailable: false };
   }
 }
 
@@ -115,6 +135,7 @@ function subscribeTheme(listener: () => void): () => void {
   /** Refreshes the snapshot after another tab changes local storage. */
   function handleStorage(): void {
     clientState = readTheme();
+    applyTheme(clientState.selection);
     listener();
   }
   /** Removes this consumer and its cross-tab listener. */
@@ -148,6 +169,31 @@ function persistTheme(selection: ThemeSelection): boolean {
   }
 }
 
+/** Watches operating-system color changes only while system appearance is selected. */
+function watchSystemAppearance(selection: ThemeSelection): (() => void) | undefined {
+  if (selection.appearance !== 'system' || typeof window.matchMedia !== 'function') return;
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  /** Publishes the newly resolved system color mode. */
+  function handleSystemChange(): void {
+    publishTheme({ ...getClientState(), colorMode: applyTheme(selection) });
+  }
+  /** Removes the media listener when the active selection changes. */
+  function stopWatching(): void {
+    media.removeEventListener('change', handleSystemChange);
+  }
+  media.addEventListener('change', handleSystemChange);
+  return stopWatching;
+}
+
+/** Keeps the external theme store synchronized with operating-system appearance. */
+function useSystemAppearance(selection: ThemeSelection): void {
+  /** Subscribes the current selection to system appearance changes. */
+  function synchronizeSystemAppearance(): (() => void) | undefined {
+    return watchSystemAppearance(selection);
+  }
+  useEffect(synchronizeSystemAppearance, [selection]);
+}
+
 /** Injects the trusted pre-paint initializer before React hydration. */
 export function ThemeScript() {
   return <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />;
@@ -157,49 +203,39 @@ export function ThemeScript() {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const state = useSyncExternalStore(subscribeTheme, getClientState, getServerState);
   const { selection } = state;
-
-  /** Reapplies system-following themes when the operating system changes. */
-  function watchSystemAppearance(): (() => void) | undefined {
-    if (selection.appearance !== 'system' || typeof window.matchMedia !== 'function') return;
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    /** Applies the current theme against the new system color mode. */
-    function handleSystemChange(): void {
-      applyTheme(selection);
-    }
-    /** Removes the system preference listener when the selection changes. */
-    function stopWatching(): void {
-      media.removeEventListener('change', handleSystemChange);
-    }
-    media.addEventListener('change', handleSystemChange);
-    return stopWatching;
-  }
-
-  useEffect(watchSystemAppearance, [selection]);
+  useSystemAppearance(selection);
 
   /** Updates only the palette identity while preserving appearance. */
   function setTheme(theme: ThemeId): void {
     const next = { ...selection, theme };
-    applyTheme(next);
-    publishTheme({ persistenceAvailable: persistTheme(next), selection: next });
+    publishTheme({
+      colorMode: applyTheme(next),
+      persistenceAvailable: persistTheme(next),
+      selection: next,
+    });
   }
 
   /** Updates light, dark, or system appearance while preserving the palette. */
   function setAppearance(appearance: Appearance): void {
     const next = { ...selection, appearance };
-    applyTheme(next);
-    publishTheme({ persistenceAvailable: persistTheme(next), selection: next });
+    publishTheme({
+      colorMode: applyTheme(next),
+      persistenceAvailable: persistTheme(next),
+      selection: next,
+    });
   }
 
   return (
     <ThemeContext
       value={{
         ...selection,
+        colorMode: state.colorMode,
         persistenceAvailable: state.persistenceAvailable,
         setAppearance,
         setTheme,
       }}
     >
-      {children}
+      <EverlearnUiProvider colorMode={state.colorMode}>{children}</EverlearnUiProvider>
     </ThemeContext>
   );
 }

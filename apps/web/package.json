@@ -9,7 +9,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@everlearn/contracts": "workspace:*",
     "@everlearn/ui": "workspace:*",
+    "@mantine/core": "catalog:",
+    "@mantine/hooks": "catalog:",
+    "lucide-react": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"

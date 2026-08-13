@@ -12,7 +12,6 @@ export interface WorkspaceRoute {
   id: WorkspaceRouteId;
   label: string;
   mobileCapability: MobileRouteCapability;
-  shortLabel: string;
 }
 
 export interface MobileRoutePolicy {
@@ -32,7 +31,6 @@ export const homeRoute: WorkspaceRoute = {
   id: 'home',
   label: '首页',
   mobileCapability: 'read',
-  shortLabel: '首',
 };
 
 export const workspaceRoutes: readonly WorkspaceRoute[] = [
@@ -44,7 +42,6 @@ export const workspaceRoutes: readonly WorkspaceRoute[] = [
     id: 'knowledge',
     label: '知识库',
     mobileCapability: 'read',
-    shortLabel: '知',
   },
   {
     context: '查看订阅、简报计划和采集运行。',
@@ -53,7 +50,6 @@ export const workspaceRoutes: readonly WorkspaceRoute[] = [
     id: 'news',
     label: '资讯',
     mobileCapability: 'status',
-    shortLabel: '讯',
   },
   {
     context: '创建教程并跟踪研究、大纲与章节进度。',
@@ -62,7 +58,6 @@ export const workspaceRoutes: readonly WorkspaceRoute[] = [
     id: 'tutorials',
     label: '教程',
     mobileCapability: 'status',
-    shortLabel: '教',
   },
   {
     context: '管理 Workflow 定义、版本、计划与运行。',
@@ -71,7 +66,6 @@ export const workspaceRoutes: readonly WorkspaceRoute[] = [
     id: 'workflows',
     label: '工作流',
     mobileCapability: 'status',
-    shortLabel: '流',
   },
   {
     context: '配置外观、Provider、时区、存储与诊断。',
@@ -80,7 +74,6 @@ export const workspaceRoutes: readonly WorkspaceRoute[] = [
     id: 'settings',
     label: '设置',
     mobileCapability: 'limited',
-    shortLabel: '设',
   },
 ];
 

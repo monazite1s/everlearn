@@ -3,6 +3,21 @@
  */
 
 import '@testing-library/jest-dom/vitest';
+import { vi } from 'vitest';
+
+/** Returns a deterministic media-query object for browser-only component libraries. */
+function matchMedia(query: string): MediaQueryList {
+  return {
+    addEventListener: vi.fn(),
+    addListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+    matches: false,
+    media: query,
+    onchange: null,
+    removeEventListener: vi.fn(),
+    removeListener: vi.fn(),
+  };
+}
 
 /** Tracks observed elements without attempting unavailable JSDOM layout measurement. */
 class TestResizeObserver implements ResizeObserver {
@@ -25,3 +40,4 @@ class TestResizeObserver implements ResizeObserver {
 }
 
 globalThis.ResizeObserver = TestResizeObserver;
+window.matchMedia = matchMedia;

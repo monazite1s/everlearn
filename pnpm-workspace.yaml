@@ -7,6 +7,8 @@ allowBuilds:
   unrs-resolver: true
 
 catalog:
+  '@mantine/core': 9.5.1
+  '@mantine/hooks': 9.5.1
   '@playwright/test': 1.62.1
   '@testing-library/jest-dom': 7.0.0
   '@testing-library/react': 16.3.2
@@ -25,6 +27,7 @@ catalog:
   class-transformer: 0.5.1
   class-validator: 0.15.1
   jsdom: 30.0.1
+  lucide-react: 1.31.0
   next: 16.2.9
   react: 19.2.8
   react-dom: 19.2.8

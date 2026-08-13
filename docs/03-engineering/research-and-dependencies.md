@@ -8,6 +8,19 @@
 
 ## 研究记录
 
+### 2026-08-12 Mantine 组件系统迁移
+
+- 采用候选：`@mantine/core` 9.5.1、`@mantine/hooks` 9.5.1 与 `lucide-react` 1.31.0；用户于 2026-08-12 明确批准迁移，随后批准以 Lucide 替换类型不兼容的 Tabler。Mantine 为 MIT，Lucide 为 ISC；npm 官方源确认三者兼容项目 React 19.2.8。
+- 采用范围：Mantine 负责标准控件、布局原语、浮层、反馈和可访问行为；Lucide 提供唯一图标集；CSS Modules 与项目语义 Token 继续负责产品布局和品牌视觉。
+- 导入边界：Web 可直接使用 Mantine 标准组件；`packages/ui` 只保留主题、Provider 与有稳定产品语义的组合组件，不建立全量同名包装层。
+- Next.js 限制：Mantine 入口包含 `use client`，组件不能作为纯 React Server Component；数据获取和静态内容仍保留在 Server Component，交互叶子进入客户端边界。
+- 迁移策略：先接入 Provider，再迁移应用壳、显式页面与首页，最后删除 Radix、旧包装和失效 CSS；迁移序列结束前不得新增第二套自研原语。
+- 暂不采用：`@mantine/spotlight`、`@mantine/notifications`、Storybook 和 Mantine 扩展包。真实搜索、通知或组件目录形成独立任务后再审批。
+- 官方证据：[Mantine GitHub](https://github.com/mantinedev/mantine)、[CSS Modules](https://mantine.dev/styles/css-modules/)、[AppShell](https://mantine.dev/core/app-shell/)、[Next.js 指南](https://mantine.dev/guides/next/)、[Lucide React](https://lucide.dev/guide/packages/lucide-react)。查阅日期：2026-08-12。
+- 拒绝 Tabler Icons React 3.45/3.46：发布声明引用 React 19 不再导出的 `ReactSVG`，在项目严格类型检查中失败；不以 `skipLibCheck` 或本地类型补丁掩盖上游错误。
+- 拒绝继续扩展 Radix 包装：现有实现已出现原生 Select、文本伪图标、重复 Skeleton 和缺少应用级组件的问题；继续逐个封装会扩大维护面。
+- 替换成本：迁移涉及 `packages/ui`、应用壳、首页和组件测试；产品数据模型、API 与领域模块不依赖 UI 库，不受影响。
+
 ### 2026-08-11 PostgreSQL 访问层与迁移
 
 - 采用候选：Kysely 0.29.2、node-postgres 8.22.0 与 `@types/pg` 8.20.0；待用户批准后由锁文件固定。npm 官方源元数据确认前两者分别要求 Node >=22 和 >=16，兼容项目 Node 24，三者均为 MIT。Kysely 提供 PostgreSQL 方言、类型安全查询、事务和显式 up/down migration，同时允许树移动等少量复杂 SQL。
@@ -40,21 +53,22 @@
 
 ## 已采用基线
 
-| 领域          | 选择                                                                                                                                                                                                                                   | 用途与边界                                                                                              |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| 编辑器        | [Tiptap](https://github.com/ueberdosis/tiptap)                                                                                                                                                                                         | Headless ProseMirror 编辑器、扩展和拖拽；不采用协作云或 Yjs。                                           |
-| UI 原语       | [Radix Primitives 1.6.7](https://www.radix-ui.com/primitives/docs/overview/introduction)                                                                                                                                               | 统一包提供当前已批准的交互原语；仅通过 `packages/ui` 子路径导入、CSS Modules 提供视觉，业务不直接依赖。 |
-| 动效          | [Motion for React](https://motion.dev/docs/react)                                                                                                                                                                                      | 编排与布局动效；简单变化使用 CSS。                                                                      |
-| 画布          | [React Flow](https://reactflow.dev/learn/concepts/terms-and-definitions)                                                                                                                                                               | Workflow 可视化；列表仍是完整编辑入口。                                                                 |
-| Agent Runtime | [LangGraph.js](https://github.com/langchain-ai/langgraphjs)                                                                                                                                                                            | 图执行、检查点、子图和人工中断。                                                                        |
-| 队列          | [BullMQ Job Schedulers](https://docs.bullmq.io/guide/job-schedulers)                                                                                                                                                                   | 后台分发与每日/每周调度；不用废弃 repeatable API。                                                      |
-| 搜索          | PostgreSQL FTS + pgvector                                                                                                                                                                                                              | 普通搜索与 AI 混合召回；不引入独立搜索集群。                                                            |
-| Web 搜索      | Tavily Adapter                                                                                                                                                                                                                         | 首个实现；业务只依赖 Provider 接口。                                                                    |
-| 组件样式      | CSS Modules + CSS variables                                                                                                                                                                                                            | 禁止原子化 CSS。                                                                                        |
-| 主题运行时    | [prefers-color-scheme](https://developer.mozilla.org/docs/Web/CSS/@media/prefers-color-scheme) + [Web Storage](https://developer.mozilla.org/docs/Web/API/Web_Storage_API) + [next-themes](https://github.com/pacocoursey/next-themes) | 采用 CSS 变量、`data-*`、`matchMedia` 和 `localStorage`；功能窄且原生能力完整，不引入主题依赖。         |
-| 应用壳导航    | [Next.js Accessibility](https://nextjs.org/docs/architecture/accessibility) + [usePathname](https://nextjs.org/docs/app/api-reference/functions/use-pathname)                                                                          | 使用真实 Link 路由、唯一标题和路由播报；壳只在客户端读取 pathname，切换后聚焦页面标题。                 |
-| 服务端配置    | [Nest Config](https://docs.nestjs.com/techniques/configuration) + [class-validator](https://github.com/typestack/class-validator)                                                                                                      | API/Worker 启动前同步校验白名单字段；普通业务不使用 Zod。                                               |
-| 本地依赖镜像  | pgvector 0.8.2/PostgreSQL 17、Redis 8.8.0、SeaweedFS 4.29                                                                                                                                                                              | 固定镜像版本；SeaweedFS 使用维护者推荐的单节点 `weed mini`。                                            |
+| 领域          | 选择                                                                                                                                                                                                                                   | 用途与边界                                                                                      |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 编辑器        | [Tiptap](https://github.com/ueberdosis/tiptap)                                                                                                                                                                                         | Headless ProseMirror 编辑器、扩展和拖拽；不采用协作云或 Yjs。                                   |
+| UI 组件       | [Mantine 9.5.1](https://mantine.dev/)                                                                                                                                                                                                  | 标准控件、布局、浮层与可访问行为；Web 可直接使用，产品视觉由 Theme、Token 与 CSS Modules 约束。 |
+| 图标          | [Lucide React 1.31.0](https://lucide.dev/guide/packages/lucide-react)                                                                                                                                                                  | 唯一界面图标集；禁止字符、Emoji 和重复手写 SVG。                                                |
+| 动效          | [Motion for React](https://motion.dev/docs/react)                                                                                                                                                                                      | 编排与布局动效；简单变化使用 CSS。                                                              |
+| 画布          | [React Flow](https://reactflow.dev/learn/concepts/terms-and-definitions)                                                                                                                                                               | Workflow 可视化；列表仍是完整编辑入口。                                                         |
+| Agent Runtime | [LangGraph.js](https://github.com/langchain-ai/langgraphjs)                                                                                                                                                                            | 图执行、检查点、子图和人工中断。                                                                |
+| 队列          | [BullMQ Job Schedulers](https://docs.bullmq.io/guide/job-schedulers)                                                                                                                                                                   | 后台分发与每日/每周调度；不用废弃 repeatable API。                                              |
+| 搜索          | PostgreSQL FTS + pgvector                                                                                                                                                                                                              | 普通搜索与 AI 混合召回；不引入独立搜索集群。                                                    |
+| Web 搜索      | Tavily Adapter                                                                                                                                                                                                                         | 首个实现；业务只依赖 Provider 接口。                                                            |
+| 组件样式      | CSS Modules + CSS variables                                                                                                                                                                                                            | 禁止原子化 CSS。                                                                                |
+| 主题运行时    | [prefers-color-scheme](https://developer.mozilla.org/docs/Web/CSS/@media/prefers-color-scheme) + [Web Storage](https://developer.mozilla.org/docs/Web/API/Web_Storage_API) + [next-themes](https://github.com/pacocoursey/next-themes) | 采用 CSS 变量、`data-*`、`matchMedia` 和 `localStorage`；功能窄且原生能力完整，不引入主题依赖。 |
+| 应用壳导航    | [Next.js Accessibility](https://nextjs.org/docs/architecture/accessibility) + [usePathname](https://nextjs.org/docs/app/api-reference/functions/use-pathname)                                                                          | 使用真实 Link 路由、唯一标题和路由播报；壳只在客户端读取 pathname，切换后聚焦页面标题。         |
+| 服务端配置    | [Nest Config](https://docs.nestjs.com/techniques/configuration) + [class-validator](https://github.com/typestack/class-validator)                                                                                                      | API/Worker 启动前同步校验白名单字段；普通业务不使用 Zod。                                       |
+| 本地依赖镜像  | pgvector 0.8.2/PostgreSQL 17、Redis 8.8.0、SeaweedFS 4.29                                                                                                                                                                              | 固定镜像版本；SeaweedFS 使用维护者推荐的单节点 `weed mini`。                                    |
 
 ## 工程门禁基线（2026-08-09）
 
@@ -76,6 +90,7 @@
 | 方案                           | 结论         | 原因                                                            |
 | ------------------------------ | ------------ | --------------------------------------------------------------- |
 | Superpowers                    | 禁止         | Token 成本与收益不符合项目工作方式。                            |
+| 继续扩展 Radix 包装层          | 已替换       | 应用级组件缺口导致重复实现；Mantine 迁移完成后删除依赖与包装。  |
 | OpenAI Agents SDK 作为 Runtime | 不采用       | 当前需要可编辑图、持久检查点和明确子图；Provider 仍保持可替换。 |
 | 自研 Workflow DSL/状态机       | 不采用       | 重复建设持久化、中断和恢复能力。                                |
 | 固定 Planner/Executor/Critic   | 不采用       | 不是所有流程都需要三角色，节点和质量门槛应按模板定义。          |

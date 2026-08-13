@@ -5,6 +5,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import '@mantine/core/styles.layer.css';
 import './globals.css';
 import './theme.css';
 import { AppShell } from './app-shell';
