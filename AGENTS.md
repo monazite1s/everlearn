@@ -32,7 +32,9 @@
 
 ## Agent 路由
 
-`.claude/agents` 提供项目级执行入口，作为 Skill 之上的委派层：`architect`、`ui-designer`、`api-designer`、`db-designer`。Agent 只做路由与门禁摘要，不复制 Skill 全文；事实源仍以 AGENTS.md 与 docs 为准，Skill 按上表强制加载。Agent 与 Skill 冲突时，以 Skill 与文档事实源为准。
+`.agents/roles/` 提供项目级角色模板（ZCode 运行时无自定义 agent 类型，模板由主 agent 以对应内置 sub agent 类型承载）：`architect`（backend-architect）、`api-designer`（backend-architect）、`db-designer`（database-architect）、`ui-designer`（ui-designer）、`pm`（general-purpose，产品视角独立复核）。派发时把模板全文注入 sub agent prompt。角色模板只做路由与门禁摘要，不复制 Skill 全文；事实源仍以 AGENTS.md 与 docs 为准，Skill 按上表强制加载。角色与 Skill 冲突时，以 Skill 与文档事实源为准。
+
+产品/需求类工作在方案定稿或验收前必须经 `pm` 角色独立复核，结论逐条处置后进任务证据。
 
 ## 执行门禁
 

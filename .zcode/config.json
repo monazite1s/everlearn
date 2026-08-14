@@ -1,0 +1,32 @@
+{
+  "hooks": {
+    "enabled": true,
+    "events": {
+      "SessionStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "node \"${ZCODE_PROJECT_DIR}/scripts/hooks/session-context.mjs\"",
+              "timeout": 10,
+              "statusMessage": "注入项目门禁提醒"
+            }
+          ]
+        }
+      ],
+      "PostToolUse": [
+        {
+          "matcher": "Edit|Write|ApplyPatch",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "node \"${ZCODE_PROJECT_DIR}/scripts/hooks/post-ui-check.mjs\"",
+              "timeout": 20,
+              "statusMessage": "UI 编辑后运行设计令牌门禁"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
