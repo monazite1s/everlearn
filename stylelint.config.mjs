@@ -1,5 +1,5 @@
 /**
- * @fileoverview Enforces CSS Modules structure and semantic Design Token usage.
+ * @fileoverview 统一 CSS Modules 结构和语义化设计令牌用法。
  */
 
 export default {

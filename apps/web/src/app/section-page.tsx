@@ -1,4 +1,4 @@
-/** @fileoverview Renders a stable page frame while each product module is implemented later. */
+/** @fileoverview 为尚未接入完整能力的产品模块渲染稳定页面框架。 */
 
 import type { WorkspaceRoute } from './workspace-routes';
 import styles from './section-page.module.css';
@@ -7,7 +7,7 @@ interface SectionPageProps {
   route: WorkspaceRoute;
 }
 
-/** Renders one workspace page with a focusable title and layout-preserving placeholders. */
+/** 用于渲染带可聚焦标题和保形占位的工作区页面。 */
 export function SectionPage({ route }: SectionPageProps) {
   return (
     <article className={styles.page}>

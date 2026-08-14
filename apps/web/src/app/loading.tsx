@@ -1,8 +1,8 @@
-/** @fileoverview Preserves the central workspace geometry during route loading. */
+/** @fileoverview 在路由加载期间保持中央工作区结构。 */
 
 import styles from './section-page.module.css';
 
-/** Renders a quiet layout-matched skeleton while a workspace route resolves. */
+/** 用于在工作区路由解析期间渲染匹配布局的骨架。 */
 export default function WorkspaceLoading() {
   return (
     <div className={styles.page} aria-busy="true" aria-label="正在加载页面">

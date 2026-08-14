@@ -1,5 +1,5 @@
 /**
- * @fileoverview Verifies API request ID propagation and safe completion log shape.
+ * @fileoverview 验证 API 请求标识传播和安全完成日志结构。
  */
 
 import { expect, test } from 'vitest';
@@ -9,14 +9,14 @@ import { createHttpCompletionLog, resolveRequestId } from './request-correlation
 
 const validRequestId = '9c52a51c-5d11-4b8a-99c8-34ea773fa93e';
 
-/** Confirms valid IDs are retained while missing or invalid values are replaced. */
+/** 用于验证有效标识被保留且缺失或非法标识被替换。 */
 function verifiesRequestIdResolution(): void {
   expect(resolveRequestId(validRequestId)).toBe(validRequestId);
   expect(isUUID(resolveRequestId('not-a-uuid'))).toBe(true);
   expect(isUUID(resolveRequestId(undefined))).toBe(true);
 }
 
-/** Confirms routine logs cannot acquire request body, cookies, prompts, or secret fields. */
+/** 用于验证常规日志不会包含正文、Cookie、Prompt 或密钥。 */
 function verifiesSafeLogShape(): void {
   const logEntry = createHttpCompletionLog({
     durationMs: 12,

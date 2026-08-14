@@ -1,3 +1,4 @@
+# 定义 UI 设计 Skill 的界面元数据。
 interface:
   display_name: 'Everlearn UI Design'
   short_description: '设计、实现并验收精致一致、可访问且高度复用的 Everlearn 产品界面'

@@ -1,4 +1,4 @@
-/** @fileoverview Validates list queries and encodes opaque knowledge-base cursors. */
+/** @fileoverview 校验列表查询并编码不透明知识库游标。 */
 
 import { Type } from 'class-transformer';
 import {
@@ -20,14 +20,14 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/u;
 const CURSOR_KEYS = ['id', 'updatedAtMicros', 'v'] as const;
 
-/** Carries the exact lossless tuple used to continue stable list ordering. */
+/** 用于承载继续稳定排序所需的无损元组。 */
 export interface KnowledgeBaseCursorPayload {
   readonly id: string;
   readonly updatedAtMicros: string;
   readonly v: typeof CURSOR_VERSION;
 }
 
-/** Rejects decimal timestamps that cannot safely enter the PostgreSQL bigint boundary. */
+/** 用于拒绝无法安全进入 PostgreSQL bigint 边界的小数时间戳。 */
 function isCanonicalUpdatedAtMicros(value: unknown): value is string {
   return (
     typeof value === 'string' &&
@@ -36,7 +36,7 @@ function isCanonicalUpdatedAtMicros(value: unknown): value is string {
   );
 }
 
-/** Recognizes the exact canonical cursor payload and rejects extra properties. */
+/** 用于识别规范游标载荷并拒绝额外属性。 */
 function isKnowledgeBaseCursorPayload(value: unknown): value is KnowledgeBaseCursorPayload {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
   const candidate = value as Record<string, unknown>;
@@ -52,12 +52,12 @@ function isKnowledgeBaseCursorPayload(value: unknown): value is KnowledgeBaseCur
   );
 }
 
-/** Serializes an already validated cursor payload in one stable JSON property order. */
+/** 用于按稳定 JSON 属性顺序序列化有效游标。 */
 function serializeCursorPayload(payload: KnowledgeBaseCursorPayload): string {
   return JSON.stringify({ v: payload.v, updatedAtMicros: payload.updatedAtMicros, id: payload.id });
 }
 
-/** Encodes a canonical lossless list cursor for transport. */
+/** 用于编码规范且无损的列表传输游标。 */
 export function encodeKnowledgeBaseCursor(payload: KnowledgeBaseCursorPayload): string {
   if (!isKnowledgeBaseCursorPayload(payload)) {
     throw new TypeError('Knowledge-base cursor payload must be canonical.');
@@ -65,7 +65,7 @@ export function encodeKnowledgeBaseCursor(payload: KnowledgeBaseCursorPayload): 
   return Buffer.from(serializeCursorPayload(payload), 'utf8').toString('base64url');
 }
 
-/** Parses JSON while keeping malformed input on the non-throwing decode path. */
+/** 用于解析 JSON 并让非法输入保持非抛错解码路径。 */
 function parseCursorJson(json: string): unknown {
   try {
     return JSON.parse(json) as unknown;
@@ -74,7 +74,7 @@ function parseCursorJson(json: string): unknown {
   }
 }
 
-/** Decodes a canonical opaque cursor, returning undefined for every invalid input. */
+/** 用于解码规范不透明游标，非法输入统一返回 undefined。 */
 export function decodeKnowledgeBaseCursor(cursor: string): KnowledgeBaseCursorPayload | undefined {
   if (cursor.length === 0 || cursor.length > MAX_CURSOR_LENGTH || !BASE64URL_PATTERN.test(cursor)) {
     return undefined;
@@ -93,13 +93,13 @@ export function decodeKnowledgeBaseCursor(cursor: string): KnowledgeBaseCursorPa
   return encodeKnowledgeBaseCursor(payload) === cursor ? payload : undefined;
 }
 
-/** Builds the class-validator decorator backed by the non-throwing cursor decoder. */
+/** 用于以非抛错解码器构造 class-validator 装饰器。 */
 function IsKnowledgeBaseCursor(validationOptions?: ValidationOptions): PropertyDecorator {
   return ValidateBy(
     {
       name: 'isKnowledgeBaseCursor',
       validator: {
-        /** Accepts only strings that round-trip through the canonical cursor codec. */
+        /** 用于只接受可按规范游标编解码往返的字符串。 */
         validate: (value: unknown): boolean =>
           typeof value === 'string' && decodeKnowledgeBaseCursor(value) !== undefined,
       },
@@ -108,7 +108,7 @@ function IsKnowledgeBaseCursor(validationOptions?: ValidationOptions): PropertyD
   );
 }
 
-/** Accepts optional cursor pagination controls for knowledge-base listing. */
+/** 用于接收知识库列表的可选游标分页参数。 */
 export class ListKnowledgeBasesQueryDto {
   @IsOptional()
   @IsString()

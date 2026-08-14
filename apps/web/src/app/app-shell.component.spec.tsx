@@ -1,4 +1,4 @@
-/** @fileoverview Verifies desktop and mobile shell navigation behavior. */
+/** @fileoverview 验证桌面和移动端应用壳导航行为。 */
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -8,19 +8,19 @@ import { ThemeProvider } from './theme-provider';
 
 let mockPathname = '/knowledge';
 
-/** Returns the stable pathname used by the shell component test. */
+/** 用于返回应用壳组件测试的稳定路径。 */
 function useMockPathname(): string {
   return mockPathname;
 }
 
-/** Provides the narrow App Router surface consumed by the shell. */
+/** 用于提供应用壳所需的最小 App Router 接口。 */
 function createNavigationMock(): { usePathname: typeof useMockPathname } {
   return { usePathname: useMockPathname };
 }
 
 vi.mock('next/navigation', createNavigationMock);
 
-/** Clears shared DOM and browser persistence after each shell scenario. */
+/** 用于在每个应用壳场景后清理 DOM 和浏览器持久化。 */
 function resetShell(): void {
   cleanup();
   localStorage.clear();
@@ -30,7 +30,7 @@ function resetShell(): void {
 
 afterEach(resetShell);
 
-/** Renders the shell with the stable knowledge page used by component scenarios. */
+/** 用于以稳定知识库页面渲染应用壳。 */
 function renderShell(): void {
   render(
     <ThemeProvider>
@@ -43,7 +43,7 @@ function renderShell(): void {
   );
 }
 
-/** Confirms route context, title focus, and persisted panel controls remain accessible. */
+/** 用于验证路由上下文、标题焦点和面板控件保持可访问。 */
 async function rendersDesktopShell(): Promise<void> {
   sessionStorage.setItem('everlearn-right-panel:/knowledge', 'true');
   renderShell();
@@ -53,7 +53,7 @@ async function rendersDesktopShell(): Promise<void> {
   expect(screen.getByRole('banner').className).not.toBe('');
   expect(screen.getByRole('complementary', { name: '工作区导航' }).className).not.toBe('');
   await waitFor(
-    /** Verifies focus follows the route content after the shell mounts. */
+    /** 用于验证应用壳挂载后焦点跟随路由内容。 */
     () => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus(),
   );
 
@@ -64,12 +64,12 @@ async function rendersDesktopShell(): Promise<void> {
   expect(screen.getByRole('complementary', { name: '当前上下文' })).toBeVisible();
 }
 
-/** Confirms mobile drawers expose navigation and explain desktop-only creation. */
+/** 用于验证移动抽屉提供导航并说明仅桌面创建限制。 */
 async function rendersMobileReadingControls(): Promise<void> {
   mockPathname = '/tutorials';
   renderShell();
   await waitFor(
-    /** Waits for route focus before simulating a later user interaction. */
+    /** 用于等待路由焦点稳定后再模拟用户交互。 */
     () => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus(),
   );
 
@@ -81,7 +81,7 @@ async function rendersMobileReadingControls(): Promise<void> {
   expect(drawer).toHaveTextContent('资讯');
   fireEvent.click(screen.getByRole('button', { name: '关闭导航' }));
   await waitFor(
-    /** Verifies the Mantine Drawer restores focus to the mobile trigger. */
+    /** 用于验证 Mantine Drawer 将焦点恢复到移动端触发器。 */
     () => expect(menuTrigger).toHaveFocus(),
   );
 
@@ -89,12 +89,12 @@ async function rendersMobileReadingControls(): Promise<void> {
   expect(await screen.findByRole('dialog', { name: '请在桌面端创作' })).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: '返回阅读' }));
   await waitFor(
-    /** Waits for Mantine's exit transition to unmount the dialog. */
+    /** 用于等待 Mantine 退出过渡卸载对话框。 */
     () => expect(screen.queryByRole('dialog', { name: '请在桌面端创作' })).not.toBeInTheDocument(),
   );
 }
 
-/** Confirms nested routes retain their primary destination and mobile policy. */
+/** 用于验证嵌套路由保留一级入口和移动端策略。 */
 function rendersNestedRoutePolicy(): void {
   mockPathname = '/knowledge/library-1/documents/document-1';
   renderShell();

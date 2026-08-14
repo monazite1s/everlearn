@@ -1,3 +1,4 @@
+# 定义务实架构 Skill 的界面元数据。
 interface:
   display_name: 'Everlearn Pragmatic Architecture'
   short_description: '设计可扩展但不过度设计的模块边界，并明确记录必要设计模式'

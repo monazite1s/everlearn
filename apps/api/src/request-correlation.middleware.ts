@@ -1,5 +1,5 @@
 /**
- * @fileoverview Correlates API requests and emits completion logs from a safe field allowlist.
+ * @fileoverview 关联 API 请求并按安全字段白名单记录完成日志。
  */
 
 import { randomUUID } from 'node:crypto';
@@ -22,12 +22,12 @@ export interface HttpCompletionLog extends CompletionLogInput {
   event: 'http.request.completed';
 }
 
-/** Keeps a valid UUID supplied by the caller or creates a new UUID v4. */
+/** 用于保留有效请求标识，否则生成 UUID v4。 */
 export function resolveRequestId(candidate: string | undefined): string {
   return candidate !== undefined && isUUID(candidate) ? candidate : randomUUID();
 }
 
-/** Produces the only fields permitted in routine HTTP completion logs. */
+/** 用于生成 HTTP 完成日志允许记录的字段。 */
 export function createHttpCompletionLog(input: CompletionLogInput): HttpCompletionLog {
   return {
     durationMs: input.durationMs,
@@ -39,18 +39,18 @@ export function createHttpCompletionLog(input: CompletionLogInput): HttpCompleti
   };
 }
 
-/** Assigns request IDs before routing and logs a safe completion summary. */
+/** 用于在路由前分配请求标识并记录安全摘要。 */
 @Injectable()
 export class RequestCorrelationMiddleware implements NestMiddleware {
   private readonly logger = new Logger(RequestCorrelationMiddleware.name);
 
-  /** Correlates one request without inspecting headers other than the request ID. */
+  /** 用于关联单次请求且不读取其他请求头。 */
   use(request: Request, response: Response, next: NextFunction): void {
     const requestId = resolveRequestId(request.header(REQUEST_ID_HEADER));
     const startedAt = performance.now();
     response.setHeader(REQUEST_ID_HEADER, requestId);
 
-    /** Logs after Express has finalized the status code and response. */
+    /** 用于在 Express 确定响应后记录最终状态。 */
     const logCompletion = (): void => {
       this.logger.log(
         createHttpCompletionLog({

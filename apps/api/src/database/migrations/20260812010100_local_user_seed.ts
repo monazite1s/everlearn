@@ -1,4 +1,4 @@
-/** @fileoverview Seeds the stable local development identity independently from schema DDL. */
+/** @fileoverview 独立于 Schema DDL 写入稳定本地开发身份。 */
 
 import type { Migration } from 'kysely/migration' with { 'resolution-mode': 'import' };
 
@@ -7,7 +7,7 @@ import { LOCAL_USER_ID } from '../../local-identity.constants';
 export { LOCAL_USER_ID };
 
 export const localUserSeedMigration: Migration = {
-  /** Inserts the stable local user once without overwriting an existing identity. */
+  /** 用于写入稳定本地用户且不覆盖已有身份。 */
   async up(database): Promise<void> {
     await database
       .insertInto('users')
@@ -19,7 +19,7 @@ export const localUserSeedMigration: Migration = {
       .onConflict((conflict) => conflict.column('id').doNothing())
       .execute();
   },
-  /** Removes only the known local seed and preserves all unrelated identities. */
+  /** 用于只删除已知本地种子并保留其他身份。 */
   async down(database): Promise<void> {
     await database.deleteFrom('users').where('id', '=', LOCAL_USER_ID).execute();
   },

@@ -1,4 +1,4 @@
-/** @fileoverview Verifies knowledge-base HTTP behavior against an isolated real PostgreSQL schema. */
+/** @fileoverview 在隔离的真实 PostgreSQL Schema 中验证知识库 HTTP 行为。 */
 import type { Server } from 'node:http';
 
 import type { KnowledgeBaseListResponse, KnowledgeBaseSummary } from '@everlearn/contracts' with {
@@ -34,21 +34,21 @@ const otherUserId = '10000000-0000-4000-8000-000000000001';
 const summaryKeys = ['description', 'documentCount', 'id', 'kind', 'name', 'updatedAt', 'version'];
 let application: INestApplication | undefined;
 let database: Kysely<DatabaseSchema> | undefined;
-/** Returns a deterministic valid UUID for one knowledge-base fixture. */
+/** 用于为知识库夹具生成确定的有效 UUID。 */
 function knowledgeBaseId(sequence: number): string {
   return `20000000-0000-4000-8000-${sequence.toString(16).padStart(12, '0')}`;
 }
-/** Returns a deterministic valid UUID for one document fixture. */
+/** 用于为文档夹具生成确定的有效 UUID。 */
 function documentId(sequence: number): string {
   return `30000000-0000-4000-8000-${sequence.toString(16).padStart(12, '0')}`;
 }
-/** Adds a per-connection search path without exposing or altering credentials. */
+/** 用于设置连接级搜索路径且不读取或修改凭据。 */
 function createScopedDatabaseUrl(connectionString: string): string {
   const url = new URL(connectionString);
   url.searchParams.set('options', `-csearch_path=${schemaName}`);
   return url.toString();
 }
-/** Supplies required non-production configuration before AppModule is imported. */
+/** 用于在导入 AppModule 前提供必要的非生产配置。 */
 function applyFixtureEnvironment(scopedDatabaseUrl: string): void {
   process.env.DATABASE_URL = scopedDatabaseUrl;
   process.env.REDIS_URL = 'redis://127.0.0.1:6379';
@@ -60,7 +60,7 @@ function applyFixtureEnvironment(scopedDatabaseUrl: string): void {
   process.env.S3_SECRET_KEY = 'integration-test-secret';
 }
 
-/** Creates an isolated migrated schema and starts the production Nest application. */
+/** 用于创建已迁移隔离 Schema 并启动生产 Nest 应用。 */
 async function prepareApplication(): Promise<void> {
   const adminDatabase = await createDatabaseClient(databaseUrl!);
   await adminDatabase.schema.createSchema(schemaName).execute();
@@ -80,7 +80,7 @@ async function prepareApplication(): Promise<void> {
   await application.init();
 }
 
-/** Stops owned pools and drops all isolated test relations. */
+/** 用于关闭自有连接池并删除隔离测试关系。 */
 async function cleanApplication(): Promise<void> {
   await application?.close();
   await database?.destroy();
@@ -89,25 +89,25 @@ async function cleanApplication(): Promise<void> {
   await adminDatabase.destroy();
 }
 
-/** Removes mutable fixtures while preserving the production local-user seed. */
+/** 用于删除可变夹具并保留生产本地用户种子。 */
 async function resetFixtures(): Promise<void> {
   await database!.deleteFrom('documents').execute();
   await database!.deleteFrom('knowledge_bases').execute();
   await database!.deleteFrom('users').where('id', '!=', LOCAL_USER_ID).execute();
 }
 
-/** Returns the initialized HTTP adapter server accepted by Supertest. */
+/** 用于返回 Supertest 可接收的已初始化 HTTP 适配器服务。 */
 function getHttpServer(): Server {
   if (application === undefined) throw new Error('Test application is not initialized');
   return application.getHttpServer() as Server;
 }
 
-/** Parses one JSON response into the projection expected by the current assertion. */
+/** 用于将 JSON 响应解析为当前断言所需投影。 */
 function parseBody<ResponseBody>(response: { text: string }): ResponseBody {
   return JSON.parse(response.text) as ResponseBody;
 }
 
-/** Asserts the complete public summary projection without persistence fields. */
+/** 用于断言不含持久化字段的完整公开摘要投影。 */
 function expectSafeSummary(
   summary: KnowledgeBaseSummary,
   name: string,
@@ -120,7 +120,7 @@ function expectSafeSummary(
   expect(Number.isNaN(Date.parse(summary.updatedAt))).toBe(false);
 }
 
-/** Asserts one stable correlated public error. */
+/** 用于断言稳定且带请求关联的公开错误。 */
 function expectApiError(
   response: { get(field: string): string | undefined; status: number; text: string },
   status: number,
@@ -134,7 +134,7 @@ function expectApiError(
   return body;
 }
 
-/** Inserts the non-local owner used to verify authorization filtering. */
+/** 用于写入验证授权过滤的非本地所有者。 */
 async function insertOtherUser(): Promise<void> {
   await database!
     .insertInto('users')
@@ -142,7 +142,7 @@ async function insertOtherUser(): Promise<void> {
     .execute();
 }
 
-/** Inserts deterministic knowledge-base rows with exact PostgreSQL timestamps. */
+/** 用于以精确 PostgreSQL 时间戳写入确定知识库记录。 */
 async function insertKnowledgeBases(fixtures: readonly KnowledgeBaseFixture[]): Promise<void> {
   const rows: Insertable<KnowledgeBaseTable>[] = fixtures.map((fixture) => ({
     id: fixture.id,
@@ -156,7 +156,7 @@ async function insertKnowledgeBases(fixtures: readonly KnowledgeBaseFixture[]): 
   await database!.insertInto('knowledge_bases').values(rows).execute();
 }
 
-/** Inserts active or soft-deleted document rows for count projections. */
+/** 用于写入有效或软删除文档以验证计数投影。 */
 async function insertDocuments(fixtures: readonly DocumentFixture[]): Promise<void> {
   const rows: Insertable<DocumentTable>[] = fixtures.map((fixture, position) => ({
     id: fixture.id,
@@ -173,7 +173,7 @@ async function insertDocuments(fixtures: readonly DocumentFixture[]): Promise<vo
   await database!.insertInto('documents').values(rows).execute();
 }
 
-/** Returns the number of knowledge bases written by the current scenario. */
+/** 用于返回当前场景写入的知识库数量。 */
 async function countKnowledgeBases(): Promise<number> {
   const result = await database!
     .selectFrom('knowledge_bases')
@@ -182,7 +182,7 @@ async function countKnowledgeBases(): Promise<number> {
   return Number(result.count);
 }
 
-/** Creates trimmed summaries and persists only server-owned identity and kind fields. */
+/** 用于验证创建时裁剪字段且只持久化服务端身份和类型。 */
 async function createsSafeKnowledgeBases(): Promise<void> {
   const describedResponse = await request(getHttpServer())
     .post('/api/v1/knowledge-bases')
@@ -205,7 +205,7 @@ async function createsSafeKnowledgeBases(): Promise<void> {
   expect(Number(ownedNormal.count)).toBe(2);
 }
 
-/** Rejects unsafe create bodies without committing any knowledge base. */
+/** 用于验证不安全创建正文被拒绝且不提交知识库。 */
 async function rejectsInvalidCreateBodies(): Promise<void> {
   const invalidBodies: readonly object[] = [
     { name: '越权', ownerId: otherUserId },
@@ -234,7 +234,7 @@ async function rejectsInvalidCreateBodies(): Promise<void> {
   expect(await countKnowledgeBases()).toBe(0);
 }
 
-/** Creates enough stable rows to exercise default and accepted limit boundaries. */
+/** 用于创建足量稳定记录以验证默认和允许的数量边界。 */
 async function insertLimitFixtures(): Promise<void> {
   const fixtures = Array.from({ length: 21 }, (_, index): KnowledgeBaseFixture => {
     const sequence = index + 1;
@@ -247,7 +247,7 @@ async function insertLimitFixtures(): Promise<void> {
   await insertKnowledgeBases(fixtures);
 }
 
-/** Accepts limit defaults/boundaries and rejects invalid limits and opaque cursors. */
+/** 用于验证有效数量边界并拒绝非法数量和游标。 */
 async function validatesListQuery(): Promise<void> {
   await insertLimitFixtures();
   const defaultResponse = await request(getHttpServer()).get('/api/v1/knowledge-bases');
@@ -282,7 +282,7 @@ async function validatesListQuery(): Promise<void> {
   }
 }
 
-/** Traverses every cursor page while retaining server-reported page boundaries. */
+/** 用于遍历全部游标页并保留服务端返回的分页边界。 */
 async function fetchAllPages(limit: number): Promise<{
   readonly items: KnowledgeBaseSummary[];
   readonly pages: number;
@@ -301,7 +301,7 @@ async function fetchAllPages(limit: number): Promise<{
   throw new Error('Cursor traversal did not terminate');
 }
 
-/** Verifies lossless ordering, owner/lifecycle filtering, and active document counts. */
+/** 用于验证无损排序、所有者与生命周期过滤及有效文档计数。 */
 async function paginatesWithoutLoss(): Promise<void> {
   await insertOtherUser();
   const expectedIds = [7, 2, 8, 6, 1, 4, 5].map(knowledgeBaseId);
@@ -340,7 +340,7 @@ async function paginatesWithoutLoss(): Promise<void> {
   expect(result.items.find((item) => item.id === knowledgeBaseId(2))?.documentCount).toBe(1);
 }
 
-/** Returns one own summary and makes all inaccessible IDs indistinguishable. */
+/** 用于验证自有摘要可读且所有不可访问标识不可区分。 */
 async function readsOnlyOwnActiveKnowledgeBase(): Promise<void> {
   await insertOtherUser();
   await insertKnowledgeBases([
@@ -382,7 +382,7 @@ async function readsOnlyOwnActiveKnowledgeBase(): Promise<void> {
   }
 }
 
-/** Registers the real-database HTTP scenarios only when PostgreSQL is configured. */
+/** 用于仅在配置 PostgreSQL 时注册真实数据库 HTTP 场景。 */
 function defineKnowledgeBaseIntegrationTests(): void {
   beforeAll(prepareApplication, 30_000);
   beforeEach(resetFixtures);

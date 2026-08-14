@@ -1,3 +1,4 @@
+# 定义 PostgreSQL 设计 Skill 的界面元数据。
 interface:
   display_name: 'Everlearn PostgreSQL Design'
   short_description: '设计并审查可维护的数据模型、业务约束、索引策略和安全迁移'

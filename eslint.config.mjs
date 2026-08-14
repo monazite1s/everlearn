@@ -1,5 +1,5 @@
 /**
- * @fileoverview Enforces typed linting, bounded complexity, and concise JSDoc across the workspace.
+ * @fileoverview 统一工作区的类型检查、复杂度和 JSDoc 门禁。
  */
 
 import js from '@eslint/js';
@@ -22,7 +22,6 @@ const ignoredPaths = [
   '**/coverage/**',
   '**/playwright-report/**',
   '**/test-results/**',
-  '**/migrations/**',
   '**/next-env.d.ts',
 ];
 
@@ -103,6 +102,12 @@ export default defineConfig([
           ],
         },
       },
+    },
+  },
+  {
+    files: ['**/migrations/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-argument': 'off',
     },
   },
   {

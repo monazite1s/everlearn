@@ -1,4 +1,4 @@
-/** @fileoverview Owns desktop knowledge-base edit and recycle-bin interactions. */
+/** @fileoverview 管理桌面端知识库编辑和移入回收站交互。 */
 
 'use client';
 
@@ -28,7 +28,7 @@ interface EditFieldsProps {
 
 const ICON_SIZE = 18;
 
-/** Reloads the current server version without discarding the user's edited fields. */
+/** 用于重新读取服务端版本且保留用户编辑字段。 */
 function VersionConflictAlert({
   data,
   onReloaded,
@@ -38,7 +38,7 @@ function VersionConflictAlert({
 }) {
   const [failure, setFailure] = useState<KnowledgeApiFailure>();
   const [loading, setLoading] = useState(false);
-  /** Replaces only the version-bearing summary after a confirmed detail read. */
+  /** 用于在详情确认后只替换带版本摘要。 */
   async function reload(): Promise<void> {
     if (loading) return;
     setLoading(true);
@@ -61,7 +61,7 @@ function VersionConflictAlert({
   );
 }
 
-/** Renders editable fields and conflict guidance using Mantine form controls. */
+/** 用于以 Mantine 表单控件渲染编辑字段和冲突指引。 */
 function EditKnowledgeBaseFields({
   data,
   description,
@@ -98,7 +98,7 @@ function EditKnowledgeBaseFields({
   );
 }
 
-/** Renders cancel and save actions for the metadata dialog. */
+/** 用于渲染元数据对话框的取消和保存操作。 */
 function EditKnowledgeBaseActions({
   disabled,
   onCancel,
@@ -122,7 +122,7 @@ function EditKnowledgeBaseActions({
   );
 }
 
-/** Edits only metadata and preserves input after version conflicts. */
+/** 用于只编辑元数据并在版本冲突后保留输入。 */
 function useEditKnowledgeBase({
   data,
   onSaved,
@@ -136,12 +136,12 @@ function useEditKnowledgeBase({
   const [name, setName] = useState(data.name);
   const [failure, setFailure] = useState<KnowledgeApiFailure>();
   const [saving, setSaving] = useState(false);
-  /** Accepts a newer server version while retaining the current form fields. */
+  /** 用于接收较新服务端版本且保留当前表单字段。 */
   function acceptLatest(latest: KnowledgeBaseSummary): void {
     onSaved(latest);
     setFailure(undefined);
   }
-  /** Saves trimmed metadata against the last observed version. */
+  /** 用于按最后观察版本保存裁剪后的元数据。 */
   async function submit(): Promise<void> {
     const normalizedName = name.trim();
     if (!normalizedName || saving) return;
@@ -169,7 +169,7 @@ function useEditKnowledgeBase({
   };
 }
 
-/** Edits only metadata and preserves input after version conflicts. */
+/** 用于承载只编辑元数据的对话框状态。 */
 function EditKnowledgeBaseModal({
   data,
   onSaved,
@@ -205,7 +205,7 @@ function EditKnowledgeBaseModal({
   );
 }
 
-/** Confirms subtree impact before moving a knowledge base to the recycle bin. */
+/** 用于在知识库移入回收站前确认子树影响。 */
 function DeleteKnowledgeBaseModal({
   data,
   onClose,
@@ -218,7 +218,7 @@ function DeleteKnowledgeBaseModal({
   const router = useRouter();
   const [failure, setFailure] = useState<KnowledgeApiFailure>();
   const [deleting, setDeleting] = useState(false);
-  /** Deletes once and keeps the dialog actionable if confirmation is unknown. */
+  /** 用于只删除一次并在结果不确定时保留可操作对话框。 */
   async function confirmDelete(): Promise<void> {
     if (deleting) return;
     setDeleting(true);
@@ -254,7 +254,7 @@ function DeleteKnowledgeBaseModal({
   );
 }
 
-/** Renders the controlled Mantine menu that opens one management dialog. */
+/** 用于渲染一次只打开一个管理对话框的受控 Mantine 菜单。 */
 function ManagementMenu({
   onChange,
   onSelect,
@@ -302,7 +302,7 @@ function ManagementMenu({
   );
 }
 
-/** Provides desktop-only management through Mantine menus and dialogs. */
+/** 用于通过 Mantine 菜单和对话框提供仅桌面管理。 */
 export function KnowledgeManagement({
   data,
   onSaved,
@@ -312,7 +312,7 @@ export function KnowledgeManagement({
 }) {
   const [dialog, setDialog] = useState<'delete' | 'edit'>();
   const [menuOpened, setMenuOpened] = useState(false);
-  /** Closes the menu before mounting the selected management dialog. */
+  /** 用于在挂载所选管理对话框前关闭菜单。 */
   function selectDialog(selected: 'delete' | 'edit'): void {
     setMenuOpened(false);
     setDialog(selected);

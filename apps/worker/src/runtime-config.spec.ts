@@ -1,5 +1,5 @@
 /**
- * @fileoverview Verifies Worker runtime configuration groups and secret-safe failures.
+ * @fileoverview 验证 Worker 配置组及其密钥安全错误。
  */
 
 import { expect, test } from 'vitest';
@@ -17,14 +17,14 @@ const requiredEnvironment = Object.freeze({
   S3_SECRET_KEY: 'fixture-secret-key',
 });
 
-/** Confirms that the minimum infrastructure configuration is accepted. */
+/** 用于验证最小基础设施配置可以通过。 */
 function acceptsRequiredInfrastructure(): void {
   const configuration = validateRuntimeEnvironment(requiredEnvironment);
   expect(configuration.S3_BUCKET).toBe('everlearn');
   expect(Object.isFrozen(configuration)).toBe(true);
 }
 
-/** Invokes validation without the Redis setting for the assertion below. */
+/** 用于构造缺少 Redis 的配置错误。 */
 function validateMissingRedis(): void {
   validateRuntimeEnvironment({
     DATABASE_URL: requiredEnvironment.DATABASE_URL,
@@ -37,12 +37,12 @@ function validateMissingRedis(): void {
   });
 }
 
-/** Confirms that absent required infrastructure stops startup. */
+/** 用于验证缺少必填基础设施会阻止启动。 */
 function rejectsMissingInfrastructure(): void {
   expect(validateMissingRedis).toThrow(/REDIS_URL/u);
 }
 
-/** Invokes validation with a partial search group for the assertion below. */
+/** 用于构造不完整搜索配置组。 */
 function validatePartialSearchGroup(): void {
   validateRuntimeEnvironment({
     ...requiredEnvironment,
@@ -50,7 +50,7 @@ function validatePartialSearchGroup(): void {
   });
 }
 
-/** Confirms that optional Provider groups are all-or-nothing. */
+/** 用于验证可选 Provider 配置组必须完整提供。 */
 function rejectsPartialProviderGroup(): void {
   expect(validatePartialSearchGroup).toThrow(/SEARCH_API_KEY/u);
   expect(
@@ -58,7 +58,7 @@ function rejectsPartialProviderGroup(): void {
   ).toThrow(/SEARCH_PROVIDER/u);
 }
 
-/** Invokes validation with a malformed secret-bearing setting. */
+/** 用于构造包含密钥的无效配置。 */
 function validateSecretBearingFailure(): void {
   validateRuntimeEnvironment({
     ...requiredEnvironment,
@@ -66,7 +66,7 @@ function validateSecretBearingFailure(): void {
   });
 }
 
-/** Confirms that startup errors identify fields without echoing secret values. */
+/** 用于验证启动错误定位字段但不回显密钥。 */
 function hidesSecretValues(): void {
   try {
     validateSecretBearingFailure();

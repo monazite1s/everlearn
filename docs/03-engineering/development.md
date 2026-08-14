@@ -37,19 +37,20 @@ packages/agent-runtime  Agent 专用状态、Schema 和工具协议
 
 ```ts
 /**
- * @fileoverview Applies accepted AI changes to a versioned document.
+ * @fileoverview 将已确认的 AI 修改写入带版本的文档。
  */
 
-/** Accepts a reviewed patch once and records its generation-backed revision. */
+/** 用于原子接受已审核补丁并记录对应修订。 */
 async function acceptGeneration(input: AcceptGenerationInput): Promise<DocumentRevision> {
-  // Implementation.
+  // 写入与修订记录必须在同一事务中提交。
 }
 ```
 
-- 文件说明只写职责和关键边界，不列目录或作者。
-- 函数说明只写无法由名称和类型表达的行为；只有实际约束、单位或副作用需要时才写 `@param`、`@returns` 或 `@throws`。
-- 队列幂等、重试语义、Agent 工具权限、状态迁移、安全例外和非显然迁移规则必须说明。
-- 内联注释解释“为什么”，不翻译下一行代码；禁止模板化长注释、TODO 堆积和注释掉的代码。
+- 所有自然语言注释使用中文；代码标识符、协议名、库名、JSDoc 标签和工具指令不翻译。
+- 文件说明用一句话界定职责；函数说明用一句话说明存在目的或关键约束。
+- 只有参数单位、抛错、副作用或不变量无法由签名表达时才增加 JSDoc 标签。
+- 内联注释只解释非显然约束；不记录历史、排障过程、方案争论，不复述下一行代码。
+- 禁止教程式长文、正反例凑数、TODO 堆积和注释掉的代码。
 
 ## 数据库与依赖变更
 
@@ -92,6 +93,7 @@ pnpm dev
 pnpm build
 pnpm typecheck
 pnpm lint
+pnpm lint:comments
 pnpm lint:js
 pnpm lint:css
 pnpm format

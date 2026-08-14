@@ -1,9 +1,9 @@
-/** @fileoverview Exposes the API-owned PostgreSQL client to explicit domain modules. */
+/** @fileoverview 向显式领域模块提供 API 所有的 PostgreSQL 客户端。 */
 
 import { Module } from '@nestjs/common';
 
 import { DatabaseService } from './database.service';
 
-/** Registers the database lifecycle without making it an implicit global dependency. */
+/** 用于注册数据库生命周期且不创建隐式全局依赖。 */
 @Module({ exports: [DatabaseService], providers: [DatabaseService] })
 export class DatabaseModule {}

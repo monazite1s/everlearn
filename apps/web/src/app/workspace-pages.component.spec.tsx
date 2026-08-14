@@ -1,4 +1,4 @@
-/** @fileoverview Verifies every explicit workspace route owns a focusable module entry page. */
+/** @fileoverview 验证每个显式工作区路由都有可聚焦模块入口页。 */
 
 import { cleanup, render, screen } from '@testing-library/react';
 import { createElement } from 'react';
@@ -24,7 +24,7 @@ const explicitPages: readonly ExplicitPageCase[] = [
 
 afterEach(cleanup);
 
-/** Confirms each module boundary renders its own route title through the shared page frame. */
+/** 用于验证各模块通过共享页面框架渲染自己的路由标题。 */
 function rendersExplicitWorkspacePages(): void {
   for (const page of explicitPages) {
     const view = render(createElement(page.component));

@@ -1,4 +1,4 @@
-/** @fileoverview Renders the persisted knowledge-base overview and desktop management flow. */
+/** @fileoverview 渲染持久化知识库概览和桌面管理流程。 */
 
 'use client';
 
@@ -31,7 +31,7 @@ const KnowledgeManagement = dynamic(
   { ssr: false },
 );
 
-/** Starts and cancels detail reads while exposing an authoritative refresh action. */
+/** 用于启动和取消详情读取并提供权威刷新操作。 */
 function useKnowledgeSummary(
   knowledgeBaseId: string,
 ): [DestinationState, () => void, (data: KnowledgeBaseSummary) => void] {
@@ -41,11 +41,11 @@ function useKnowledgeSummary(
     resourceId: knowledgeBaseId,
   });
   useEffect(
-    /** Synchronizes one visible summary from the same-origin API. */
+    /** 用于从同源 API 同步当前可见摘要。 */
     function synchronizeSummary(): () => void {
       let active = true;
       void getKnowledgeBase(knowledgeBaseId).then(
-        /** Applies only the response belonging to the mounted route. */
+        /** 用于只应用属于当前已挂载路由的响应。 */
         function applyIfActive(result): void {
           if (!active) return;
           setState(
@@ -61,12 +61,12 @@ function useKnowledgeSummary(
     },
     [attempt, knowledgeBaseId],
   );
-  /** Starts a new authoritative detail read. */
+  /** 用于启动新的权威详情读取。 */
   function retry(): void {
     setState({ loading: true, resourceId: knowledgeBaseId });
     setAttempt((current) => current + 1);
   }
-  /** Replaces visible data only after a confirmed API response. */
+  /** 用于只在 API 响应确认后替换可见数据。 */
   function apply(data: KnowledgeBaseSummary): void {
     setState({ data, loading: false, resourceId: knowledgeBaseId });
   }
@@ -75,7 +75,7 @@ function useKnowledgeSummary(
   return [visibleState, retry, apply];
 }
 
-/** Renders a layout-stable overview loading state. */
+/** 用于渲染布局稳定的概览加载态。 */
 function OverviewSkeleton() {
   return (
     <Stack aria-label="正在加载知识库摘要" gap="sm">
@@ -85,7 +85,7 @@ function OverviewSkeleton() {
   );
 }
 
-/** Renders an actionable read failure without exposing inaccessible metadata. */
+/** 用于渲染可操作读取失败且不暴露不可访问元数据。 */
 function OverviewFailure({ error, retry }: { error: KnowledgeApiFailure; retry: () => void }) {
   return (
     <Alert
@@ -109,7 +109,7 @@ function OverviewFailure({ error, retry }: { error: KnowledgeApiFailure; retry: 
   );
 }
 
-/** Renders persisted overview content and an honest document capability boundary. */
+/** 用于渲染持久化概览及明确的文档能力边界。 */
 function OverviewContent({ data }: { data: KnowledgeBaseSummary }) {
   return (
     <section aria-labelledby="knowledge-overview-title" className={styles.overviewSection}>
@@ -125,7 +125,7 @@ function OverviewContent({ data }: { data: KnowledgeBaseSummary }) {
   );
 }
 
-/** Renders the real knowledge-base overview with desktop management and mobile reading. */
+/** 用于渲染支持桌面管理和移动阅读的真实知识库概览。 */
 export function KnowledgeDestination({ knowledgeBaseId }: KnowledgeDestinationProps) {
   const [state, retry, apply] = useKnowledgeSummary(knowledgeBaseId);
   const desktop = useMediaQuery(DESKTOP_QUERY);

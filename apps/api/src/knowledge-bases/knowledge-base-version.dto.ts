@@ -1,11 +1,11 @@
-/** @fileoverview Validates versioned knowledge-base lifecycle requests. */
+/** @fileoverview 校验带版本的知识库生命周期请求。 */
 
 import type { KnowledgeBaseVersionRequest } from '@everlearn/contracts' with {
   'resolution-mode': 'import',
 };
 import { IsInt, Min } from 'class-validator';
 
-/** Accepts the positive version last observed by the caller. */
+/** 用于接收调用方最后观察到的正整数版本。 */
 export class KnowledgeBaseVersionDto implements KnowledgeBaseVersionRequest {
   @IsInt()
   @Min(1)

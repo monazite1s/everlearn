@@ -1,4 +1,4 @@
-/* Establishes browser-level layout defaults shared by every semantic theme. */
+/* 定义所有语义主题共享的浏览器级布局默认值。 */
 
 * {
   box-sizing: border-box;

@@ -1,4 +1,4 @@
-/** @fileoverview Renders the shared knowledge-base destination card used by list surfaces. */
+/** @fileoverview 渲染列表页面共享的知识库入口卡片。 */
 
 import { Badge, Card, Group, Text } from '@mantine/core';
 import type { KnowledgeBaseSummary } from '@everlearn/contracts';
@@ -7,7 +7,7 @@ import Link from 'next/link';
 
 import styles from './knowledge-page.module.css';
 
-/** Converts one UTC timestamp into concise local reading metadata. */
+/** 用于将 UTC 时间转换为简洁本地阅读信息。 */
 function formatUpdatedAt(value: string): string {
   return new Intl.DateTimeFormat('zh-CN', {
     dateStyle: 'medium',
@@ -15,7 +15,7 @@ function formatUpdatedAt(value: string): string {
   }).format(new Date(value));
 }
 
-/** Presents one real knowledge base as a single accessible navigation target. */
+/** 用于将真实知识库呈现为单一可访问导航目标。 */
 export function KnowledgeBaseCard({ knowledgeBase }: { knowledgeBase: KnowledgeBaseSummary }) {
   return (
     <Card

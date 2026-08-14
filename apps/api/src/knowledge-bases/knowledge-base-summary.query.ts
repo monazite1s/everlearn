@@ -1,4 +1,4 @@
-/** @fileoverview Defines the exact owner-scoped knowledge-base summary projection. */
+/** @fileoverview 定义严格限定所有者的知识库摘要投影。 */
 
 import type { KnowledgeBaseSummary } from '@everlearn/contracts' with {
   'resolution-mode': 'import',
@@ -19,7 +19,7 @@ export interface KnowledgeBaseProjectionRow {
   version: number;
 }
 
-/** Converts PostgreSQL count text without admitting overflow or invalid values. */
+/** 用于转换 PostgreSQL 计数字符串并拒绝溢出或非法值。 */
 function parseDocumentCount(value: unknown): number {
   if (typeof value !== 'string' || !/^(0|[1-9]\d*)$/u.test(value)) {
     throw new TypeError('Database returned an invalid document count');
@@ -31,7 +31,7 @@ function parseDocumentCount(value: unknown): number {
   return count;
 }
 
-/** Maps a database projection to the exact public summary contract. */
+/** 用于将数据库投影映射为严格公开摘要契约。 */
 export function toKnowledgeBaseSummary(row: KnowledgeBaseProjectionRow): KnowledgeBaseSummary {
   return {
     description: row.description,
@@ -44,7 +44,7 @@ export function toKnowledgeBaseSummary(row: KnowledgeBaseProjectionRow): Knowled
   };
 }
 
-/** Reads one active knowledge base without disclosing missing or foreign records. */
+/** 用于读取有效知识库且不泄露缺失或他人记录。 */
 export async function readActiveKnowledgeBaseSummary(
   executor: Kysely<DatabaseSchema> | Transaction<DatabaseSchema>,
   id: string,

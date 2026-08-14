@@ -1,4 +1,4 @@
-/** @fileoverview Provides the fixed local actor without trusting client-supplied ownership data. */
+/** @fileoverview 提供不信任客户端所有权数据的固定本地操作者。 */
 
 import { Injectable } from '@nestjs/common';
 
@@ -12,10 +12,10 @@ export interface CurrentActor {
 
 const LOCAL_ACTOR: CurrentActor = Object.freeze({ ownerId: LOCAL_USER_ID });
 
-/** Supplies the current actor boundary that later authentication can replace. */
+/** 用于提供可替换的当前操作者边界。 */
 @Injectable()
 export class LocalIdentityContext {
-  /** Returns an immutable actor derived exclusively from server configuration. */
+  /** 用于返回仅由服务端配置派生的不可变操作者。 */
   getActor(): CurrentActor {
     return LOCAL_ACTOR;
   }

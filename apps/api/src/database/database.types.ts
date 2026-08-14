@@ -1,4 +1,4 @@
-/** @fileoverview Defines the PostgreSQL row contract shared by typed Kysely queries. */
+/** @fileoverview 定义 Kysely 类型查询共享的 PostgreSQL 行契约。 */
 
 import type { ColumnType } from 'kysely' with { 'resolution-mode': 'import' };
 

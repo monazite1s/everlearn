@@ -1,4 +1,4 @@
-/** @fileoverview Executes ordered application migrations with explicit direction and failure reporting. */
+/** @fileoverview 按显式方向执行有序迁移并报告失败。 */
 
 import type { Kysely } from 'kysely' with { 'resolution-mode': 'import' };
 import type {
@@ -32,15 +32,15 @@ export interface MigrationExecutionSummary {
   executedMigrations: readonly string[];
 }
 
-/** Supplies the checked-in migration registry in deterministic name order. */
+/** 用于按稳定名称顺序提供已提交迁移注册表。 */
 class ApplicationMigrationProvider implements MigrationProvider {
-  /** Returns a fresh registry so callers cannot mutate the application definition. */
+  /** 用于返回新注册表，避免调用方修改应用定义。 */
   getMigrations(): Promise<Record<string, Migration>> {
     return Promise.resolve({ ...applicationMigrations });
   }
 }
 
-/** Collects only migrations committed successfully by the completed operation. */
+/** 用于只收集本次操作成功提交的迁移。 */
 function collectSuccessfulMigrations(results: readonly MigrationResult[] | undefined): string[] {
   const executed = [];
   for (const result of results ?? []) {
@@ -49,12 +49,12 @@ function collectSuccessfulMigrations(results: readonly MigrationResult[] | undef
   return executed;
 }
 
-/** Wraps an unknown migration failure without discarding its original cause. */
+/** 用于包装未知迁移错误并保留原始原因。 */
 function createMigrationError(direction: MigrationDirection, cause: unknown): Error {
   return new Error(`Database migration ${direction} failed`, { cause });
 }
 
-/** Runs all pending migrations up or exactly one applied migration down. */
+/** 用于执行全部待升级迁移或回退一个已应用迁移。 */
 export async function runMigrations(
   database: Kysely<DatabaseSchema>,
   options: MigrationExecutionOptions,

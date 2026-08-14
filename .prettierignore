@@ -1,3 +1,4 @@
+# 排除依赖、生成物、报告和锁文件。
 node_modules
 .next
 .turbo

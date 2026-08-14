@@ -30,7 +30,7 @@ Read references/pattern-record.md whenever a design pattern or cross-module abst
 
 For every actual design pattern:
 
-- Mark the primary implementation symbol with JSDoc tag @designPattern followed by the pattern name and the problem it solves.
+- Mark the primary implementation symbol with `@designPattern`; use one concise Chinese sentence for the pattern name and problem.
 - Record location, problem, why direct code is insufficient, consequences, and removal trigger in the task evidence.
 - Update an architecture document or ADR when the pattern affects more than one module or public contract.
 

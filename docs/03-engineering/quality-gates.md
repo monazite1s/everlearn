@@ -29,6 +29,7 @@ ESLint 使用 flat config、TypeScript type-aware、Next/Nest 推荐规则、`es
 - `max-lines`、`max-lines-per-function`、`complexity`、`max-depth`、`max-params`、`max-classes-per-file`。
 - `no-console`、`import/no-cycle`、`@typescript-eslint/no-explicit-any`、`no-floating-promises`、`no-misused-promises`、`consistent-type-imports`。
 - JS/TS/TSX 文件 `@fileoverview` 和所有函数、方法、React 组件 JSDoc 缺失。
+- 手写源码的自然语言注释缺少中文，或支持注释的手写文件缺少中文文件说明。
 
 Stylelint 使用 standard config；禁止 `!important`，选择器嵌套不超过 3 层，颜色、间距、圆角、阴影和动效时长必须引用 Design Tokens。
 

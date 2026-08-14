@@ -1,4 +1,4 @@
-/** @fileoverview Verifies real overview management, conflicts, deletion, and inaccessible states. */
+/** @fileoverview 验证真实概览管理、冲突、删除和不可访问状态。 */
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { KnowledgeBaseSummary } from '@everlearn/contracts';
@@ -9,19 +9,19 @@ import { KnowledgeDestination } from './knowledge-destination';
 
 const routerPush = vi.fn();
 
-/** Returns the narrow router surface consumed after deletion. */
+/** 用于返回删除后所需的最小路由接口。 */
 function useMockRouter() {
   return { push: routerPush };
 }
 
-/** Provides only the App Router function used by the destination feature. */
+/** 用于只提供概览功能使用的 App Router 接口。 */
 function createNavigationMock() {
   return { useRouter: useMockRouter };
 }
 
 vi.mock('next/navigation', createNavigationMock);
 
-/** Builds one exact server summary for overview scenarios. */
+/** 用于构造概览场景所需的严格服务端摘要。 */
 function summary(overrides: Partial<KnowledgeBaseSummary> = {}): KnowledgeBaseSummary {
   return {
     description: '长期学习说明。',
@@ -35,16 +35,16 @@ function summary(overrides: Partial<KnowledgeBaseSummary> = {}): KnowledgeBaseSu
   };
 }
 
-/** Returns the minimal fetch response consumed by the API adapter. */
+/** 用于返回 API 适配器所需的最小 Fetch 响应。 */
 function jsonResponse(body: unknown, status = 200): Response {
   return {
-    /** Resolves one deterministic payload. */
+    /** 用于返回确定响应载荷。 */
     json: () => Promise.resolve(body),
     status,
   } as Response;
 }
 
-/** Returns a deterministic viewport query result for responsive capability tests. */
+/** 用于为响应式能力测试返回确定视口查询结果。 */
 function matchViewport(matches: boolean): (query: string) => MediaQueryList {
   return (query) =>
     ({
@@ -59,7 +59,7 @@ function matchViewport(matches: boolean): (query: string) => MediaQueryList {
     }) as MediaQueryList;
 }
 
-/** Renders the destination inside the production UI provider. */
+/** 用于在生产 UI Provider 中渲染概览页面。 */
 function renderDestination(id = summary().id, desktop = true): ReturnType<typeof render> {
   vi.stubGlobal('matchMedia', matchViewport(desktop));
   return render(
@@ -69,7 +69,7 @@ function renderDestination(id = summary().id, desktop = true): ReturnType<typeof
   );
 }
 
-/** Restores request, router, and DOM state after each scenario. */
+/** 用于在每个场景后恢复请求、路由和 DOM 状态。 */
 function resetScenario(): void {
   cleanup();
   routerPush.mockReset();
@@ -78,7 +78,7 @@ function resetScenario(): void {
 
 afterEach(resetScenario);
 
-/** Saves trimmed metadata with the observed version and renders confirmed facts. */
+/** 用于验证按观察版本保存裁剪元数据并渲染确认事实。 */
 async function updatesMetadata(): Promise<void> {
   const initial = summary();
   const updated = summary({ description: '新说明', name: '新名称', version: 2 });
@@ -110,7 +110,7 @@ async function updatesMetadata(): Promise<void> {
   expect(request.body).toBe(JSON.stringify({ description: '新说明', name: '新名称', version: 1 }));
 }
 
-/** Preserves edited values and shows actionable guidance after a version conflict. */
+/** 用于验证版本冲突后保留编辑值并展示可操作指引。 */
 async function retainsInputAfterConflict(): Promise<void> {
   const latest = summary({ description: '服务端新说明', version: 2 });
   const fetchMock = vi
@@ -141,7 +141,7 @@ async function retainsInputAfterConflict(): Promise<void> {
   expect(screen.queryByText(/存在新版本/)).not.toBeInTheDocument();
 }
 
-/** Keeps failed edits visible until cancellation removes draft and error state. */
+/** 用于验证失败编辑保持可见直到取消清除草稿和错误。 */
 async function preservesFailureUntilCancelled(): Promise<void> {
   vi.stubGlobal(
     'fetch',
@@ -168,7 +168,7 @@ async function preservesFailureUntilCancelled(): Promise<void> {
   expect(screen.queryByText('暂时无法保存。')).not.toBeInTheDocument();
 }
 
-/** Requires destructive confirmation and returns to the list after a confirmed 204. */
+/** 用于验证危险操作需要确认且成功后返回列表。 */
 async function deletesAfterConfirmation(): Promise<void> {
   const fetchMock = vi
     .fn()
@@ -189,7 +189,7 @@ async function deletesAfterConfirmation(): Promise<void> {
   expect(request.body).toBe(JSON.stringify({ version: 1 }));
 }
 
-/** Keeps an unknown delete visible and safely retries the exact version request. */
+/** 用于验证未知删除结果保持可见并安全重试相同版本。 */
 async function retriesUnknownDelete(): Promise<void> {
   const fetchMock = vi
     .fn()
@@ -213,7 +213,7 @@ async function retriesUnknownDelete(): Promise<void> {
   expect(firstRequest.body).toBe(secondRequest.body);
 }
 
-/** Keeps a version-conflicted deletion on the page with actionable guidance. */
+/** 用于验证删除版本冲突留在页面并展示可操作指引。 */
 async function keepsDeleteConflictVisible(): Promise<void> {
   vi.stubGlobal(
     'fetch',
@@ -234,7 +234,7 @@ async function keepsDeleteConflictVisible(): Promise<void> {
   expect(routerPush).not.toHaveBeenCalled();
 }
 
-/** Hides inaccessible metadata and omits retry behavior for stable 404 responses. */
+/** 用于验证稳定 404 隐藏元数据且不提供重试。 */
 async function rendersInaccessibleState(): Promise<void> {
   vi.stubGlobal(
     'fetch',
@@ -255,7 +255,7 @@ async function rendersInaccessibleState(): Promise<void> {
   expect(screen.queryByRole('button', { name: '知识库操作' })).not.toBeInTheDocument();
 }
 
-/** Removes the prior resource actions immediately when a dynamic route ID changes. */
+/** 用于验证动态路由标识变化时立即移除旧资源操作。 */
 async function isolatesDynamicRouteChanges(): Promise<void> {
   const nextId = '22222222-2222-4222-8222-222222222222';
   const fetchMock = vi
@@ -276,7 +276,7 @@ async function isolatesDynamicRouteChanges(): Promise<void> {
   expect(screen.getByLabelText('正在加载知识库')).toBeVisible();
 }
 
-/** Omits desktop management capability from a mobile reading viewport. */
+/** 用于验证移动阅读视口不提供桌面管理能力。 */
 async function omitsMobileManagement(): Promise<void> {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(summary())));
   renderDestination(summary().id, false);

@@ -1,4 +1,4 @@
-/** @fileoverview Creates the initial Identity and Knowledge relations and database invariants. */
+/** @fileoverview 创建初始身份、知识库关系及数据库不变量。 */
 
 import type { Kysely } from 'kysely' with { 'resolution-mode': 'import' };
 import type { Migration } from 'kysely/migration' with { 'resolution-mode': 'import' };
@@ -133,7 +133,7 @@ const DOWN_STATEMENTS = [
   'DROP TABLE users',
 ] as const;
 
-/** Executes checked-in static SQL inside the transaction already owned by Kysely Migrator. */
+/** 用于在 Kysely Migrator 管理的事务内执行静态 SQL。 */
 async function executeStatements(
   database: Kysely<DatabaseSchema>,
   statements: readonly string[],
@@ -143,11 +143,11 @@ async function executeStatements(
 }
 
 export const identityKnowledgeSchemaMigration: Migration = {
-  /** Creates the first user-owned knowledge relations in dependency order. */
+  /** 用于按依赖顺序创建用户所有的知识库关系。 */
   async up(database): Promise<void> {
     await executeStatements(database, UP_STATEMENTS);
   },
-  /** Removes the first knowledge relations in reverse dependency order. */
+  /** 用于按反向依赖顺序删除知识库关系。 */
   async down(database): Promise<void> {
     await executeStatements(database, DOWN_STATEMENTS);
   },

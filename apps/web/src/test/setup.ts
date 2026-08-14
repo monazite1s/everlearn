@@ -1,11 +1,11 @@
 /**
- * @fileoverview Registers user-visible DOM assertions for Vitest component tests.
+ * @fileoverview 为 Vitest 组件测试注册用户可见 DOM 断言和浏览器桩。
  */
 
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
 
-/** Returns a deterministic media-query object for browser-only component libraries. */
+/** 用于为浏览器组件库返回确定的媒体查询对象。 */
 function matchMedia(query: string): MediaQueryList {
   return {
     addEventListener: vi.fn(),
@@ -19,21 +19,21 @@ function matchMedia(query: string): MediaQueryList {
   };
 }
 
-/** Tracks observed elements without attempting unavailable JSDOM layout measurement. */
+/** 用于跟踪观察元素且不模拟 JSDOM 不支持的布局测量。 */
 class TestResizeObserver implements ResizeObserver {
   private readonly elements = new Set<Element>();
 
-  /** Releases observed elements between component mounts. */
+  /** 用于在组件挂载之间释放观察元素。 */
   disconnect(): void {
     this.elements.clear();
   }
 
-  /** Accepts an element without simulating layout in JSDOM. */
+  /** 用于接收元素且不在 JSDOM 中模拟布局。 */
   observe(target: Element): void {
     this.elements.add(target);
   }
 
-  /** Stops observing one element without simulating layout in JSDOM. */
+  /** 用于停止观察元素且不在 JSDOM 中模拟布局。 */
   unobserve(target: Element): void {
     this.elements.delete(target);
   }

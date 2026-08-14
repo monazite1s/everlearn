@@ -1,4 +1,4 @@
-/** @fileoverview Verifies optimistic knowledge-base lifecycle behavior against real PostgreSQL. */
+/** @fileoverview 在真实 PostgreSQL 中验证知识库乐观生命周期行为。 */
 
 import type { Server } from 'node:http';
 
@@ -25,14 +25,14 @@ const otherUserId = '41000000-0000-4000-8000-000000000003';
 let application: INestApplication | undefined;
 let database: Kysely<DatabaseSchema> | undefined;
 
-/** Adds a per-connection search path without changing credentials. */
+/** 用于设置连接级搜索路径且不修改凭据。 */
 function createScopedDatabaseUrl(connectionString: string): string {
   const url = new URL(connectionString);
   url.searchParams.set('options', `-csearch_path=${schemaName}`);
   return url.toString();
 }
 
-/** Supplies required non-production configuration before importing AppModule. */
+/** 用于在导入 AppModule 前提供必要的非生产配置。 */
 function applyFixtureEnvironment(scopedDatabaseUrl: string): void {
   process.env.DATABASE_URL = scopedDatabaseUrl;
   process.env.REDIS_URL = 'redis://127.0.0.1:6379';
@@ -44,7 +44,7 @@ function applyFixtureEnvironment(scopedDatabaseUrl: string): void {
   process.env.S3_SECRET_KEY = 'integration-test-secret';
 }
 
-/** Creates an isolated migrated schema and the production Nest application. */
+/** 用于创建已迁移隔离 Schema 和生产 Nest 应用。 */
 async function prepareApplication(): Promise<void> {
   const adminDatabase = await createDatabaseClient(databaseUrl!);
   await adminDatabase.schema.createSchema(schemaName).execute();
@@ -64,7 +64,7 @@ async function prepareApplication(): Promise<void> {
   await application.init();
 }
 
-/** Stops owned pools and drops the isolated test schema. */
+/** 用于关闭自有连接池并删除隔离测试 Schema。 */
 async function cleanApplication(): Promise<void> {
   await application?.close();
   await database?.destroy();
@@ -73,7 +73,7 @@ async function cleanApplication(): Promise<void> {
   await adminDatabase.destroy();
 }
 
-/** Restores a deterministic owner-scoped fixture before each scenario. */
+/** 用于在每个场景前恢复确定的所有者范围夹具。 */
 async function resetFixtures(): Promise<void> {
   await database!.deleteFrom('idempotency_records').execute();
   await database!.deleteFrom('documents').execute();
@@ -87,7 +87,7 @@ async function resetFixtures(): Promise<void> {
   await insertKnowledgeBase({ id: otherId, owner_id: otherUserId });
 }
 
-/** Inserts one lifecycle fixture with explicit ownership and deletion state. */
+/** 用于写入明确所有权和删除状态的生命周期夹具。 */
 async function insertKnowledgeBase(
   input: Pick<Insertable<KnowledgeBaseTable>, 'id' | 'owner_id'> &
     Partial<Pick<Insertable<KnowledgeBaseTable>, 'deleted_at' | 'version'>>,
@@ -106,18 +106,18 @@ async function insertKnowledgeBase(
     .execute();
 }
 
-/** Returns the initialized HTTP adapter accepted by Supertest. */
+/** 用于返回 Supertest 可接收的已初始化 HTTP 适配器。 */
 function getHttpServer(): Server {
   if (application === undefined) throw new Error('Test application is not initialized');
   return application.getHttpServer() as Server;
 }
 
-/** Parses one JSON response into the expected projection. */
+/** 用于将 JSON 响应解析为预期投影。 */
 function parseBody<ResponseBody>(response: { text: string }): ResponseBody {
   return JSON.parse(response.text) as ResponseBody;
 }
 
-/** Asserts one stable correlated public error. */
+/** 用于断言稳定且带请求关联的公开错误。 */
 function expectApiError(
   response: { get(field: string): string | undefined; status: number; text: string },
   status: number,
@@ -129,7 +129,7 @@ function expectApiError(
   expect(body.requestId).toBe(response.get(REQUEST_ID_HEADER));
 }
 
-/** Reads the persisted lifecycle row for exact no-write assertions. */
+/** 用于读取生命周期记录以执行精确未写入断言。 */
 function readKnowledgeBase(id = ownId): Promise<Selectable<KnowledgeBaseTable>> {
   return database!
     .selectFrom('knowledge_bases')
@@ -138,7 +138,7 @@ function readKnowledgeBase(id = ownId): Promise<Selectable<KnowledgeBaseTable>> 
     .executeTakeFirstOrThrow();
 }
 
-/** Inserts active and independently deleted documents, then returns their lifecycle facts. */
+/** 用于写入有效和独立删除文档并返回生命周期事实。 */
 async function insertLifecycleDocuments(): Promise<readonly object[]> {
   const activeId = '42000000-0000-4000-8000-000000000001';
   const deletedId = '42000000-0000-4000-8000-000000000002';
@@ -169,7 +169,7 @@ async function insertLifecycleDocuments(): Promise<readonly object[]> {
   return readDocumentLifecycleFacts();
 }
 
-/** Reads only document fields that knowledge-base lifecycle operations must preserve. */
+/** 用于只读取知识库生命周期操作必须保留的文档字段。 */
 function readDocumentLifecycleFacts(): Promise<readonly object[]> {
   return database!
     .selectFrom('documents')
@@ -187,7 +187,7 @@ function readDocumentLifecycleFacts(): Promise<readonly object[]> {
     .execute();
 }
 
-/** Updates trimmed fields once and rejects stale, empty, or unsafe writes. */
+/** 用于验证裁剪更新成功一次并拒绝过期、空或不安全写入。 */
 async function updatesOptimistically(): Promise<void> {
   const response = await request(getHttpServer())
     .patch(`/api/v1/knowledge-bases/${ownId}`)
@@ -211,7 +211,7 @@ async function updatesOptimistically(): Promise<void> {
   }
 }
 
-/** Makes foreign, missing, and deleted update targets indistinguishable. */
+/** 用于验证他人、缺失和已删除更新目标不可区分。 */
 async function hidesInaccessibleUpdates(): Promise<void> {
   await database!
     .updateTable('knowledge_bases')
@@ -226,7 +226,7 @@ async function hidesInaccessibleUpdates(): Promise<void> {
   }
 }
 
-/** Soft-deletes only the base row and accepts an exact retry without another version bump. */
+/** 用于验证软删除仅修改知识库行且精确重试不增加版本。 */
 async function deletesWithoutRewritingDocuments(): Promise<void> {
   const documentFacts = await insertLifecycleDocuments();
   const first = await request(getHttpServer())
@@ -252,7 +252,7 @@ async function deletesWithoutRewritingDocuments(): Promise<void> {
   expect((await request(getHttpServer()).get(`/api/v1/knowledge-bases/${ownId}`)).status).toBe(404);
 }
 
-/** Restores once, replays the first response, and rejects conflicting key reuse. */
+/** 用于验证恢复一次、重放首次响应并拒绝冲突键复用。 */
 async function restoresIdempotently(): Promise<void> {
   const documentFacts = await insertLifecycleDocuments();
   await database!
@@ -260,7 +260,7 @@ async function restoresIdempotently(): Promise<void> {
     .set({ deleted_at: new Date('2026-08-14T00:00:00Z'), version: 2 })
     .where('id', '=', ownId)
     .execute();
-  /** Sends one restore with the scenario's stable idempotency key. */
+  /** 用于以场景固定幂等键发送恢复请求。 */
   const sendRestore = (version: number): Promise<request.Response> =>
     request(getHttpServer())
       .post(`/api/v1/knowledge-bases/${ownId}/restore`)
@@ -286,7 +286,7 @@ async function restoresIdempotently(): Promise<void> {
   expectApiError(newKeyActive, 409, 'CONFLICT');
 }
 
-/** Rejects missing keys, non-JSON writes, stale versions, and foreign restore targets. */
+/** 用于验证缺失键、非 JSON、过期版本和他人目标被拒绝。 */
 async function rejectsUnsafeLifecycleRequests(): Promise<void> {
   await database!
     .updateTable('knowledge_bases')
@@ -329,7 +329,7 @@ async function rejectsUnsafeLifecycleRequests(): Promise<void> {
   expectApiError(deleteNonJson, 415, 'UNSUPPORTED_MEDIA_TYPE');
 }
 
-/** Rejects stale and foreign delete targets without changing their database facts. */
+/** 用于验证过期和他人删除目标被拒绝且数据库事实不变。 */
 async function rejectsUnsafeDeletes(): Promise<void> {
   const stale = await request(getHttpServer())
     .delete(`/api/v1/knowledge-bases/${ownId}`)
@@ -346,7 +346,7 @@ async function rejectsUnsafeDeletes(): Promise<void> {
   expectApiError(missing, 404, 'NOT_FOUND');
 }
 
-/** Registers real-database scenarios only when PostgreSQL is configured. */
+/** 用于仅在配置 PostgreSQL 时注册真实数据库场景。 */
 function defineLifecycleIntegrationTests(): void {
   beforeAll(prepareApplication, 30_000);
   beforeEach(resetFixtures);

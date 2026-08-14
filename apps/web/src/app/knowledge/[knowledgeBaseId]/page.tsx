@@ -1,4 +1,4 @@
-/** @fileoverview Connects a knowledge-base route to its persisted read-only destination shell. */
+/** @fileoverview 将知识库路由接入持久化概览页面。 */
 
 import type { Metadata } from 'next';
 
@@ -10,7 +10,7 @@ interface KnowledgeDestinationPageProps {
   params: Promise<{ knowledgeBaseId: string }>;
 }
 
-/** Renders the real post-create destination without adding management behavior. */
+/** 用于渲染创建后的真实目标页面。 */
 export default async function KnowledgeDestinationPage({ params }: KnowledgeDestinationPageProps) {
   const { knowledgeBaseId } = await params;
   return <KnowledgeDestination knowledgeBaseId={knowledgeBaseId} />;

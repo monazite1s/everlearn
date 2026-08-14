@@ -1,4 +1,4 @@
-/** @fileoverview Verifies knowledge-base transport projections at compile time. */
+/** @fileoverview 在编译期验证知识库传输投影。 */
 
 import type {
   CreateKnowledgeBaseRequest,

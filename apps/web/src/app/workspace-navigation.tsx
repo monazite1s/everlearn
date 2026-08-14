@@ -1,4 +1,4 @@
-/** @fileoverview Renders Mantine workspace navigation and route-aware mobile creation controls. */
+/** @fileoverview 渲染 Mantine 工作区导航和路由感知的移动端创建控件。 */
 
 'use client';
 
@@ -36,10 +36,10 @@ const routeIcons: Readonly<Record<WorkspaceRouteId, LucideIcon>> = {
   workflows: WorkflowIcon,
 };
 
-/** Renders stable primary destinations with icons and a visible current-page state. */
+/** 用于渲染带图标和明确当前态的一级入口。 */
 export function PrimaryNavigation(props: PrimaryNavigationProps) {
   const { collapsed, navigationId, onNavigate, pathname } = props;
-  /** Renders one destination using Mantine interaction and the knowledge-spine marker. */
+  /** 用于以 Mantine 交互和知识脊线渲染单个入口。 */
   function renderRoute(route: WorkspaceRoute) {
     const current = isWorkspaceRouteCurrent(pathname, route);
     const RouteIcon = routeIcons[route.id];
@@ -71,7 +71,7 @@ export function PrimaryNavigation(props: PrimaryNavigationProps) {
   );
 }
 
-/** Renders primary navigation as a mobile drawer with focus restoration. */
+/** 用于将一级导航渲染为支持焦点恢复的移动抽屉。 */
 export function MobileNavigation({ pathname }: Pick<PrimaryNavigationProps, 'pathname'>) {
   const [opened, { close, toggle }] = useDisclosure(false);
   return (
@@ -97,7 +97,7 @@ export function MobileNavigation({ pathname }: Pick<PrimaryNavigationProps, 'pat
   );
 }
 
-/** Replaces mobile creation with the restriction declared by the current route. */
+/** 用于在移动端展示当前路由声明的创建限制。 */
 export function CreationAction({ route }: { route: WorkspaceRoute }) {
   const [opened, { close, open }] = useDisclosure(false);
   const mobilePolicy = getMobileRoutePolicy(route);

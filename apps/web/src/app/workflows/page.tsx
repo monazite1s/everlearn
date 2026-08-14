@@ -1,4 +1,4 @@
-/** @fileoverview Connects the workflows route to its current module page. */
+/** @fileoverview 将工作流路由接入当前模块页面。 */
 
 import type { Metadata } from 'next';
 
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: '工作流 · Everlearn' };
 
 const route = findWorkspaceRoute('workflows');
 
-/** Renders the independently owned workflows entry page. */
+/** 用于渲染独立归属的工作流入口页。 */
 export default function WorkflowsPage() {
   if (!route) throw new Error('Workflows workspace route is not configured.');
   return <SectionPage route={route} />;

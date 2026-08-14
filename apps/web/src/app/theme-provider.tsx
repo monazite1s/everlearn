@@ -1,5 +1,5 @@
 /**
- * @fileoverview Applies a persisted semantic theme before paint and exposes theme controls.
+ * @fileoverview 在首次绘制前应用持久语义主题并提供主题控制。
  */
 
 'use client';
@@ -70,13 +70,13 @@ export const themeInitializer = `
   root.dataset.mantineColorScheme = dark ? 'dark' : 'light';
 }());`;
 
-/** Resolves system appearance without assuming matchMedia exists in tests. */
+/** 用于解析系统外观且不假设测试环境存在 matchMedia。 */
 function resolveSystemAppearance(): 'dark' | 'light' {
   if (typeof window.matchMedia !== 'function') return 'light';
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-/** Applies semantic theme attributes and returns the resolved color mode. */
+/** 用于应用语义主题属性并返回解析后的颜色模式。 */
 function applyTheme(selection: ThemeSelection): 'dark' | 'light' {
   const colorMode =
     selection.appearance === 'system' ? resolveSystemAppearance() : selection.appearance;
@@ -87,12 +87,12 @@ function applyTheme(selection: ThemeSelection): 'dark' | 'light' {
   return colorMode;
 }
 
-/** Checks whether persisted input names a supported appearance. */
+/** 用于判断持久化输入是否为受支持外观。 */
 function isAppearance(value: string | undefined): value is Appearance {
   return value === 'dark' || value === 'light' || value === 'system';
 }
 
-/** Parses persisted input into a validated theme selection. */
+/** 用于将持久化输入解析为有效主题选择。 */
 function parseThemeSelection(value: string | null): ThemeSelection {
   const [theme, appearance] = value?.split(':') ?? [];
   return {
@@ -101,7 +101,7 @@ function parseThemeSelection(value: string | null): ThemeSelection {
   };
 }
 
-/** Reads and validates the compact local theme preference. */
+/** 用于读取并校验紧凑本地主题偏好。 */
 function readTheme(): ThemeState {
   if (typeof window === 'undefined') {
     return DEFAULT_STATE;
@@ -119,26 +119,26 @@ function readTheme(): ThemeState {
   }
 }
 
-/** Returns one stable client snapshot for React's external-store contract. */
+/** 用于为 React 外部存储契约返回稳定客户端快照。 */
 function getClientState(): ThemeState {
   clientState ??= readTheme();
   return clientState;
 }
 
-/** Returns the deterministic server snapshot used during hydration. */
+/** 用于返回水合期间使用的确定服务端快照。 */
 function getServerState(): ThemeState {
   return DEFAULT_STATE;
 }
 
-/** Subscribes React to local theme changes and changes from other tabs. */
+/** 用于让 React 订阅本地和其他标签页的主题变化。 */
 function subscribeTheme(listener: () => void): () => void {
-  /** Refreshes the snapshot after another tab changes local storage. */
+  /** 用于在其他标签页修改本地存储后刷新快照。 */
   function handleStorage(): void {
     clientState = readTheme();
     applyTheme(clientState.selection);
     listener();
   }
-  /** Removes this consumer and its cross-tab listener. */
+  /** 用于移除当前订阅者及跨标签页监听。 */
   function unsubscribeTheme(): void {
     themeListeners.delete(listener);
     window.removeEventListener('storage', handleStorage);
@@ -149,9 +149,9 @@ function subscribeTheme(listener: () => void): () => void {
   return unsubscribeTheme;
 }
 
-/** Publishes a stable snapshot to all mounted theme consumers. */
+/** 用于向所有已挂载主题订阅者发布稳定快照。 */
 function publishTheme(state: ThemeState): void {
-  /** Notifies one mounted theme consumer. */
+  /** 用于通知单个已挂载主题订阅者。 */
   function notifyThemeListener(listener: () => void): void {
     listener();
   }
@@ -159,7 +159,7 @@ function publishTheme(state: ThemeState): void {
   themeListeners.forEach(notifyThemeListener);
 }
 
-/** Persists a validated theme preference and reports storage availability. */
+/** 用于保存有效主题偏好并返回存储是否可用。 */
 function persistTheme(selection: ThemeSelection): boolean {
   try {
     localStorage.setItem(STORAGE_KEY, `${selection.theme}:${selection.appearance}`);
@@ -169,15 +169,15 @@ function persistTheme(selection: ThemeSelection): boolean {
   }
 }
 
-/** Watches operating-system color changes only while system appearance is selected. */
+/** 用于仅在选择系统外观时监听系统颜色变化。 */
 function watchSystemAppearance(selection: ThemeSelection): (() => void) | undefined {
   if (selection.appearance !== 'system' || typeof window.matchMedia !== 'function') return;
   const media = window.matchMedia('(prefers-color-scheme: dark)');
-  /** Publishes the newly resolved system color mode. */
+  /** 用于发布新解析的系统颜色模式。 */
   function handleSystemChange(): void {
     publishTheme({ ...getClientState(), colorMode: applyTheme(selection) });
   }
-  /** Removes the media listener when the active selection changes. */
+  /** 用于在当前选择变化时移除媒体监听。 */
   function stopWatching(): void {
     media.removeEventListener('change', handleSystemChange);
   }
@@ -185,27 +185,27 @@ function watchSystemAppearance(selection: ThemeSelection): (() => void) | undefi
   return stopWatching;
 }
 
-/** Keeps the external theme store synchronized with operating-system appearance. */
+/** 用于保持外部主题存储与系统外观同步。 */
 function useSystemAppearance(selection: ThemeSelection): void {
-  /** Subscribes the current selection to system appearance changes. */
+  /** 用于让当前选择订阅系统外观变化。 */
   function synchronizeSystemAppearance(): (() => void) | undefined {
     return watchSystemAppearance(selection);
   }
   useEffect(synchronizeSystemAppearance, [selection]);
 }
 
-/** Injects the trusted pre-paint initializer before React hydration. */
+/** 用于在 React 水合前注入可信预绘制初始化器。 */
 export function ThemeScript() {
   return <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />;
 }
 
-/** Owns persisted appearance state without exposing palette values to consumers. */
+/** 用于管理持久外观状态且不向使用方暴露色值。 */
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const state = useSyncExternalStore(subscribeTheme, getClientState, getServerState);
   const { selection } = state;
   useSystemAppearance(selection);
 
-  /** Updates only the palette identity while preserving appearance. */
+  /** 用于只更新色板标识并保留外观。 */
   function setTheme(theme: ThemeId): void {
     const next = { ...selection, theme };
     publishTheme({
@@ -215,7 +215,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     });
   }
 
-  /** Updates light, dark, or system appearance while preserving the palette. */
+  /** 用于更新浅色、深色或系统外观并保留色板。 */
   function setAppearance(appearance: Appearance): void {
     const next = { ...selection, appearance };
     publishTheme({
@@ -240,7 +240,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   );
 }
 
-/** Returns the active theme controller within the application root. */
+/** 用于返回应用根节点中的当前主题控制器。 */
 export function useTheme(): ThemeContextValue {
   const value = useContext(ThemeContext);
   if (!value) throw new Error('useTheme must be used within ThemeProvider.');

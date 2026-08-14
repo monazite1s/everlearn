@@ -1,10 +1,10 @@
-/** @fileoverview Configures shared packages and the transparent same-origin API boundary. */
+/** @fileoverview 配置共享包和透明同源 API 边界。 */
 
 import type { NextConfig } from 'next';
 
 const DEFAULT_API_ORIGIN = 'http://127.0.0.1:3001';
 
-/** Validates the server-only API origin before Next emits rewrite rules. */
+/** 用于在 Next 生成重写规则前校验服务端 API Origin。 */
 function resolveApiOrigin(): string {
   const configured = process.env.API_INTERNAL_URL ?? DEFAULT_API_ORIGIN;
   const url = new URL(configured);
@@ -18,7 +18,7 @@ function resolveApiOrigin(): string {
   return url.origin;
 }
 
-/** Proxies browser API requests without changing status codes, DTOs, or errors. */
+/** 用于代理浏览器 API 请求且不改写状态码、DTO 或错误。 */
 function createApiRewrites() {
   return Promise.resolve([
     {

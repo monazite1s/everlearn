@@ -1,4 +1,4 @@
-/** @fileoverview Verifies the root route renders the knowledge-first home composition. */
+/** @fileoverview 验证根路由渲染知识优先首页组合。 */
 
 import { cleanup, render, screen } from '@testing-library/react';
 import { EverlearnUiProvider } from '@everlearn/ui';
@@ -6,7 +6,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 
 import HomePage from './page';
 
-/** Restores DOM and request state after the route scenario. */
+/** 用于在路由场景后恢复 DOM 和请求状态。 */
 function resetRoute(): void {
   cleanup();
   vi.unstubAllGlobals();
@@ -14,13 +14,13 @@ function resetRoute(): void {
 
 afterEach(resetRoute);
 
-/** Confirms the root route exposes its title and primary knowledge area. */
+/** 用于验证根路由公开标题和主要知识区域。 */
 function rendersWorkspaceEntry(): void {
   vi.stubGlobal(
     'fetch',
     vi.fn().mockReturnValue(
       new Promise(
-        /** Keeps the route in its honest loading state for this structural assertion. */
+        /** 用于让结构断言保持真实加载状态。 */
         () => undefined,
       ),
     ),

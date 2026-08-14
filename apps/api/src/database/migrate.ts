@@ -1,4 +1,4 @@
-/** @fileoverview Runs API database migrations as an explicit build-time command. */
+/** @fileoverview 通过显式命令运行 API 数据库迁移。 */
 
 import { Logger } from '@nestjs/common';
 
@@ -8,13 +8,13 @@ import type { MigrationDirection } from './migration-runner';
 
 const migrationLogger = new Logger('DatabaseMigration');
 
-/** Accepts only the two supported migration directions. */
+/** 用于限定受支持的迁移方向。 */
 function parseDirection(value: string | undefined): MigrationDirection {
   if (value === 'up' || value === 'down') return value;
   throw new Error('Migration direction must be "up" or "down"');
 }
 
-/** Reads and validates the only runtime setting required by the migration process. */
+/** 用于读取并校验迁移进程所需的数据库配置。 */
 function readDatabaseUrl(environment: NodeJS.ProcessEnv): string {
   const value = environment.DATABASE_URL;
   if (value === undefined || value.trim() === '') throw new Error('DATABASE_URL is required');
@@ -25,13 +25,13 @@ function readDatabaseUrl(environment: NodeJS.ProcessEnv): string {
   return value;
 }
 
-/** Logs a migration failure without printing credentials or connection strings. */
+/** 用于记录迁移失败且不输出凭据或连接串。 */
 function reportMigrationFailure(error: unknown): void {
   const trace = error instanceof Error ? error.stack : undefined;
   migrationLogger.error('Database migration failed', trace);
 }
 
-/** Creates one standalone client, executes the requested migration, and always releases it. */
+/** 用于创建独立客户端、执行迁移并确保释放连接。 */
 async function main(): Promise<void> {
   try {
     const database = await createDatabaseClient(readDatabaseUrl(process.env));

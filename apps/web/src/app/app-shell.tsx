@@ -1,4 +1,4 @@
-/** @fileoverview Provides the persistent Mantine workspace shell and navigation behavior. */
+/** @fileoverview 提供持久 Mantine 工作区外壳和导航行为。 */
 
 'use client';
 
@@ -46,14 +46,14 @@ interface WorkspacePanelsProps extends AppShellProps {
 
 const ICON_SIZE = 18;
 
-/** Exposes compact theme controls backed by the single application theme store. */
+/** 用于提供由单一主题存储驱动的紧凑主题控件。 */
 function ThemeControls() {
   const theme = useTheme();
-  /** Applies one validated semantic palette. */
+  /** 用于应用已校验的语义色板。 */
   function handleThemeChange(value: string | null): void {
     theme.setTheme(value === 'neutral' ? 'neutral' : 'paper');
   }
-  /** Applies one validated appearance preference. */
+  /** 用于应用已校验的外观偏好。 */
   function handleAppearanceChange(value: string | null): void {
     theme.setAppearance(value === 'dark' || value === 'light' ? value : 'system');
   }
@@ -79,7 +79,7 @@ function ThemeControls() {
   );
 }
 
-/** Renders global location, search, creation, status, theme, and context actions. */
+/** 用于渲染全局位置、搜索、创建、状态、主题和上下文操作。 */
 function Topbar({ pathname, rightOpen, route, toggleRightPanel }: TopbarProps) {
   const contextLabel = rightOpen ? '收起上下文' : '展开上下文';
   const ContextIcon = rightOpen ? PanelRightCloseIcon : PanelRightOpenIcon;
@@ -128,7 +128,7 @@ function Topbar({ pathname, rightOpen, route, toggleRightPanel }: TopbarProps) {
   );
 }
 
-/** Arranges the current page between persistent navigation and contextual information. */
+/** 用于在持久导航和上下文信息之间排列当前页面。 */
 function WorkspacePanels(props: WorkspacePanelsProps) {
   const { children, leftCollapsed, pathname, route, toggleLeftPanel } = props;
   const CollapseIcon = leftCollapsed ? PanelLeftOpenIcon : PanelLeftCloseIcon;
@@ -168,7 +168,7 @@ function WorkspacePanels(props: WorkspacePanelsProps) {
   );
 }
 
-/** Renders the persistent workspace chrome around the current route content. */
+/** 用于在当前路由内容外渲染持久工作区框架。 */
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const route = getWorkspaceRoute(pathname);

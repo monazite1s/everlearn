@@ -1,5 +1,5 @@
 /**
- * @fileoverview Verifies API health contracts and request correlation through the Nest HTTP adapter.
+ * @fileoverview 通过 Nest HTTP 适配器验证健康契约和请求关联。
  */
 
 import type { Server } from 'node:http';
@@ -22,7 +22,7 @@ interface HealthResponse {
   version: string;
 }
 
-/** Supplies isolated fixture values before the AppModule evaluates its configuration. */
+/** 用于在 AppModule 读取配置前提供隔离测试值。 */
 function applyFixtureEnvironment(): void {
   process.env.DATABASE_URL = 'postgresql://everlearn:fixture@127.0.0.1:5432/everlearn';
   process.env.REDIS_URL = 'redis://127.0.0.1:6379';
@@ -34,7 +34,7 @@ function applyFixtureEnvironment(): void {
   process.env.S3_SECRET_KEY = 'fixture-secret-key';
 }
 
-/** Starts an in-memory HTTP adapter without reserving a fixed host port. */
+/** 用于启动不占用固定端口的内存 HTTP 适配器。 */
 async function startApplication(): Promise<void> {
   applyFixtureEnvironment();
   const { AppModule } = await import('./app.module');
@@ -43,17 +43,17 @@ async function startApplication(): Promise<void> {
   await application.init();
 }
 
-/** Releases the Nest application after all HTTP assertions complete. */
+/** 用于在 HTTP 断言完成后释放 Nest 应用。 */
 async function stopApplication(): Promise<void> {
   await application.close();
 }
 
-/** Narrows Nest's adapter-owned server to the HTTP contract accepted by Supertest. */
+/** 用于将 Nest 适配器服务收窄为 Supertest 所需契约。 */
 function getHttpServer(): Server {
   return application.getHttpServer() as Server;
 }
 
-/** Confirms liveness and readiness expose the same stable, non-cacheable contract. */
+/** 用于验证存活和就绪探针公开稳定且不可缓存的契约。 */
 async function servesHealthContracts(): Promise<void> {
   for (const probe of ['live', 'ready']) {
     const response = await request(getHttpServer()).get(`/api/v1/health/${probe}`);
@@ -65,7 +65,7 @@ async function servesHealthContracts(): Promise<void> {
   }
 }
 
-/** Confirms callers retain valid request IDs while malformed IDs are replaced. */
+/** 用于验证有效请求标识被保留且非法标识被替换。 */
 async function correlatesRequests(): Promise<void> {
   const retained = await request(getHttpServer())
     .get('/api/v1/health/live')

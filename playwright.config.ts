@@ -1,5 +1,5 @@
 /**
- * @fileoverview Runs the foundation browser journey with deterministic local startup and failure artifacts.
+ * @fileoverview 以确定的本地启动流程运行浏览器验收并保留失败产物。
  */
 
 import { defineConfig, devices } from '@playwright/test';

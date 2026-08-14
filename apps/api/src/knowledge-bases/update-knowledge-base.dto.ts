@@ -1,4 +1,4 @@
-/** @fileoverview Validates an optimistic knowledge-base metadata update. */
+/** @fileoverview 校验知识库元数据的乐观更新请求。 */
 
 import type { UpdateKnowledgeBaseRequest } from '@everlearn/contracts' with {
   'resolution-mode': 'import',
@@ -16,23 +16,23 @@ import {
   type ValidationOptions,
 } from 'class-validator';
 
-/** Trims string inputs while preserving non-strings for explicit type validation. */
+/** 用于裁剪字符串且保留非字符串供显式类型校验。 */
 function trimString({ value }: { value: unknown }): unknown {
   return typeof value === 'string' ? value.trim() : value;
 }
 
-/** Runs optional-field validation for every supplied value, including null. */
+/** 用于对包括 null 在内的已提供可选字段执行校验。 */
 function isSupplied(_object: object, value: unknown): boolean {
   return value !== undefined;
 }
 
-/** Returns whether an update includes at least one user-editable field. */
+/** 用于判断更新是否包含至少一个用户可编辑字段。 */
 function hasEditableField(_value: unknown, args: ValidationArguments): boolean {
   const input = args.object as Partial<UpdateKnowledgeBaseRequest>;
   return input.name !== undefined || input.description !== undefined;
 }
 
-/** Registers the cross-field rule that prevents version-only no-op updates. */
+/** 用于注册禁止仅提交版本的跨字段规则。 */
 function HasEditableField(options?: ValidationOptions): PropertyDecorator {
   return (target, propertyName): void => {
     registerDecorator({
@@ -45,7 +45,7 @@ function HasEditableField(options?: ValidationOptions): PropertyDecorator {
   };
 }
 
-/** Accepts only editable knowledge-base fields and a positive observed version. */
+/** 用于限定可编辑字段和正整数观察版本。 */
 export class UpdateKnowledgeBaseDto implements UpdateKnowledgeBaseRequest {
   @Transform(trimString)
   @ValidateIf(isSupplied)

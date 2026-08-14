@@ -1,5 +1,5 @@
 /**
- * @fileoverview Rejects oversized handwritten source and configuration files.
+ * @fileoverview 阻止手写源码和配置文件超过规模上限。
  */
 
 import { readdir, readFile } from 'node:fs/promises';
@@ -34,19 +34,19 @@ const checkedExtensions = new Set([
 ]);
 const ignoredFiles = new Set(['pnpm-lock.yaml']);
 
-/** Returns whether a directory is generated or externally owned. */
+/** 用于跳过生成目录和外部依赖目录。 */
 function shouldIgnoreDirectory(name) {
   return ignoredDirectories.has(name);
 }
 
-/** Returns whether a file belongs to the handwritten formats covered by the limit. */
+/** 用于识别受规模门禁约束的手写文件。 */
 function shouldCheckFile(filePath) {
   return (
     !ignoredFiles.has(path.basename(filePath)) && checkedExtensions.has(path.extname(filePath))
   );
 }
 
-/** Recursively collects eligible files without following directory links. */
+/** 用于递归收集文件且不跟随目录链接。 */
 async function collectFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
@@ -63,7 +63,7 @@ async function collectFiles(directory) {
   return files;
 }
 
-/** Counts physical lines without treating a final newline as an empty extra line. */
+/** 用于统计物理行并忽略末尾换行产生的空项。 */
 function countLines(content) {
   if (content.length === 0) {
     return 0;
@@ -73,7 +73,7 @@ function countLines(content) {
   return lines.at(-1) === '' ? lines.length - 1 : lines.length;
 }
 
-/** Finds files that exceed the hard line limit and returns stable relative paths. */
+/** 用于返回超过硬上限的稳定相对路径。 */
 async function findViolations() {
   const files = await collectFiles(repositoryRoot);
   const violations = [];
@@ -89,7 +89,7 @@ async function findViolations() {
   return violations;
 }
 
-/** Runs the repository check and reports only actionable violations or scanner failures. */
+/** 用于执行门禁并只报告可处理的违规或扫描失败。 */
 async function main() {
   try {
     const violations = await findViolations();

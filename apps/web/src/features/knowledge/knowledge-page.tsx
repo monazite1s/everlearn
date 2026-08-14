@@ -1,4 +1,4 @@
-/** @fileoverview Renders the real knowledge-base list and first-use creation flow. */
+/** @fileoverview 渲染真实知识库列表和首次创建流程。 */
 
 'use client';
 
@@ -41,7 +41,7 @@ interface CreateFormState {
 const EMPTY_FORM: CreateFormState = { description: '', name: '' };
 const ICON_SIZE = 18;
 
-/** Preserves the final list geometry while the first page is loading. */
+/** 用于在首屏加载时保持最终列表结构。 */
 function KnowledgeLoading() {
   return (
     <Stack aria-label="正在加载知识库" gap="sm">
@@ -52,7 +52,7 @@ function KnowledgeLoading() {
   );
 }
 
-/** Explains a recoverable read failure without replacing successful content. */
+/** 用于展示可恢复读取失败且不替换成功内容。 */
 function LoadFailure({ failure, onRetry }: { failure: KnowledgeApiFailure; onRetry: () => void }) {
   return (
     <Alert
@@ -74,7 +74,7 @@ function LoadFailure({ failure, onRetry }: { failure: KnowledgeApiFailure; onRet
   );
 }
 
-/** Renders the two approved editable fields without inventing a form abstraction. */
+/** 用于渲染两个已批准可编辑字段。 */
 function CreateFields(props: {
   disabled: boolean;
   form: CreateFormState;
@@ -82,11 +82,11 @@ function CreateFields(props: {
   onChange: (form: CreateFormState) => void;
 }) {
   const { disabled, form, nameError, onChange } = props;
-  /** Updates the name while retaining the current description. */
+  /** 用于更新名称并保留当前说明。 */
   function updateName(event: ChangeEvent<HTMLInputElement>): void {
     onChange({ ...form, name: event.currentTarget.value });
   }
-  /** Updates the description while retaining the current name. */
+  /** 用于更新说明并保留当前名称。 */
   function updateDescription(event: ChangeEvent<HTMLTextAreaElement>): void {
     onChange({ ...form, description: event.currentTarget.value });
   }
@@ -116,7 +116,7 @@ function CreateFields(props: {
   );
 }
 
-/** Collects creation input while preserving it across unsuccessful submissions. */
+/** 用于收集创建输入并在提交失败后保留。 */
 function CreateDialog(props: {
   error?: KnowledgeApiFailure;
   form: CreateFormState;
@@ -130,7 +130,7 @@ function CreateDialog(props: {
   const { error, form, offline, onChange, onClose, onSubmit, opened, submitting } = props;
   const nameError = form.name.trim().length > 200 ? '名称不能超过 200 个字符。' : undefined;
   const invalid = form.name.trim().length === 0 || Boolean(nameError) || offline;
-  /** Submits through native form semantics so keyboard and pointer behavior stay equivalent. */
+  /** 用于通过原生表单提交以统一键盘和指针行为。 */
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     onSubmit();
@@ -167,7 +167,7 @@ function CreateDialog(props: {
   );
 }
 
-/** Renders first-use guidance while the page header owns the single primary action. */
+/** 用于渲染首次使用指引并保留页面唯一主操作。 */
 function EmptyKnowledgeBases() {
   return (
     <Alert
@@ -179,7 +179,7 @@ function EmptyKnowledgeBases() {
   );
 }
 
-/** Renders list content and keeps subsequent-page failures local. */
+/** 用于渲染列表内容并局部处理后续分页失败。 */
 function KnowledgeListContent(props: {
   items: readonly KnowledgeBaseSummary[];
   load: KnowledgeLoadState;
@@ -210,7 +210,7 @@ function KnowledgeListContent(props: {
   );
 }
 
-/** Owns the creation dialog and navigates only with a confirmed server resource. */
+/** 用于管理创建对话框且只在服务端确认资源后导航。 */
 function useCreateKnowledgeBase(refresh: () => Promise<void>) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -218,7 +218,7 @@ function useCreateKnowledgeBase(refresh: () => Promise<void>) {
   const [error, setError] = useState<KnowledgeApiFailure>();
   const [submitting, setSubmitting] = useState(false);
   const [opened, setOpened] = useState(searchParams.get('create') === 'knowledge-base');
-  /** Creates one knowledge base and recovers uncertain transport results by reading. */
+  /** 用于创建知识库并通过重新读取恢复不确定传输结果。 */
   async function submit(): Promise<void> {
     if (submitting || form.name.trim().length === 0 || form.name.trim().length > 200) return;
     setSubmitting(true);
@@ -235,18 +235,18 @@ function useCreateKnowledgeBase(refresh: () => Promise<void>) {
     setSubmitting(false);
     if (result.error.certainty === 'unknown') await refresh();
   }
-  /** Opens the page-owned creation dialog. */
+  /** 用于打开页面所属的创建对话框。 */
   function open(): void {
     setOpened(true);
   }
-  /** Closes only a settled dialog and retains its form. */
+  /** 用于只关闭已结束对话框并保留表单状态。 */
   function close(): void {
     if (!submitting) setOpened(false);
   }
   return { close, error, form, open, opened, setForm, submit, submitting };
 }
 
-/** Renders the page title, summary, and single desktop creation action. */
+/** 用于渲染页面标题、摘要和唯一桌面创建操作。 */
 function KnowledgeHeader({ disabled, onCreate }: { disabled: boolean; onCreate: () => void }) {
   return (
     <header className={styles.header}>
@@ -271,20 +271,20 @@ function KnowledgeHeader({ disabled, onCreate }: { disabled: boolean; onCreate: 
   );
 }
 
-/** Renders the complete real knowledge-base list composition. */
+/** 用于渲染完整真实知识库列表组合。 */
 export function KnowledgePage() {
   const online = useOnline();
   const { items, load, read } = useKnowledgeList();
   const create = useCreateKnowledgeBase(
-    /** Refreshes the first page after an uncertain write. */ async function refresh() {
+    /** 用于在写入结果不确定后刷新第一页。 */ async function refresh() {
       await read();
     },
   );
-  /** Retries the failed page represented by current list state. */
+  /** 用于重试当前列表状态中的失败分页。 */
   function retry(): void {
     void read(items.length > 0 ? (load.nextCursor ?? undefined) : undefined);
   }
-  /** Requests the next opaque cursor page. */
+  /** 用于请求下一页不透明游标。 */
   function loadMore(): void {
     void read(load.nextCursor ?? undefined);
   }

@@ -1,4 +1,4 @@
-/** @fileoverview Verifies the production Identity and Knowledge migrations against PostgreSQL. */
+/** @fileoverview 在 PostgreSQL 中验证生产身份与知识库迁移。 */
 
 import type { Insertable, Kysely } from 'kysely' with { 'resolution-mode': 'import' };
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
@@ -19,14 +19,14 @@ const otherKnowledgeBaseId = '20000000-0000-4000-8000-000000000003';
 const parentDocumentId = '30000000-0000-4000-8000-000000000001';
 let database: Kysely<DatabaseSchema>;
 
-/** Adds a per-connection search path without exposing or altering credentials. */
+/** 用于设置连接级搜索路径且不读取或修改凭据。 */
 function createScopedDatabaseUrl(connectionString: string): string {
   const url = new URL(connectionString);
   url.searchParams.set('options', `-csearch_path=${schemaName}`);
   return url.toString();
 }
 
-/** Creates an isolated schema and a client whose unqualified DDL is scoped to it. */
+/** 用于创建隔离 Schema 及限定 DDL 作用域的客户端。 */
 async function prepareDatabase(): Promise<void> {
   const adminDatabase = await createDatabaseClient(databaseUrl!);
   await adminDatabase.schema.createSchema(schemaName).execute();
@@ -34,7 +34,7 @@ async function prepareDatabase(): Promise<void> {
   database = await createDatabaseClient(createScopedDatabaseUrl(databaseUrl!));
 }
 
-/** Removes all test relations and releases both connection pools. */
+/** 用于删除全部测试关系并释放连接池。 */
 async function cleanDatabase(): Promise<void> {
   await database.destroy();
   const adminDatabase = await createDatabaseClient(databaseUrl!);
@@ -42,7 +42,7 @@ async function cleanDatabase(): Promise<void> {
   await adminDatabase.destroy();
 }
 
-/** Creates deterministic Kysely metadata names inside the isolated schema. */
+/** 用于在隔离 Schema 中创建确定的 Kysely 元数据名称。 */
 function migrationOptions(direction: 'down' | 'up') {
   return {
     direction,
@@ -52,7 +52,7 @@ function migrationOptions(direction: 'down' | 'up') {
   } as const;
 }
 
-/** Returns one valid document row with an optional parent and knowledge base. */
+/** 用于构造带可选父级和知识库的有效文档行。 */
 function documentValues(
   id: string,
   ownerId: string,
@@ -73,7 +73,7 @@ function documentValues(
   };
 }
 
-/** Seeds owner and knowledge-base fixtures used only by constraint checks. */
+/** 用于写入约束检查所需的所有者和知识库夹具。 */
 async function insertConstraintFixtures(): Promise<void> {
   await database
     .insertInto('users')
@@ -93,7 +93,7 @@ async function insertConstraintFixtures(): Promise<void> {
     .execute();
 }
 
-/** Returns the minimum valid knowledge-base insert shape. */
+/** 用于构造最小有效知识库写入结构。 */
 function createKnowledgeBase(id: string, ownerId: string) {
   return {
     id,
@@ -104,7 +104,7 @@ function createKnowledgeBase(id: string, ownerId: string) {
   };
 }
 
-/** Verifies all expected relations and exactly one stable local identity. */
+/** 用于验证预期关系和唯一稳定本地身份。 */
 async function expectSchemaAndSeed(): Promise<void> {
   const tables = await database.introspection.getTables();
   const names = tables.filter((table) => table.schema === schemaName).map((table) => table.name);
@@ -126,7 +126,7 @@ async function expectSchemaAndSeed(): Promise<void> {
   expect(Number(seed.count)).toBe(1);
 }
 
-/** Verifies controlled kind, version, and Inbox status constraints. */
+/** 用于验证受控类型、版本和 Inbox 状态约束。 */
 async function expectControlledValuesRejected(): Promise<void> {
   const { sql } = await import('kysely');
   await expect(
@@ -149,7 +149,7 @@ async function expectControlledValuesRejected(): Promise<void> {
   ).rejects.toThrow();
 }
 
-/** Verifies document ownership, parent scope, and content-shape invariants. */
+/** 用于验证文档所有权、父级范围和正文结构不变量。 */
 async function expectDocumentConstraintsRejected(): Promise<void> {
   const crossOwner = documentValues(
     '30000000-0000-4000-8000-000000000002',
@@ -179,7 +179,7 @@ async function expectDocumentConstraintsRejected(): Promise<void> {
   await expect(database.insertInto('documents').values(invalidContent).execute()).rejects.toThrow();
 }
 
-/** Runs production up/repeat/down/up and all required database invariants. */
+/** 用于运行生产迁移往返并验证数据库不变量。 */
 async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   const firstUp = await runMigrations(database, migrationOptions('up'));
   expect(firstUp.executedMigrations).toEqual([schemaMigrationName, seedMigrationName]);
@@ -205,7 +205,7 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   ]);
 }
 
-/** Registers the production schema migration scenario when PostgreSQL is configured. */
+/** 用于仅在配置 PostgreSQL 时注册生产 Schema 场景。 */
 function defineSchemaMigrationTests(): void {
   beforeAll(prepareDatabase);
   afterAll(cleanDatabase);

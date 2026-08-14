@@ -1,5 +1,5 @@
 /**
- * @fileoverview Defines Everlearn's Mantine theme boundary over semantic design tokens.
+ * @fileoverview 以语义化设计令牌定义 Everlearn 的 Mantine 主题边界。
  */
 
 'use client';
@@ -29,7 +29,7 @@ const everlearnTheme = createTheme({
   },
 });
 
-/** Provides Mantine primitives while preserving Everlearn as the sole theme authority. */
+/** 用于提供 Mantine 基础能力并保持唯一主题来源。 */
 export function EverlearnUiProvider({ children, colorMode }: EverlearnUiProviderProps) {
   return (
     <MantineProvider forceColorScheme={colorMode} theme={everlearnTheme}>

@@ -1,11 +1,11 @@
-/** @fileoverview Verifies persisted theme switching without coupling to palette values. */
+/** @fileoverview 验证不耦合色值的持久主题切换。 */
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test } from 'vitest';
 
 import { ThemeProvider, useTheme } from './theme-provider';
 
-/** Clears global theme state shared by jsdom between component tests. */
+/** 用于清理组件测试间由 jsdom 共享的全局主题状态。 */
 function resetTheme(): void {
   cleanup();
   localStorage.clear();
@@ -17,16 +17,16 @@ function resetTheme(): void {
 
 afterEach(resetTheme);
 
-/** Exposes the theme controller through native controls for behavioral testing. */
+/** 用于通过原生控件公开主题控制器以便行为测试。 */
 function ThemeHarness() {
   const theme = useTheme();
 
-  /** Chooses the neutral palette. */
+  /** 用于选择中性色板。 */
   function chooseNeutral(): void {
     theme.setTheme('neutral');
   }
 
-  /** Chooses explicit dark appearance. */
+  /** 用于选择明确深色外观。 */
   function chooseDark(): void {
     theme.setAppearance('dark');
   }
@@ -46,7 +46,7 @@ function ThemeHarness() {
   );
 }
 
-/** Confirms switching changes only root attributes and a persisted preference. */
+/** 用于验证切换只修改根属性和持久化偏好。 */
 async function switchesAndPersistsTheme(): Promise<void> {
   render(
     <ThemeProvider>
@@ -58,7 +58,7 @@ async function switchesAndPersistsTheme(): Promise<void> {
   fireEvent.click(screen.getByRole('button', { name: '深色外观' }));
 
   await waitFor(
-    /** Checks the final persisted root state after both user actions. */
+    /** 用于检查两次用户操作后的最终持久化根状态。 */
     () => {
       expect(document.documentElement.dataset.theme).toBe('neutral');
       expect(document.documentElement.dataset.colorMode).toBe('dark');
@@ -70,7 +70,7 @@ async function switchesAndPersistsTheme(): Promise<void> {
 
 test('switches and persists semantic theme selection', switchesAndPersistsTheme);
 
-/** Confirms stored settings become the client snapshot after hydration. */
+/** 用于验证水合后存储设置成为客户端快照。 */
 async function loadsPersistedTheme(): Promise<void> {
   localStorage.setItem('everlearn-theme', 'neutral:dark');
   render(
@@ -80,7 +80,7 @@ async function loadsPersistedTheme(): Promise<void> {
   );
 
   await waitFor(
-    /** Checks that the external store refreshed from browser persistence. */
+    /** 用于检查外部存储已根据浏览器持久化刷新。 */
     () =>
       expect(screen.getByRole('status', { name: '当前外观' })).toHaveTextContent(
         'neutral:dark:dark',

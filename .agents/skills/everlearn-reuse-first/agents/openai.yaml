@@ -1,3 +1,4 @@
+# 定义复用优先 Skill 的界面元数据。
 interface:
   display_name: 'Everlearn Reuse First'
   short_description: '在编码前检索并采用成熟组件、依赖和仓库实现，阻止重复造轮子'

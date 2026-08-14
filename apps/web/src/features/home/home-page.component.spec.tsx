@@ -1,4 +1,4 @@
-/** @fileoverview Verifies real home knowledge loading, empty, and recovery behavior. */
+/** @fileoverview 验证首页真实知识库数据的加载、空态和恢复行为。 */
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { KnowledgeBaseSummary } from '@everlearn/contracts';
@@ -7,7 +7,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 
 import { HomePage } from './home-page';
 
-/** Builds one exact public knowledge summary for the real response boundary. */
+/** 用于构造真实响应边界所需的严格公开知识库摘要。 */
 function summary(): KnowledgeBaseSummary {
   return {
     description: '沉淀本项目的架构决策与学习笔记。',
@@ -20,16 +20,16 @@ function summary(): KnowledgeBaseSummary {
   };
 }
 
-/** Returns the minimal response surface consumed by the shared API adapter. */
+/** 用于返回共享 API 适配器所需的最小响应接口。 */
 function jsonResponse(body: unknown, status = 200): Response {
   return {
-    /** Resolves the deterministic body without transport parsing. */
+    /** 用于返回无需传输解析的确定正文。 */
     json: () => Promise.resolve(body),
     status,
   } as Response;
 }
 
-/** Renders the production home page inside its standard UI provider. */
+/** 用于在标准 UI Provider 中渲染生产首页。 */
 function renderHome(): void {
   render(
     <EverlearnUiProvider colorMode="light">
@@ -38,7 +38,7 @@ function renderHome(): void {
   );
 }
 
-/** Restores DOM, connectivity, and request state after each scenario. */
+/** 用于在每个场景后恢复 DOM、网络和请求状态。 */
 function resetScenario(): void {
   cleanup();
   vi.unstubAllGlobals();
@@ -46,7 +46,7 @@ function resetScenario(): void {
 
 afterEach(resetScenario);
 
-/** Confirms production renders only real knowledge data and no inactive fixture regions. */
+/** 用于验证生产页面只渲染真实知识库数据。 */
 async function rendersRealKnowledge(): Promise<void> {
   vi.stubGlobal(
     'fetch',
@@ -60,7 +60,7 @@ async function rendersRealKnowledge(): Promise<void> {
   expect(screen.queryByRole('textbox', { name: '记录内容' })).not.toBeInTheDocument();
 }
 
-/** Confirms first use links to the canonical creation flow. */
+/** 用于验证首次使用入口指向统一创建流程。 */
 async function rendersFirstUse(): Promise<void> {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ items: [], nextCursor: null })));
   renderHome();
@@ -69,7 +69,7 @@ async function rendersFirstUse(): Promise<void> {
   expect(action).toHaveAttribute('href', '/knowledge?create=knowledge-base');
 }
 
-/** Confirms a failed first read can recover without replacing the page frame. */
+/** 用于验证首次读取失败可在保留页面框架时恢复。 */
 async function retriesKnowledgeFailure(): Promise<void> {
   const fetchMock = vi
     .fn()

@@ -1,4 +1,4 @@
-/** @fileoverview Adapts the knowledge pages to the same-origin API and validates public responses. */
+/** @fileoverview 将知识库页面接入同源 API 并校验公开响应。 */
 
 import type {
   CreateKnowledgeBaseRequest,
@@ -41,28 +41,28 @@ const ERROR_CODES: readonly KnowledgeBaseErrorCode[] = [
   'VERSION_CONFLICT',
 ];
 
-/** Narrows an untrusted JSON value to a record without accepting arrays. */
+/** 用于将不可信 JSON 收窄为非数组记录。 */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Verifies a response object contains exactly the approved public fields. */
+/** 用于验证响应对象只包含批准的公开字段。 */
 function hasExactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
   const actual = Object.keys(value).sort();
   return actual.length === expected.length && expected.every((key) => actual.includes(key));
 }
 
-/** Narrows the closed knowledge-base kind union without accepting future values silently. */
+/** 用于收窄封闭知识库类型且不静默接受未知值。 */
 function isKnowledgeBaseKind(value: unknown): value is KnowledgeBaseSummary['kind'] {
   return value === 'news' || value === 'normal' || value === 'tutorial';
 }
 
-/** Validates numeric fields that are serialized as safe non-negative integers. */
+/** 用于校验序列化为安全非负整数的数值字段。 */
 function isSafeIntegerAtLeast(value: unknown, minimum: number): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= minimum;
 }
 
-/** Validates one public summary before it crosses into rendered page state. */
+/** 用于在公开摘要进入页面状态前完成校验。 */
 function isKnowledgeBaseSummary(value: unknown): value is KnowledgeBaseSummary {
   if (!isRecord(value) || !hasExactKeys(value, SUMMARY_KEYS)) return false;
   return (
@@ -77,7 +77,7 @@ function isKnowledgeBaseSummary(value: unknown): value is KnowledgeBaseSummary {
   );
 }
 
-/** Parses an untrusted list projection while preserving the shared contract type. */
+/** 用于解析不可信列表投影并保持共享契约类型。 */
 function parseKnowledgeBaseList(value: unknown): KnowledgeBaseListResponse | undefined {
   if (!isRecord(value) || !hasExactKeys(value, ['items', 'nextCursor'])) return undefined;
   if (!Array.isArray(value.items) || !value.items.every(isKnowledgeBaseSummary)) return undefined;
@@ -85,17 +85,17 @@ function parseKnowledgeBaseList(value: unknown): KnowledgeBaseListResponse | und
   return { items: value.items, nextCursor: value.nextCursor };
 }
 
-/** Returns a validated knowledge-base summary without widening its public shape. */
+/** 用于返回已校验且不扩宽结构的知识库摘要。 */
 function parseKnowledgeBaseSummary(value: unknown): KnowledgeBaseSummary | undefined {
   return isKnowledgeBaseSummary(value) ? value : undefined;
 }
 
-/** Narrows a server error code to the stable knowledge contract. */
+/** 用于将服务端错误码收窄到稳定知识库契约。 */
 function isKnowledgeBaseErrorCode(value: unknown): value is KnowledgeBaseErrorCode {
   return typeof value === 'string' && ERROR_CODES.includes(value as KnowledgeBaseErrorCode);
 }
 
-/** Reads only the stable, user-safe part of a server error envelope. */
+/** 用于只读取服务端错误信封中稳定且用户安全的部分。 */
 function parseFailure(
   value: unknown,
   certainty: KnowledgeApiFailure['certainty'],
@@ -113,7 +113,7 @@ function parseFailure(
   };
 }
 
-/** Safely decodes JSON without exposing transport or parser errors to the interface. */
+/** 用于安全解码 JSON 且不向界面暴露传输或解析错误。 */
 async function readJson(response: Response): Promise<unknown> {
   try {
     return await response.json();
@@ -122,7 +122,7 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
-/** Performs one status-checked request and validates its successful projection. */
+/** 用于执行状态检查请求并校验成功投影。 */
 async function requestKnowledge<T>(
   url: string,
   expectedStatus: number,
@@ -146,7 +146,7 @@ async function requestKnowledge<T>(
   }
 }
 
-/** Reads one cursor page ordered by recent knowledge-base activity. */
+/** 用于读取按最近知识库活动排序的一页游标结果。 */
 export function listKnowledgeBases(
   cursor?: string,
 ): Promise<KnowledgeApiResult<KnowledgeBaseListResponse>> {
@@ -155,7 +155,7 @@ export function listKnowledgeBases(
   return requestKnowledge(`${API_PATH}?${query.toString()}`, 200, parseKnowledgeBaseList);
 }
 
-/** Creates one normal knowledge base without accepting ownership or server-managed fields. */
+/** 用于创建普通知识库且不接受所有权或服务端字段。 */
 export function createKnowledgeBase(
   request: CreateKnowledgeBaseRequest,
 ): Promise<KnowledgeApiResult<KnowledgeBaseSummary>> {
@@ -166,12 +166,12 @@ export function createKnowledgeBase(
   });
 }
 
-/** Reads one visible knowledge base for the post-create destination shell. */
+/** 用于读取创建后目标页可见的知识库。 */
 export function getKnowledgeBase(id: string): Promise<KnowledgeApiResult<KnowledgeBaseSummary>> {
   return requestKnowledge(`${API_PATH}/${encodeURIComponent(id)}`, 200, parseKnowledgeBaseSummary);
 }
 
-/** Updates editable metadata using the last summary version observed by the page. */
+/** 用于按页面最后观察版本更新可编辑元数据。 */
 export function updateKnowledgeBase(
   id: string,
   request: UpdateKnowledgeBaseRequest,
@@ -183,7 +183,7 @@ export function updateKnowledgeBase(
   });
 }
 
-/** Soft-deletes one knowledge base using an exact optimistic version. */
+/** 用于按精确乐观版本软删除知识库。 */
 export async function deleteKnowledgeBase(
   id: string,
   request: KnowledgeBaseVersionRequest,

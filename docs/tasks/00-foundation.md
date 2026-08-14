@@ -90,6 +90,17 @@
 - 证据：临时失败夹具分别触发 `require-file-overview`、`require-jsdoc`、`no-console`、`declaration-strict-value`、`declaration-no-important` 和 405 行文件阻断，验证后已删除。
 - 风险：当前 `npmmirror` 不实现 npm audit endpoint，`pnpm audit --audit-level high` 无法运行；未切换用户 registry，依赖漏洞扫描留给支持审计源的 CI 环境。
 
+### FND-05A 统一中文注释规范与全仓审计
+
+- 状态：已完成（2026-08-15）。
+- 目标：所有手写源码自然语言注释使用中文；文件与函数用一句话说明职责或关键约束，不保留历史叙述。
+- 非目标：翻译标识符、协议名、库名、JSDoc 标签、工具指令、生成文件和第三方内容。
+- 改动：精简 Agent 与工程规范；为 `pnpm lint` 增加无依赖中文注释扫描；审计并规范化 API、Web、Worker、共享包、测试、脚本和配置注释。
+- 验证：`pnpm lint:comments` 检查 107 个文件、614 条注释；临时英文夹具准确报告两条违规且已移除；文件规模、Prettier、ESLint、Stylelint、6 包 typecheck、44 项轻量测试和 6 包生产构建通过。
+- 范围：全仓注释审计必须触及所有含注释手写文件，因此不适用单任务 8 个文件的常规上限；未修改业务行为。
+- Skill 影响：Requirements 将“中文、精简、无历史叙述”转为可验证边界；Reuse First 复用现有 JSDoc 门禁并只补充仓库扫描器；Ponytail 避免新增依赖和抽象。
+- 风险：无。
+
 ## FND-06 建立运行时配置校验
 
 - 状态：已完成。

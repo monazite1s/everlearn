@@ -1,5 +1,5 @@
 /**
- * @fileoverview Exposes process-level liveness and readiness probes for the API.
+ * @fileoverview 提供 API 进程级存活和就绪探针。
  */
 
 import { Controller, Get, Header } from '@nestjs/common';
@@ -11,24 +11,24 @@ interface ServiceHealth {
   version: string;
 }
 
-/** Reports only process health until dependency checks are added in FND-06. */
+/** 用于表达不包含依赖状态的进程健康结果。 */
 @Controller('health')
 export class HealthController {
-  /** Confirms that the HTTP process can serve requests. */
+  /** 用于确认 HTTP 进程可以响应请求。 */
   @Get('live')
   @Header('Cache-Control', 'no-store')
   getLiveness(): ServiceHealth {
     return this.createHealth();
   }
 
-  /** Confirms infrastructure readiness before external dependencies are connected. */
+  /** 用于确认进程已经完成启动准备。 */
   @Get('ready')
   @Header('Cache-Control', 'no-store')
   getReadiness(): ServiceHealth {
     return this.createHealth();
   }
 
-  /** Creates a fresh timestamp so probes cannot be mistaken for cached state. */
+  /** 用于生成新时间戳，避免探针结果被误认为缓存。 */
   private createHealth(): ServiceHealth {
     return {
       service: 'api',

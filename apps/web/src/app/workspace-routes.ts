@@ -1,4 +1,4 @@
-/** @fileoverview Defines the stable workspace routes shared by navigation and page rendering. */
+/** @fileoverview 定义导航和页面渲染共享的稳定工作区路由。 */
 
 export type WorkspaceRouteId =
   'home' | 'knowledge' | 'news' | 'tutorials' | 'workflows' | 'settings';
@@ -77,7 +77,7 @@ export const workspaceRoutes: readonly WorkspaceRoute[] = [
   },
 ];
 
-/** Resolves one approved workspace route without accepting arbitrary path segments. */
+/** 用于解析已批准工作区路由且不接受任意路径段。 */
 export function findWorkspaceRoute(id: string): WorkspaceRoute | undefined {
   for (const route of workspaceRoutes) {
     if (route.id === id) return route;
@@ -85,19 +85,19 @@ export function findWorkspaceRoute(id: string): WorkspaceRoute | undefined {
   return undefined;
 }
 
-/** Resolves the current top-level location from an application pathname. */
+/** 用于根据应用路径解析当前一级位置。 */
 export function getWorkspaceRoute(pathname: string): WorkspaceRoute {
   const id = pathname.split('/')[1] ?? 'home';
   return findWorkspaceRoute(id) ?? homeRoute;
 }
 
-/** Tests whether a pathname belongs to one primary workspace destination. */
+/** 用于判断路径是否属于指定一级工作区入口。 */
 export function isWorkspaceRouteCurrent(pathname: string, route: WorkspaceRoute): boolean {
   if (route.href === '/') return pathname === '/';
   return pathname === route.href || pathname.startsWith(`${route.href}/`);
 }
 
-/** Returns the mobile interaction policy declared by a workspace route. */
+/** 用于返回工作区路由声明的移动端交互策略。 */
 export function getMobileRoutePolicy(route: WorkspaceRoute): MobileRoutePolicy {
   return mobileRoutePolicies[route.mobileCapability];
 }

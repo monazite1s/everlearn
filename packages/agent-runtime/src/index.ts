@@ -1,5 +1,5 @@
 /**
- * @fileoverview Defines the public boundary for Agent and Workflow runtime primitives.
+ * @fileoverview 定义 Agent 与 Workflow 运行时原语的公开边界。
  */
 
 export {};

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Builds safe Worker log entries with optional task correlation identifiers.
+ * @fileoverview 构造带可选任务关联标识的安全 Worker 日志。
  */
 
 interface WorkerLogInput {
@@ -13,7 +13,7 @@ export interface WorkerLogEntry extends WorkerLogInput {
   service: 'worker';
 }
 
-/** Adds stable service identity without accepting job payloads or secret-bearing fields. */
+/** 用于加入稳定服务标识并排除任务载荷和密钥字段。 */
 export function createWorkerLogEntry(input: WorkerLogInput): WorkerLogEntry {
   return {
     event: input.event,

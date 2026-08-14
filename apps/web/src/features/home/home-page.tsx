@@ -1,4 +1,4 @@
-/** @fileoverview Renders the knowledge-first home page from real knowledge-base data. */
+/** @fileoverview 根据真实知识库数据渲染知识优先首页。 */
 
 'use client';
 
@@ -13,7 +13,7 @@ import styles from './home-page.module.css';
 
 const ICON_SIZE = 18;
 
-/** Keeps home section titles and supporting copy aligned. */
+/** 用于统一首页区块标题和辅助文案布局。 */
 function HomeSectionHeading(props: { description?: string; id: string; title: string }) {
   const { description, id, title } = props;
   return (
@@ -30,7 +30,7 @@ function HomeSectionHeading(props: { description?: string; id: string; title: st
   );
 }
 
-/** Preserves the two-column knowledge layout during the first request. */
+/** 用于在首次请求期间保持双栏知识库布局。 */
 function KnowledgeLoading() {
   return (
     <Stack aria-label="正在加载首页知识库" gap="sm" mt="md">
@@ -41,7 +41,7 @@ function KnowledgeLoading() {
   );
 }
 
-/** Explains one recoverable knowledge read failure with a local retry. */
+/** 用于展示可局部重试的知识库读取失败。 */
 function KnowledgeFailure({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <Alert
@@ -64,7 +64,7 @@ function KnowledgeFailure({ message, onRetry }: { message: string; onRetry: () =
   );
 }
 
-/** Links to the canonical creation flow instead of duplicating its dialog. */
+/** 用于链接统一创建流程，避免重复创建对话框。 */
 function CreateKnowledgeBaseAction({
   firstUse,
   offline,
@@ -93,7 +93,7 @@ function CreateKnowledgeBaseAction({
   );
 }
 
-/** Renders real knowledge data while keeping pagination and failure state local. */
+/** 用于渲染真实知识库数据并局部管理分页和失败状态。 */
 function KnowledgeContent(props: {
   items: ReturnType<typeof useKnowledgeList>['items'];
   load: KnowledgeLoadState;
@@ -138,15 +138,15 @@ function KnowledgeContent(props: {
   );
 }
 
-/** Renders the complete home composition without production fixtures or inactive controls. */
+/** 用于渲染不依赖生产夹具的完整首页组合。 */
 export function HomePage() {
   const online = useOnline();
   const { items, load, read } = useKnowledgeList();
-  /** Retries the failed page represented by current list state. */
+  /** 用于重试当前列表状态中的失败分页。 */
   function retry(): void {
     void read(items.length > 0 ? (load.nextCursor ?? undefined) : undefined);
   }
-  /** Requests the next opaque knowledge cursor page. */
+  /** 用于请求下一页不透明知识库游标。 */
   function loadMore(): void {
     void read(load.nextCursor ?? undefined);
   }

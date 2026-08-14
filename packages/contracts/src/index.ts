@@ -1,4 +1,4 @@
-/** @fileoverview Exposes stable transport contracts shared by Everlearn applications. */
+/** @fileoverview 导出 Everlearn 应用共享的稳定传输契约。 */
 
 export type {
   CreateKnowledgeBaseRequest,

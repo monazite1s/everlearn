@@ -1,4 +1,4 @@
-/** @fileoverview Implements optimistic knowledge-base updates and soft-delete lifecycle changes. */
+/** @fileoverview 实现知识库乐观更新和软删除生命周期变更。 */
 
 import { createHash, randomUUID } from 'node:crypto';
 
@@ -32,22 +32,22 @@ interface RestoreInput {
   version: number;
 }
 
-/** Creates a stable request fingerprint without persisting user-controlled JSON. */
+/** 用于创建稳定请求指纹且不持久化用户控制的 JSON。 */
 function createRestoreHash(id: string, version: number): string {
   return createHash('sha256').update(`${RESTORE_OPERATION}\0${id}\0${version}`).digest('hex');
 }
 
-/** Accepts only safe non-negative integer counts from the stored public projection. */
+/** 用于只接受存储投影中的安全非负整数计数。 */
 function isDocumentCount(value: JsonValue | undefined): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
-/** Accepts only positive integer versions from the stored public projection. */
+/** 用于只接受存储投影中的正整数版本。 */
 function isVersion(value: JsonValue | undefined): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 1;
 }
 
-/** Reconstructs only the exact public projection written by this service. */
+/** 用于只重建本服务写入的严格公开投影。 */
 function readStoredSummary(value: JsonValue): KnowledgeBaseSummary {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new TypeError('Stored idempotency response is invalid');
@@ -78,16 +78,16 @@ function readStoredSummary(value: JsonValue): KnowledgeBaseSummary {
   };
 }
 
-/** Applies serialized lifecycle transitions within the trusted owner boundary. */
+/** 用于在可信所有者边界内串行执行生命周期变更。 */
 @Injectable()
 export class KnowledgeBaseLifecycleService {
-  /** Receives the database client and server-owned actor context. */
+  /** 用于接收数据库客户端和服务端操作者上下文。 */
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly identityContext: LocalIdentityContext,
   ) {}
 
-  /** Updates editable metadata when the caller still holds the current version. */
+  /** 用于在调用方仍持有当前版本时更新可编辑元数据。 */
   async update(id: string, input: UpdateKnowledgeBaseDto): Promise<KnowledgeBaseSummary> {
     const { ownerId } = this.identityContext.getActor();
     return this.databaseService.client.transaction().execute(async (transaction) => {
@@ -110,7 +110,7 @@ export class KnowledgeBaseLifecycleService {
     });
   }
 
-  /** Soft-deletes one knowledge base while making an exact retry side-effect free. */
+  /** 用于软删除知识库并保证精确重试无额外副作用。 */
   async remove(id: string, input: KnowledgeBaseVersionDto): Promise<void> {
     const { ownerId } = this.identityContext.getActor();
     await this.databaseService.client.transaction().execute(async (transaction) => {
@@ -132,7 +132,7 @@ export class KnowledgeBaseLifecycleService {
     });
   }
 
-  /** Restores one knowledge base exactly once for the owner-scoped idempotency key. */
+  /** 用于按所有者范围幂等键只恢复一次知识库。 */
   async restore(
     id: string,
     input: KnowledgeBaseVersionDto,
@@ -149,7 +149,7 @@ export class KnowledgeBaseLifecycleService {
     );
   }
 
-  /** Resolves a restore replay or commits the transition and response atomically. */
+  /** 用于解析恢复重放或原子提交状态变更和响应。 */
   private async restoreInTransaction(
     transaction: Transaction<DatabaseSchema>,
     input: RestoreInput,
@@ -178,7 +178,7 @@ export class KnowledgeBaseLifecycleService {
     return summary;
   }
 
-  /** Persists the first successful public response in the same transaction. */
+  /** 用于在同一事务中保存首次成功公开响应。 */
   private async storeIdempotentResponse(
     transaction: Transaction<DatabaseSchema>,
     input: RestoreInput,
@@ -198,7 +198,7 @@ export class KnowledgeBaseLifecycleService {
       .executeTakeFirstOrThrow();
   }
 
-  /** Serializes one owner-scoped idempotency key for concurrent callers. */
+  /** 用于串行化并发调用使用的所有者范围幂等键。 */
   private async lockIdempotencyKey(
     transaction: Transaction<DatabaseSchema>,
     input: RestoreInput,
@@ -210,7 +210,7 @@ export class KnowledgeBaseLifecycleService {
     `.execute(transaction);
   }
 
-  /** Returns a stored response or rejects reuse of the key with another request. */
+  /** 用于返回已存响应或拒绝其他请求复用该键。 */
   private async readIdempotentResponse(
     transaction: Transaction<DatabaseSchema>,
     input: RestoreInput,
@@ -230,7 +230,7 @@ export class KnowledgeBaseLifecycleService {
     return readStoredSummary(record.response_json);
   }
 
-  /** Locks one owner-scoped row so concurrent lifecycle transitions serialize. */
+  /** 用于锁定所有者范围记录以串行处理并发生命周期变更。 */
   private lockKnowledgeBase(
     transaction: Transaction<DatabaseSchema>,
     id: string,
@@ -245,14 +245,14 @@ export class KnowledgeBaseLifecycleService {
       .executeTakeFirst();
   }
 
-  /** Accepts only the exact replay relation produced by a successful delete. */
+  /** 用于只接受成功删除产生的精确重放关系。 */
   private acceptDeleteReplay(currentVersion: number, requestedVersion: number): void {
     if (currentVersion !== requestedVersion + 1) {
       throw new ApiConflictException('VERSION_CONFLICT');
     }
   }
 
-  /** Rejects stale mutations using the stable public conflict category. */
+  /** 用于以稳定公开冲突类型拒绝过期写入。 */
   private requireVersion(currentVersion: number, requestedVersion: number): void {
     if (currentVersion !== requestedVersion) {
       throw new ApiConflictException('VERSION_CONFLICT');

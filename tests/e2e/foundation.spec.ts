@@ -1,11 +1,11 @@
 /**
- * @fileoverview Verifies that a real browser can reach and understand the foundation web shell.
+ * @fileoverview 验证真实浏览器可以访问并理解基础应用壳。
  */
 
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-/** Confirms theme controls remain keyboard reachable and persist across a reload. */
+/** 用于验证主题控件支持键盘操作并在刷新后保持。 */
 async function opensFoundationPage({ page }: { page: Page }): Promise<void> {
   await page.goto('/');
 
@@ -25,7 +25,7 @@ async function opensFoundationPage({ page }: { page: Page }): Promise<void> {
   await expect(page.locator('html')).toHaveAttribute('data-color-mode', 'dark');
 }
 
-/** Confirms desktop navigation moves route, current state, focus, and accessibility together. */
+/** 用于验证桌面导航同步更新路由、当前态、焦点和可访问性。 */
 async function navigatesDesktopShell({ page }: { page: Page }): Promise<void> {
   await page.setViewportSize({ height: 900, width: 1440 });
   await page.goto('/');

@@ -1,4 +1,4 @@
-/** @fileoverview Verifies real knowledge listing, creation, recovery, and destination reads. */
+/** @fileoverview 验证真实知识库列表、创建、恢复和目标读取。 */
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EverlearnUiProvider } from '@everlearn/ui';
@@ -12,24 +12,24 @@ import { KnowledgePage } from './knowledge-page';
 const routerPush = vi.fn();
 let mockSearch = '';
 
-/** Returns the narrow router surface used after a confirmed creation. */
+/** 用于返回创建确认后所需的最小路由接口。 */
 function useMockRouter() {
   return { push: routerPush };
 }
 
-/** Returns deterministic page query parameters for creation-entry tests. */
+/** 用于为创建入口测试返回确定页面查询参数。 */
 function useMockSearchParams(): URLSearchParams {
   return new URLSearchParams(mockSearch);
 }
 
-/** Provides only the App Router functions consumed by this feature. */
+/** 用于只提供当前功能使用的 App Router 接口。 */
 function createNavigationMock() {
   return { useRouter: useMockRouter, useSearchParams: useMockSearchParams };
 }
 
 vi.mock('next/navigation', createNavigationMock);
 
-/** Builds one exact public summary used by API-backed component scenarios. */
+/** 用于构造 API 组件场景使用的严格公开摘要。 */
 function summary(overrides: Partial<KnowledgeBaseSummary> = {}): KnowledgeBaseSummary {
   return {
     description: '围绕 Agent 工程的长期学习资料。',
@@ -43,21 +43,21 @@ function summary(overrides: Partial<KnowledgeBaseSummary> = {}): KnowledgeBaseSu
   };
 }
 
-/** Returns the minimal fetch response surface consumed by the page adapter. */
+/** 用于返回页面适配器所需的最小 Fetch 响应。 */
 function jsonResponse(body: unknown, status = 200): Response {
   return {
-    /** Resolves the deterministic response payload without transport parsing. */
+    /** 用于返回无需传输解析的确定响应载荷。 */
     json: () => Promise.resolve(body),
     status,
   } as Response;
 }
 
-/** Renders one feature component inside the production UI provider. */
+/** 用于在生产 UI Provider 中渲染功能组件。 */
 function renderKnowledge(element: ReactElement): void {
   render(<EverlearnUiProvider colorMode="light">{element}</EverlearnUiProvider>);
 }
 
-/** Restores DOM, navigation, query, and global request state after each scenario. */
+/** 用于在每个场景后恢复 DOM、导航、查询和请求状态。 */
 function resetScenario(): void {
   cleanup();
   mockSearch = '';
@@ -67,7 +67,7 @@ function resetScenario(): void {
 
 afterEach(resetScenario);
 
-/** Confirms an empty persisted list can create and enter a server-confirmed destination. */
+/** 用于验证空持久列表可创建并进入服务端确认目标。 */
 async function createsFirstKnowledgeBase(): Promise<void> {
   const created = summary({ documentCount: 0 });
   const fetchMock = vi
@@ -92,7 +92,7 @@ async function createsFirstKnowledgeBase(): Promise<void> {
   expect(typeof request?.body === 'string' ? request.body : '').not.toContain('ownerId');
 }
 
-/** Confirms uncertain creation re-reads the list once and never replays the POST. */
+/** 用于验证创建结果不确定时只重读列表且不重放 POST。 */
 async function recoversUnknownCreateResult(): Promise<void> {
   const persisted = summary({ name: '网络恢复后的知识库' });
   const fetchMock = vi
@@ -118,7 +118,7 @@ async function recoversUnknownCreateResult(): Promise<void> {
   expect(routerPush).not.toHaveBeenCalled();
 }
 
-/** Confirms a later cursor failure retains prior items and exposes a local retry. */
+/** 用于验证后续游标失败保留已有项并提供局部重试。 */
 async function retainsItemsAfterPaginationFailure(): Promise<void> {
   const first = summary();
   const fetchMock = vi
@@ -137,11 +137,11 @@ async function retainsItemsAfterPaginationFailure(): Promise<void> {
   expect(screen.getByRole('button', { name: '重新读取' })).toBeVisible();
 }
 
-/** Confirms the post-create route reads a persisted summary on every mount. */
+/** 用于验证创建后路由每次挂载都读取持久摘要。 */
 async function readsPersistedDestination(): Promise<void> {
   const persisted = summary({ documentCount: 0 });
   const fetchMock = vi.fn().mockImplementation(
-    /** Returns a fresh response object for each route mount. */
+    /** 用于为每次路由挂载返回新的响应对象。 */
     () => Promise.resolve(jsonResponse(persisted)),
   );
   vi.stubGlobal('fetch', fetchMock);

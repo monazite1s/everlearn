@@ -1,4 +1,4 @@
-/** @fileoverview Wires the first owner-scoped knowledge-base HTTP slice. */
+/** @fileoverview 组装首个限定所有者的知识库 HTTP 切片。 */
 
 import type { NextFunction, Request, Response } from 'express';
 
@@ -15,7 +15,7 @@ import { KnowledgeBaseLifecycleService } from './knowledge-base-lifecycle.servic
 import { KnowledgeBasesController } from './knowledge-bases.controller';
 import { KnowledgeBasesService } from './knowledge-bases.service';
 
-/** Rejects browser form writes before controller validation reaches the fixed local identity. */
+/** 用于在控制器校验前拒绝浏览器表单写入。 */
 function requireJsonContentType(request: Request, _response: Response, next: NextFunction): void {
   if (!['DELETE', 'PATCH', 'POST'].includes(request.method)) return next();
   const mediaType = request.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase();
@@ -23,14 +23,14 @@ function requireJsonContentType(request: Request, _response: Response, next: Nex
   next();
 }
 
-/** Owns the minimal controller, service, identity, and database dependencies for this slice. */
+/** 用于持有本切片所需的最小控制器、服务、身份和数据库依赖。 */
 @Module({
   controllers: [KnowledgeBasesController],
   imports: [DatabaseModule],
   providers: [KnowledgeBaseLifecycleService, KnowledgeBasesService, LocalIdentityContext],
 })
 export class KnowledgeBasesModule implements NestModule {
-  /** Applies the JSON-only rule to every knowledge-base write route. */
+  /** 用于向所有知识库写入路由应用仅 JSON 规则。 */
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(requireJsonContentType).forRoutes(KnowledgeBasesController);
   }

@@ -1,4 +1,4 @@
-/** @fileoverview Validates and normalizes HTTP input for knowledge-base creation. */
+/** @fileoverview 校验并规范化知识库创建的 HTTP 输入。 */
 
 import type { CreateKnowledgeBaseRequest } from '@everlearn/contracts' with {
   'resolution-mode': 'import',
@@ -6,17 +6,17 @@ import type { CreateKnowledgeBaseRequest } from '@everlearn/contracts' with {
 import { Transform } from 'class-transformer';
 import { IsString, Length, MaxLength, ValidateIf } from 'class-validator';
 
-/** Trims string inputs while leaving other values available for type validation. */
+/** 用于裁剪字符串且保留其他值供类型校验。 */
 function trimString({ value }: { value: unknown }): unknown {
   return typeof value === 'string' ? value.trim() : value;
 }
 
-/** Runs optional-field validation for every supplied value, including null. */
+/** 用于对包括 null 在内的已提供可选字段执行校验。 */
 function isSupplied(_object: object, value: unknown): boolean {
   return value !== undefined;
 }
 
-/** Accepts the editable fields for creating a normal knowledge base. */
+/** 用于限定普通知识库创建时可编辑的字段。 */
 export class CreateKnowledgeBaseDto implements CreateKnowledgeBaseRequest {
   @Transform(trimString)
   @ValidateIf(isSupplied)

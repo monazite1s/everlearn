@@ -1,5 +1,5 @@
 /**
- * @fileoverview Validates Worker infrastructure and optional Provider configuration before bootstrap.
+ * @fileoverview 在 Worker 启动前校验基础设施和可选 Provider 配置。
  */
 
 import { plainToInstance } from 'class-transformer';
@@ -13,22 +13,22 @@ import {
   validateSync,
 } from 'class-validator';
 
-/** Distinguishes an omitted variable from a supplied but invalid empty value. */
+/** 用于区分未提供变量和已提供空值。 */
 function isDefined(value: string | undefined): boolean {
   return value !== undefined;
 }
 
-/** Returns whether any LLM setting was supplied and therefore requires the full group. */
+/** 用于判断 LLM 配置组是否需要完整校验。 */
 function hasLlmConfiguration(environment: RuntimeEnvironment): boolean {
   return [environment.LLM_BASE_URL, environment.LLM_API_KEY, environment.LLM_MODEL].some(isDefined);
 }
 
-/** Returns whether any search setting was supplied and therefore requires the full group. */
+/** 用于判断搜索配置组是否需要完整校验。 */
 function hasSearchConfiguration(environment: RuntimeEnvironment): boolean {
   return [environment.SEARCH_PROVIDER, environment.SEARCH_API_KEY].some(isDefined);
 }
 
-/** Defines the Worker process boundary without exposing secret values in validation errors. */
+/** 用于限定 Worker 进程配置并避免错误回显密钥。 */
 class RuntimeEnvironment {
   @IsUrl({ protocols: ['postgres', 'postgresql'], require_protocol: true, require_tld: false })
   DATABASE_URL!: string;
@@ -82,7 +82,7 @@ class RuntimeEnvironment {
   SEARCH_API_KEY?: string;
 }
 
-/** Selects only supported keys so unrelated process variables never enter application config. */
+/** 用于只选择受支持字段，隔离无关进程变量。 */
 function selectRuntimeEnvironment(environment: Record<string, unknown>): Record<string, unknown> {
   return {
     DATABASE_URL: environment.DATABASE_URL,
@@ -101,7 +101,7 @@ function selectRuntimeEnvironment(environment: Record<string, unknown>): Record<
   };
 }
 
-/** Formats field names and constraints while deliberately omitting rejected values. */
+/** 用于格式化字段约束且不包含被拒绝的值。 */
 function formatValidationErrors(errors: ValidationError[]): string {
   const messages = [];
   for (const error of errors) {
@@ -113,7 +113,7 @@ function formatValidationErrors(errors: ValidationError[]): string {
   return messages.sort().join('; ');
 }
 
-/** Returns frozen validated configuration or aborts bootstrap with actionable field names. */
+/** 用于返回冻结的有效配置，失败时仅指出字段。 */
 export function validateRuntimeEnvironment(
   environment: Record<string, unknown>,
 ): RuntimeEnvironment {

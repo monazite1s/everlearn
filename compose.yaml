@@ -1,3 +1,4 @@
+# 定义 Everlearn 本地开发所需的基础服务。
 name: everlearn
 
 services:

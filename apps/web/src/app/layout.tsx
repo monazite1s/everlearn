@@ -1,5 +1,5 @@
 /**
- * @fileoverview Defines the document shell for the Everlearn web application.
+ * @fileoverview 定义 Everlearn Web 应用的文档外壳。
  */
 
 import type { Metadata } from 'next';
@@ -20,7 +20,7 @@ interface RootLayoutProps {
   children: ReactNode;
 }
 
-/** Provides the Chinese-language HTML document shared by every route. */
+/** 用于提供所有路由共享的中文 HTML 文档。 */
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>

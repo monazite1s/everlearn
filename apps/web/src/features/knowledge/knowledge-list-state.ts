@@ -1,4 +1,4 @@
-/** @fileoverview Owns knowledge list synchronization and browser connectivity state. */
+/** @fileoverview 管理知识库列表同步和浏览器网络状态。 */
 
 'use client';
 
@@ -16,11 +16,11 @@ export interface KnowledgeLoadState {
 
 const INITIAL_LOAD: KnowledgeLoadState = { loading: true, nextCursor: null };
 
-/** Owns cursor reads and retains successful items when a later page fails. */
+/** 用于管理游标读取并在后续分页失败时保留已有结果。 */
 export function useKnowledgeList() {
   const [items, setItems] = useState<readonly KnowledgeBaseSummary[]>([]);
   const [load, setLoad] = useState<KnowledgeLoadState>(INITIAL_LOAD);
-  /** Applies the first response without merging it into stale items. */
+  /** 用于应用首个响应且不合并过期结果。 */
   function applyInitial(result: KnowledgeApiResult<KnowledgeBaseListResponse>): void {
     if (result.ok) {
       setItems(result.data.items);
@@ -30,11 +30,11 @@ export function useKnowledgeList() {
     setLoad({ error: result.error, loading: false, nextCursor: null });
   }
   useEffect(
-    /** Starts and cancels the initial list synchronization. */
+    /** 用于启动并取消初始列表同步。 */
     function synchronizeInitialList(): () => void {
       let active = true;
       void listKnowledgeBases().then(
-        /** Ignores stale responses after route disposal. */
+        /** 用于在路由释放后忽略过期响应。 */
         function applyIfActive(result): void {
           if (active) applyInitial(result);
         },
@@ -45,7 +45,7 @@ export function useKnowledgeList() {
     },
     [],
   );
-  /** Reads one page and retains prior items when the request fails. */
+  /** 用于读取一页并在失败时保留已有结果。 */
   async function read(cursor?: string): Promise<void> {
     setLoad((current) => ({ loading: true, nextCursor: current.nextCursor }));
     const result = await listKnowledgeBases(cursor);
@@ -59,7 +59,7 @@ export function useKnowledgeList() {
   return { items, load, read };
 }
 
-/** Subscribes to paired browser connectivity changes. */
+/** 用于订阅浏览器在线和离线变化。 */
 function subscribeOnline(callback: () => void): () => void {
   window.addEventListener('online', callback);
   window.addEventListener('offline', callback);
@@ -69,17 +69,17 @@ function subscribeOnline(callback: () => void): () => void {
   };
 }
 
-/** Returns the current browser connectivity flag. */
+/** 用于返回当前浏览器网络状态。 */
 function getOnlineSnapshot(): boolean {
   return navigator.onLine;
 }
 
-/** Keeps server rendering deterministic before browser hydration. */
+/** 用于在浏览器水合前保持服务端渲染确定。 */
 function getServerOnlineSnapshot(): boolean {
   return true;
 }
 
-/** Exposes browser connectivity without event-listener duplication. */
+/** 用于提供浏览器网络状态且不重复注册监听器。 */
 export function useOnline(): boolean {
   return useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getServerOnlineSnapshot);
 }

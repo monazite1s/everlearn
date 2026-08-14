@@ -1,4 +1,4 @@
-/** @fileoverview Implements owner-scoped knowledge-base creation and summary reads. */
+/** @fileoverview 实现限定所有者的知识库创建和摘要读取。 */
 
 import { randomUUID } from 'node:crypto';
 
@@ -26,12 +26,12 @@ import type { ListKnowledgeBasesQueryDto } from './list-knowledge-bases-query.dt
 const DEFAULT_PAGE_LIMIT = 20;
 const MICROS_PER_SECOND = 1_000_000n;
 
-/** Loads the ESM-only Kysely SQL tag across the API's Node16/CommonJS boundary. */
+/** 用于跨 API 的 CommonJS 边界加载 Kysely ESM SQL 标签。 */
 async function loadSql(): Promise<Sql> {
   return (await import('kysely')).sql;
 }
 
-/** Resolves a cursor already accepted by the global DTO boundary. */
+/** 用于解析已通过全局 DTO 边界的游标。 */
 function resolveCursor(cursor: string | undefined): KnowledgeBaseCursorPayload | undefined {
   if (cursor === undefined) return;
   const payload = decodeKnowledgeBaseCursor(cursor);
@@ -39,22 +39,22 @@ function resolveCursor(cursor: string | undefined): KnowledgeBaseCursorPayload |
   return payload;
 }
 
-/** Splits epoch microseconds so PostgreSQL never receives one lossy floating value. */
+/** 用于拆分微秒时间戳，避免 PostgreSQL 接收有损浮点值。 */
 function splitEpochMicros(updatedAtMicros: string): readonly [string, string] {
   const micros = BigInt(updatedAtMicros);
   return [(micros / MICROS_PER_SECOND).toString(), (micros % MICROS_PER_SECOND).toString()];
 }
 
-/** Persists and reads knowledge-base summaries within the server-resolved owner boundary. */
+/** 用于在服务端所有者边界内写入和读取知识库摘要。 */
 @Injectable()
 export class KnowledgeBasesService {
-  /** Receives the shared database client and trusted local identity context. */
+  /** 用于接收共享数据库客户端和可信本地身份上下文。 */
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly identityContext: LocalIdentityContext,
   ) {}
 
-  /** Creates one normal knowledge base and returns only committed database facts. */
+  /** 用于创建普通知识库并只返回已提交数据库事实。 */
   async create(input: CreateKnowledgeBaseDto): Promise<KnowledgeBaseSummary> {
     const sql = await loadSql();
     const { ownerId } = this.identityContext.getActor();
@@ -71,7 +71,7 @@ export class KnowledgeBasesService {
     return toKnowledgeBaseSummary(row);
   }
 
-  /** Lists active owner records in stable recent-activity cursor order. */
+  /** 用于按稳定最近活动游标顺序列出有效记录。 */
   async list(query: ListKnowledgeBasesQueryDto): Promise<KnowledgeBaseListResponse> {
     const sql = await loadSql();
     const { ownerId } = this.identityContext.getActor();
@@ -117,7 +117,7 @@ export class KnowledgeBasesService {
     return { items: pageRows.map(toKnowledgeBaseSummary), nextCursor };
   }
 
-  /** Reads one active owner record while hiding missing and foreign resources alike. */
+  /** 用于读取有效记录并统一隐藏缺失和他人资源。 */
   async read(id: string): Promise<KnowledgeBaseSummary> {
     const { ownerId } = this.identityContext.getActor();
     return readActiveKnowledgeBaseSummary(this.databaseService.client, id, ownerId);

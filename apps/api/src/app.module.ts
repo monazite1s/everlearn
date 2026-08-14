@@ -1,4 +1,4 @@
-/** @fileoverview Composes API infrastructure and explicit domain modules. */
+/** @fileoverview 组合 API 基础设施和显式领域模块。 */
 
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -10,7 +10,7 @@ import { KnowledgeBasesModule } from './knowledge-bases/knowledge-bases.module';
 import { RequestCorrelationMiddleware } from './request-correlation.middleware';
 import { validateRuntimeEnvironment } from './runtime-config';
 
-/** Owns API infrastructure that is available before domain modules are introduced. */
+/** 用于持有领域模块依赖的 API 基础设施。 */
 @Module({
   controllers: [HealthController],
   imports: [
@@ -27,7 +27,7 @@ import { validateRuntimeEnvironment } from './runtime-config';
   ],
 })
 export class AppModule implements NestModule {
-  /** Applies request correlation before every controller route. */
+  /** 用于在所有控制器路由前建立请求关联。 */
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(RequestCorrelationMiddleware).forRoutes('*');
   }

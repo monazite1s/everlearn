@@ -1,12 +1,12 @@
 /**
- * @fileoverview Verifies safe Worker task correlation log entries.
+ * @fileoverview 验证 Worker 任务关联日志的安全字段边界。
  */
 
 import { expect, test } from 'vitest';
 
 import { createWorkerLogEntry } from './worker-log-context';
 
-/** Confirms task correlation fields are retained without accepting arbitrary payload data. */
+/** 用于验证任务关联字段保留且任意载荷不会进入日志。 */
 function preservesTaskCorrelation(): void {
   const entry = createWorkerLogEntry({
     event: 'workflow.node.started',
@@ -17,7 +17,7 @@ function preservesTaskCorrelation(): void {
   expect(Object.keys(entry).sort()).toEqual(['event', 'jobId', 'requestId', 'runId', 'service']);
 }
 
-/** Confirms lifecycle logs omit correlation keys rather than emitting ambiguous nulls. */
+/** 用于验证生命周期日志省略无值关联字段。 */
 function omitsAbsentCorrelation(): void {
   expect(createWorkerLogEntry({ event: 'worker.lifecycle.ready' })).toEqual({
     event: 'worker.lifecycle.ready',

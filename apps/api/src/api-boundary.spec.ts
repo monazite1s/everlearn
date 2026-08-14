@@ -1,4 +1,4 @@
-/** @fileoverview Verifies strict DTO validation, fixed identity, and safe correlated API errors. */
+/** @fileoverview 验证严格 DTO 校验、固定身份和安全关联错误。 */
 
 import type { ArgumentsHost, ArgumentMetadata } from '@nestjs/common';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
@@ -13,7 +13,7 @@ import { REQUEST_ID_HEADER } from './request-correlation.middleware';
 const requestId = '9c52a51c-5d11-4b8a-99c8-34ea773fa93e';
 const validResourceId = '20000000-0000-4000-8000-000000000001';
 
-/** Represents one ordinary business DTO without accepting ownership input. */
+/** 用于表示不接受所有权输入的普通业务 DTO。 */
 class BoundaryInput {
   resourceId!: string;
 
@@ -30,29 +30,29 @@ interface CapturedResponse {
   status?: number;
 }
 
-/** Creates the metadata used when Nest validates one request body DTO. */
+/** 用于创建 Nest 校验请求 DTO 所需的元数据。 */
 function bodyMetadata(): ArgumentMetadata {
   return { data: undefined, metatype: BoundaryInput, type: 'body' };
 }
 
-/** Builds an HTTP host that captures status, headers, and JSON without Express internals. */
+/** 用于构造不依赖 Express 内部实现的 HTTP 响应宿主。 */
 function createHttpHost(captured: CapturedResponse): ArgumentsHost {
   const request = { method: 'GET', path: '/api/v1/probe' } as Request;
-  /** Reads one captured response header. */
+  /** 用于读取已捕获的响应头。 */
   function getHeader(name: string): string | undefined {
     return captured.headers[name];
   }
-  /** Captures one serialized response body. */
+  /** 用于捕获序列化响应正文。 */
   function json(body: unknown): Response {
     captured.body = body;
     return response as Response;
   }
-  /** Captures one response header. */
+  /** 用于捕获响应头。 */
   function setHeader(name: string, value: string): Response {
     captured.headers[name] = value;
     return response as Response;
   }
-  /** Captures the selected HTTP status. */
+  /** 用于捕获选定的 HTTP 状态码。 */
   function status(statusCode: number): Response {
     captured.status = statusCode;
     return response as Response;
@@ -63,15 +63,15 @@ function createHttpHost(captured: CapturedResponse): ArgumentsHost {
     setHeader,
     status,
   };
-  /** Returns the request object expected by the filter. */
+  /** 用于返回过滤器所需的请求对象。 */
   function getRequest(): Request {
     return request;
   }
-  /** Returns the response object expected by the filter. */
+  /** 用于返回过滤器所需的响应对象。 */
   function getResponse(): typeof response {
     return response;
   }
-  /** Returns the HTTP argument adapter expected by Nest. */
+  /** 用于返回 Nest 所需的 HTTP 参数适配器。 */
   function switchToHttp() {
     return { getRequest, getResponse };
   }
@@ -80,14 +80,14 @@ function createHttpHost(captured: CapturedResponse): ArgumentsHost {
   } as ArgumentsHost;
 }
 
-/** Executes the public filter and returns the captured error response. */
+/** 用于执行公开过滤器并返回已捕获错误响应。 */
 function filterError(error: unknown): CapturedResponse {
   const captured: CapturedResponse = { headers: { [REQUEST_ID_HEADER]: requestId } };
   new ApiExceptionFilter().catch(error, createHttpHost(captured));
   return captured;
 }
 
-/** Confirms valid DTOs are transformed and caller-supplied ownership is rejected. */
+/** 用于验证有效 DTO 被转换且调用方所有权输入被拒绝。 */
 async function validatesAllowlistedInput(): Promise<void> {
   const pipe = createApiValidationPipe();
   const valid: unknown = await pipe.transform(
@@ -100,7 +100,7 @@ async function validatesAllowlistedInput(): Promise<void> {
   ).rejects.toMatchObject({ status: 400 });
 }
 
-/** Confirms validation details expose only field names and rule identifiers. */
+/** 用于验证校验详情只公开字段名和规则标识。 */
 async function exposesSafeValidationDetails(): Promise<void> {
   const pipe = createApiValidationPipe();
   let validationError: unknown;
@@ -129,7 +129,7 @@ async function exposesSafeValidationDetails(): Promise<void> {
   );
 }
 
-/** Confirms the initial identity cannot be influenced by request data or mutation. */
+/** 用于验证初始身份不受请求数据或外部修改影响。 */
 function providesImmutableServerIdentity(): void {
   const identity = new LocalIdentityContext();
   const actor = identity.getActor();
@@ -138,7 +138,7 @@ function providesImmutableServerIdentity(): void {
   expect(identity.getActor()).toBe(actor);
 }
 
-/** Confirms public misses and internal errors share safe correlated envelopes. */
+/** 用于验证资源不可访问和内部错误均使用安全关联信封。 */
 function hidesPrivateFailureDetails(): void {
   const missing = filterError(new NotFoundException('private owner lookup result'));
   const internal = filterError(new Error('private database and stack detail'));

@@ -1,8 +1,8 @@
-# Dependencies and package manager state
+# 依赖和包管理器状态
 node_modules/
 .pnpm-store/
 
-# Build and framework output
+# 构建和框架产物
 .next/
 dist/
 build/
@@ -10,25 +10,25 @@ build/
 coverage/
 *.tsbuildinfo
 
-# Test artifacts
+# 测试产物
 playwright-report/
 test-results/
 blob-report/
 
-# Local configuration and secrets
+# 本地配置和密钥
 .env
 .env.*
 !.env.example
 *.pem
 *.key
 
-# Runtime files
+# 运行时文件
 *.log
 *.pid
 tmp/
 .cache/
 
-# Editors and operating systems
+# 编辑器和操作系统文件
 .idea/
 .vscode/
 .DS_Store

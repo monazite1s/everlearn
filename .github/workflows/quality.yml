@@ -1,3 +1,4 @@
+# 定义提交与合并请求共用的质量门禁。
 name: Quality
 
 on:
@@ -13,8 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: pnpm/setup@4700d737c3d7a2e7199f3d42a920f0bf7f34e411 # v2.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 版本 6.0.2
+      - uses: pnpm/setup@4700d737c3d7a2e7199f3d42a920f0bf7f34e411 # 版本 2.0.1
         with:
           cache: true
           install: false
@@ -32,7 +33,7 @@ jobs:
       S3_ACCESS_KEY: ci-${{ github.run_id }}
       S3_SECRET_KEY: ci-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 版本 6.0.2
       - run: docker compose up --detach --wait
       - run: docker compose ps
       - if: failure()

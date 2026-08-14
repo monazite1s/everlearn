@@ -1,3 +1,4 @@
+# 定义 API 契约 Skill 的界面元数据。
 interface:
   display_name: 'Everlearn API Contract'
   short_description: '设计并审查稳定的前后端契约、错误语义、并发控制与异步交互'

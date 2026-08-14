@@ -1,4 +1,4 @@
-/** @fileoverview Maps Nest and unknown failures to the stable public API error envelope. */
+/** @fileoverview 将 Nest 和未知错误映射为稳定公开 API 错误信封。 */
 
 import {
   ArgumentsHost,
@@ -70,7 +70,7 @@ const PUBLIC_CONFLICTS: Readonly<Record<ApiConflictCode, Omit<PublicProblem, 'st
   },
 };
 
-/** Converts nested class-validator failures into safe field and rule identifiers. */
+/** 用于将嵌套校验错误转换为安全字段和规则标识。 */
 function collectValidationIssues(
   errors: readonly ValidationError[],
   parent = '',
@@ -85,7 +85,7 @@ function collectValidationIssues(
   });
 }
 
-/** Creates the only validation exception shape trusted by the public error filter. */
+/** 用于创建公开错误过滤器唯一信任的校验异常结构。 */
 function createValidationException(errors: ValidationError[]): BadRequestException {
   const problem: ValidationProblem = {
     fields: collectValidationIssues(errors),
@@ -94,7 +94,7 @@ function createValidationException(errors: ValidationError[]): BadRequestExcepti
   return new BadRequestException(problem);
 }
 
-/** Creates the global DTO boundary with strict allowlisting and explicit conversion. */
+/** 用于建立严格白名单和显式转换的全局 DTO 边界。 */
 export function createApiValidationPipe(): ValidationPipe {
   return new ValidationPipe({
     exceptionFactory: createValidationException,
@@ -105,7 +105,7 @@ export function createApiValidationPipe(): ValidationPipe {
   });
 }
 
-/** Recognizes only the internal validation marker and never trusts arbitrary exception payloads. */
+/** 用于只识别内部校验标记，不信任任意异常载荷。 */
 function readValidationProblem(error: HttpException): ValidationProblem | undefined {
   const response = error.getResponse();
   if (typeof response !== 'object' || response === null) return;
@@ -114,14 +114,14 @@ function readValidationProblem(error: HttpException): ValidationProblem | undefi
   return { fields: candidate.fields, kind: 'validation' };
 }
 
-/** Recognizes only Express JSON syntax errors without trusting arbitrary status-like objects. */
+/** 用于只识别 Express JSON 语法错误。 */
 function isJsonSyntaxError(error: unknown): error is HttpStatusError {
   if (!(error instanceof SyntaxError)) return false;
   const candidate = error as Partial<HttpStatusError>;
   return candidate.status === HttpStatus.BAD_REQUEST && candidate.type === 'entity.parse.failed';
 }
 
-/** Maps one exception to a fixed status, code, and user-safe Chinese message. */
+/** 用于将异常映射为固定状态、错误码和安全中文消息。 */
 function resolvePublicProblem(error: unknown): PublicProblem {
   if (isJsonSyntaxError(error)) {
     return { code: 'BAD_REQUEST', message: '请求格式或参数无效。', status: HttpStatus.BAD_REQUEST };
@@ -148,7 +148,7 @@ function resolvePublicProblem(error: unknown): PublicProblem {
     : { ...configured, status };
 }
 
-/** Returns the middleware-issued request ID and repairs it defensively when unavailable. */
+/** 用于返回中间件请求标识，缺失时生成替代值。 */
 function getRequestId(response: Response): string {
   const header = response.getHeader(REQUEST_ID_HEADER);
   const requestId = resolveRequestId(typeof header === 'string' ? header : undefined);
@@ -156,12 +156,12 @@ function getRequestId(response: Response): string {
   return requestId;
 }
 
-/** Hides internal failures while preserving request correlation for server diagnostics. */
+/** 用于隐藏内部错误并保留服务端诊断所需的请求关联。 */
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(ApiExceptionFilter.name);
 
-  /** Sends one stable error envelope and logs only safe request metadata for server failures. */
+  /** 用于发送稳定错误信封并只记录安全请求元数据。 */
   catch(error: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
     const request = http.getRequest<Request>();

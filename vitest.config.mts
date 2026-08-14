@@ -1,5 +1,5 @@
 /**
- * @fileoverview Separates foundation unit, integration, and component tests with global coverage gates.
+ * @fileoverview 隔离单元、集成和组件测试并统一覆盖率门禁。
  */
 
 import react from '@vitejs/plugin-react';
