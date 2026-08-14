@@ -16,6 +16,14 @@
   padding-block-end: var(--space-6);
 }
 
+.header-copy {
+  min-width: 0;
+}
+
+.header-actions {
+  flex: 0 0 auto;
+}
+
 .eyebrow {
   color: var(--accent);
   font-size: 0.75rem;
@@ -28,6 +36,15 @@
   display: grid;
   gap: var(--space-4);
   padding-block: var(--space-8);
+}
+
+.overview-section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.desktop-management {
+  display: block;
 }
 
 .list {
@@ -72,9 +89,16 @@
 
   .header {
     align-items: start;
+    flex-direction: column;
   }
 
-  .desktop-create {
+  .header-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .desktop-create,
+  .desktop-management {
     display: none;
   }
 

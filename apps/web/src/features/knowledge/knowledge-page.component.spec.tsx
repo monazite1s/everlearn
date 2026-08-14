@@ -155,7 +155,7 @@ async function readsPersistedDestination(): Promise<void> {
   first.unmount();
   fetchMock.mockClear();
   renderKnowledge(<KnowledgeDestination knowledgeBaseId={persisted.id} />);
-  await screen.findByText('知识库已创建');
+  await screen.findByText('0 篇文档');
   expect(fetchMock).toHaveBeenCalledOnce();
 }
 

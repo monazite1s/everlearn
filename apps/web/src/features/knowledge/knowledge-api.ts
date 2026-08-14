@@ -5,6 +5,8 @@ import type {
   KnowledgeBaseErrorCode,
   KnowledgeBaseListResponse,
   KnowledgeBaseSummary,
+  KnowledgeBaseVersionRequest,
+  UpdateKnowledgeBaseRequest,
 } from '@everlearn/contracts';
 
 export interface KnowledgeApiFailure {
@@ -30,10 +32,13 @@ const SUMMARY_KEYS = [
 ] as const;
 const ERROR_CODES: readonly KnowledgeBaseErrorCode[] = [
   'BAD_REQUEST',
+  'CONFLICT',
+  'IDEMPOTENCY_CONFLICT',
   'INTERNAL_ERROR',
   'NOT_FOUND',
   'UNSUPPORTED_MEDIA_TYPE',
   'VALIDATION_FAILED',
+  'VERSION_CONFLICT',
 ];
 
 /** Narrows an untrusted JSON value to a record without accepting arrays. */
@@ -164,4 +169,38 @@ export function createKnowledgeBase(
 /** Reads one visible knowledge base for the post-create destination shell. */
 export function getKnowledgeBase(id: string): Promise<KnowledgeApiResult<KnowledgeBaseSummary>> {
   return requestKnowledge(`${API_PATH}/${encodeURIComponent(id)}`, 200, parseKnowledgeBaseSummary);
+}
+
+/** Updates editable metadata using the last summary version observed by the page. */
+export function updateKnowledgeBase(
+  id: string,
+  request: UpdateKnowledgeBaseRequest,
+): Promise<KnowledgeApiResult<KnowledgeBaseSummary>> {
+  return requestKnowledge(`${API_PATH}/${encodeURIComponent(id)}`, 200, parseKnowledgeBaseSummary, {
+    body: JSON.stringify(request),
+    headers: { 'Content-Type': 'application/json' },
+    method: 'PATCH',
+  });
+}
+
+/** Soft-deletes one knowledge base using an exact optimistic version. */
+export async function deleteKnowledgeBase(
+  id: string,
+  request: KnowledgeBaseVersionRequest,
+): Promise<KnowledgeApiResult<undefined>> {
+  try {
+    const response = await fetch(`${API_PATH}/${encodeURIComponent(id)}`, {
+      body: JSON.stringify(request),
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      method: 'DELETE',
+    });
+    if (response.status === 204) return { data: undefined, ok: true };
+    return { error: parseFailure(await readJson(response), 'known'), ok: false };
+  } catch {
+    return {
+      error: { certainty: 'unknown', message: '删除结果尚未确认，可以安全重试本次操作。' },
+      ok: false,
+    };
+  }
 }

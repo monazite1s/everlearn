@@ -182,7 +182,7 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-05W 接入知识库概览与管理
 
-- 状态：未开始。
+- 状态：进行中。
 - 依赖：KB-05、KB-04W。
 - 必读：`docs/01-design/pages/knowledge-base.md`、`docs/01-design/design-system.md`、`docs/02-architecture/api-and-events.md`。
 - 目标：让 `/knowledge/:knowledgeBaseId` 显示真实概览，并可重命名、修改说明和移入回收站。
