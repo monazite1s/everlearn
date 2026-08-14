@@ -2,8 +2,8 @@
 
 import type { Metadata } from 'next';
 
-import { SectionPage } from '../section-page';
-import { findWorkspaceRoute } from '../workspace-routes';
+import { SectionPage } from '../shell/section-page';
+import { findWorkspaceRoute } from '../shell/workspace-routes';
 
 export const metadata: Metadata = { title: '设置 · Everlearn' };
 

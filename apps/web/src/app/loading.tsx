@@ -1,7 +1,7 @@
 /** @fileoverview 在路由加载期间保持中央工作区结构。 */
 
-import pageShell from './page-shell.module.css';
-import styles from './section-page.module.css';
+import pageShell from '../shared/page-shell.module.css';
+import styles from './shell/section-page.module.css';
 
 /** 用于在工作区路由解析期间渲染匹配布局的骨架。 */
 export default function WorkspaceLoading() {

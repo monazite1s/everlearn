@@ -19,9 +19,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 
-import { OfflineNotice } from '../../app/offline-notice';
-import { PageShell } from '../../app/page-shell';
-import { useOnline } from '../../app/use-online';
+import { OfflineNotice } from '../../shared/offline-notice';
+import { PageShell } from '../../shared/page-shell';
+import { useOnline } from '../../shared/use-online';
 import { createKnowledgeBase } from './knowledge-api';
 import type { KnowledgeApiFailure } from './knowledge-api';
 import { KnowledgeBaseCard } from './knowledge-base-card';

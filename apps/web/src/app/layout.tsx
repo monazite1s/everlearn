@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 import '@mantine/core/styles.layer.css';
 import './globals.css';
 import './theme.css';
-import { AppShell } from './app-shell';
+import { AppShell } from './shell/app-shell';
 import { ThemeProvider, ThemeScript } from './theme-provider';
 
 export const metadata: Metadata = {

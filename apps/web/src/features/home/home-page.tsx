@@ -6,9 +6,9 @@ import { Alert, Button, Group, Skeleton, Stack, Title } from '@mantine/core';
 import { AlertCircleIcon, BookOpenIcon, PlusIcon, RefreshCwIcon } from 'lucide-react';
 import Link from 'next/link';
 
-import { OfflineNotice } from '../../app/offline-notice';
-import { PageShell } from '../../app/page-shell';
-import { useOnline } from '../../app/use-online';
+import { OfflineNotice } from '../../shared/offline-notice';
+import { PageShell } from '../../shared/page-shell';
+import { useOnline } from '../../shared/use-online';
 import { KnowledgeBaseCard } from '../knowledge/knowledge-base-card';
 import { KnowledgeEmptyState } from '../knowledge/knowledge-empty-state';
 import { useKnowledgeList } from '../knowledge/knowledge-list-state';

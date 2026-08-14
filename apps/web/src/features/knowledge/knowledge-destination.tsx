@@ -10,8 +10,8 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-import { PageShell } from '../../app/page-shell';
-import { useOnline } from '../../app/use-online';
+import { PageShell } from '../../shared/page-shell';
+import { useOnline } from '../../shared/use-online';
 import { getKnowledgeBase, type KnowledgeApiFailure } from './knowledge-api';
 import styles from './knowledge-page.module.css';
 

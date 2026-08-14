@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, expect, test, vi } from 'vitest';
 
 import { AppShell } from './app-shell';
-import { ThemeProvider } from './theme-provider';
+import { ThemeProvider } from '../theme-provider';
 
 let mockPathname = '/knowledge';
 

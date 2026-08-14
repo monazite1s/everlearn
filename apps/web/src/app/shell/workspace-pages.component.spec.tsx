@@ -5,10 +5,10 @@ import { createElement } from 'react';
 import type { ComponentType } from 'react';
 import { afterEach, expect, test } from 'vitest';
 
-import NewsPage from './news/page';
-import SettingsPage from './settings/page';
-import TutorialsPage from './tutorials/page';
-import WorkflowsPage from './workflows/page';
+import NewsPage from '../news/page';
+import SettingsPage from '../settings/page';
+import TutorialsPage from '../tutorials/page';
+import WorkflowsPage from '../workflows/page';
 
 interface ExplicitPageCase {
   component: ComponentType;

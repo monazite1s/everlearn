@@ -2,7 +2,7 @@
 
 import type { WorkspaceRoute } from './workspace-routes';
 import styles from './section-page.module.css';
-import { PageShell } from './page-shell';
+import { PageShell } from '../../shared/page-shell';
 
 interface SectionPageProps {
   route: WorkspaceRoute;

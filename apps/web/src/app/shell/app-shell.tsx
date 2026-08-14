@@ -16,7 +16,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import styles from './app-shell.module.css';
-import { appearanceOptions, themeOptions, useTheme } from './theme-provider';
+import { appearanceOptions, themeOptions, useTheme } from '../theme-provider';
 import { CreationAction, MobileNavigation, PrimaryNavigation } from './workspace-navigation';
 import { getWorkspaceRoute } from './workspace-routes';
 import type { WorkspaceRoute } from './workspace-routes';
