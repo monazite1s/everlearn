@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 
 import { DatabaseModule } from '../database/database.module';
-import { LocalIdentityContext } from '../local-identity.context';
+import { LocalIdentityContext } from '../identity/local-identity.context';
 import { KnowledgeBaseLifecycleService } from './knowledge-base-lifecycle.service';
 import { KnowledgeBasesController } from './knowledge-bases.controller';
 import { KnowledgeBasesService } from './knowledge-bases.service';

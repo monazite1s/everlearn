@@ -129,4 +129,45 @@ export default defineConfig([
     },
     settings: { react: { version: 'detect' } },
   },
+  /* 分层方向门禁：依赖只允许沿 app(shell) → features → shared 单向流动。 */
+  {
+    files: ['apps/web/src/features/**', 'apps/web/src/shared/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['**/app/**', '**/app'], message: 'features/shared 不得依赖 app 路由层' },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/web/src/shared/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [{ group: ['**/features/**'], message: 'shared 不得依赖 features' }] },
+      ],
+    },
+  },
+  {
+    files: ['packages/*/src/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [{ group: ['**/apps/**'], message: '包不得依赖应用' }] },
+      ],
+    },
+  },
+  {
+    files: ['apps/api/src/database/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [{ group: ['**/knowledge-bases/**'], message: '数据层不得依赖业务模块' }] },
+      ],
+    },
+  },
 ]);

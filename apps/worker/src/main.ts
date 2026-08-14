@@ -6,8 +6,8 @@ import { ConsoleLogger, Logger, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 
-import { validateRuntimeEnvironment } from './runtime-config';
-import { createWorkerLogEntry } from './worker-log-context';
+import { validateRuntimeEnvironment } from './config/runtime-config';
+import { createWorkerLogEntry } from './logging/worker-log-context';
 
 /** 用于提供队列模块接入前的根依赖注入上下文。 */
 @Module({

@@ -8,10 +8,10 @@ import type { KnowledgeBaseSummary } from '@everlearn/contracts' with {
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Transaction } from 'kysely' with { 'resolution-mode': 'import' };
 
-import { ApiConflictException } from '../api-conflict.exception';
+import { ApiConflictException } from '../http-boundary/api-conflict.exception';
 import type { DatabaseSchema, JsonValue } from '../database/database.types';
 import { DatabaseService } from '../database/database.service';
-import { LocalIdentityContext } from '../local-identity.context';
+import { LocalIdentityContext } from '../identity/local-identity.context';
 import type { KnowledgeBaseVersionDto } from './knowledge-base-version.dto';
 import { readActiveKnowledgeBaseSummary } from './knowledge-base-summary.query';
 import type { UpdateKnowledgeBaseDto } from './update-knowledge-base.dto';

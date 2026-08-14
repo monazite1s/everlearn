@@ -7,7 +7,7 @@ import type { Request, Response } from 'express';
 import { expect, test } from 'vitest';
 
 import { ApiExceptionFilter, createApiValidationPipe } from './api-exception.filter';
-import { LOCAL_USER_ID, LocalIdentityContext } from './local-identity.context';
+import { LOCAL_USER_ID, LocalIdentityContext } from '../identity/local-identity.context';
 import { REQUEST_ID_HEADER } from './request-correlation.middleware';
 
 const requestId = '9c52a51c-5d11-4b8a-99c8-34ea773fa93e';

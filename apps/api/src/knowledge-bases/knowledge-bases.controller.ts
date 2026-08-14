@@ -18,7 +18,7 @@ import type { KnowledgeBaseListResponse, KnowledgeBaseSummary } from '@everlearn
   'resolution-mode': 'import',
 };
 
-import { UuidParamDto } from '../uuid-param.dto';
+import { UuidParamDto } from '../http-boundary/uuid-param.dto';
 import { CreateKnowledgeBaseDto } from './create-knowledge-base.dto';
 import { KnowledgeBaseLifecycleService } from './knowledge-base-lifecycle.service';
 import { KnowledgeBaseVersionDto } from './knowledge-base-version.dto';

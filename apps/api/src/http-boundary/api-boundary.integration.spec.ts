@@ -54,7 +54,7 @@ function applyFixtureEnvironment(): void {
 /** 用于以内存适配器启动生产 Provider 和测试控制器。 */
 async function startApplication(): Promise<void> {
   applyFixtureEnvironment();
-  const { AppModule } = await import('./app.module');
+  const { AppModule } = await import('../app.module');
   /** 用于组合生产 Provider 与隔离边界探针。 */
   class TestApplicationModule {}
   Module({ controllers: [ApiBoundaryProbeController], imports: [AppModule] })(

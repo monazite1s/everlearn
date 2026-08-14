@@ -2,7 +2,7 @@
 
 import type { Migration } from 'kysely/migration' with { 'resolution-mode': 'import' };
 
-import { LOCAL_USER_ID } from '../../local-identity.constants';
+import { LOCAL_USER_ID } from '../../identity/local-identity.constants';
 
 export { LOCAL_USER_ID };
 

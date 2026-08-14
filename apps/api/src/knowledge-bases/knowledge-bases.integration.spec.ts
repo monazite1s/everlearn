@@ -9,11 +9,11 @@ import type { INestApplication } from '@nestjs/common';
 import type { Insertable, Kysely } from 'kysely' with { 'resolution-mode': 'import' };
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { REQUEST_ID_HEADER } from '../request-correlation.middleware';
+import { REQUEST_ID_HEADER } from '../http-boundary/request-correlation.middleware';
 import { createDatabaseClient } from '../database/database.service';
 import type { DatabaseSchema, DocumentTable, KnowledgeBaseTable } from '../database/database.types';
 import { runMigrations } from '../database/migration-runner';
-import { LOCAL_USER_ID } from '../local-identity.constants';
+import { LOCAL_USER_ID } from '../identity/local-identity.constants';
 interface KnowledgeBaseFixture {
   readonly deletedAt?: Date | null;
   readonly description?: string;

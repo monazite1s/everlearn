@@ -37,7 +37,7 @@ function applyFixtureEnvironment(): void {
 /** 用于启动不占用固定端口的内存 HTTP 适配器。 */
 async function startApplication(): Promise<void> {
   applyFixtureEnvironment();
-  const { AppModule } = await import('./app.module');
+  const { AppModule } = await import('../app.module');
   application = await NestFactory.create(AppModule, { logger: false });
   application.setGlobalPrefix('api/v1');
   await application.init();

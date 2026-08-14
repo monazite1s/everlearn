@@ -9,7 +9,7 @@ import { Injectable } from '@nestjs/common';
 import type { Sql } from 'kysely' with { 'resolution-mode': 'import' };
 
 import { DatabaseService } from '../database/database.service';
-import { LocalIdentityContext } from '../local-identity.context';
+import { LocalIdentityContext } from '../identity/local-identity.context';
 import type { CreateKnowledgeBaseDto } from './create-knowledge-base.dto';
 import {
   readActiveKnowledgeBaseSummary,

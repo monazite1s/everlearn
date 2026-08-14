@@ -14,8 +14,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import type { DatabaseSchema, DocumentTable, KnowledgeBaseTable } from '../database/database.types';
 import { createDatabaseClient } from '../database/database.service';
 import { runMigrations } from '../database/migration-runner';
-import { LOCAL_USER_ID } from '../local-identity.constants';
-import { REQUEST_ID_HEADER } from '../request-correlation.middleware';
+import { LOCAL_USER_ID } from '../identity/local-identity.constants';
+import { REQUEST_ID_HEADER } from '../http-boundary/request-correlation.middleware';
 
 const databaseUrl = process.env.DATABASE_URL;
 const schemaName = `knowledge_lifecycle_${process.pid}`;
