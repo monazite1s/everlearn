@@ -1,6 +1,6 @@
 /** @fileoverview 验证真实知识库列表、创建、恢复和目标读取。 */
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { EverlearnUiProvider } from '@everlearn/ui';
 import type { KnowledgeBaseSummary } from '@everlearn/contracts';
 import type { ReactElement } from 'react';
@@ -10,11 +10,19 @@ import { KnowledgeDestination } from './knowledge-destination';
 import { KnowledgePage } from './knowledge-page';
 
 const routerPush = vi.fn();
+const routerReplace = vi.fn();
 let mockSearch = '';
+
+/** 用于同步路由替换后的查询参数。 */
+function applyMockReplace(url: string): void {
+  const query = url.split('?')[1];
+  mockSearch = query ?? '';
+  routerReplace(url);
+}
 
 /** 用于返回创建确认后所需的最小路由接口。 */
 function useMockRouter() {
-  return { push: routerPush };
+  return { push: routerPush, replace: applyMockReplace };
 }
 
 /** 用于为创建入口测试返回确定页面查询参数。 */
@@ -62,6 +70,7 @@ function resetScenario(): void {
   cleanup();
   mockSearch = '';
   routerPush.mockReset();
+  routerReplace.mockReset();
   vi.unstubAllGlobals();
 }
 
@@ -159,7 +168,24 @@ async function readsPersistedDestination(): Promise<void> {
   expect(fetchMock).toHaveBeenCalledOnce();
 }
 
+/** 用于验证 URL 参数打开对话框并在关闭时清理。 */
+async function opensDialogFromUrlAndCleansParam(): Promise<void> {
+  mockSearch = 'create=knowledge-base';
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ items: [], nextCursor: null })));
+  renderKnowledge(<KnowledgePage />);
+
+  const dialog = await screen.findByRole('dialog', { name: '新建知识库' });
+  expect(dialog).toBeVisible();
+  fireEvent.click(within(dialog).getByRole('button', { name: '取消' }));
+
+  await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/knowledge'));
+}
+
 test('creates the first persisted knowledge base', createsFirstKnowledgeBase);
 test('recovers an unknown create result without replaying POST', recoversUnknownCreateResult);
 test('retains prior items after pagination failure', retainsItemsAfterPaginationFailure);
+test(
+  'opens the create dialog from URL and cleans the param on close',
+  opensDialogFromUrlAndCleansParam,
+);
 test('reads the persisted post-create destination on refresh', readsPersistedDestination);

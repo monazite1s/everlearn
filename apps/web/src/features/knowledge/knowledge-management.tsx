@@ -3,7 +3,7 @@
 'use client';
 
 import { Alert, Button, Group, Menu, Modal, Stack, Text, Textarea, TextInput } from '@mantine/core';
-import type { KnowledgeBaseSummary } from '@everlearn/contracts';
+import { KNOWLEDGE_BASE_NAME_MAX_LENGTH, type KnowledgeBaseSummary } from '@everlearn/contracts';
 import { AlertCircleIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -14,7 +14,6 @@ import {
   type KnowledgeApiFailure,
   updateKnowledgeBase,
 } from './knowledge-api';
-import styles from './knowledge-page.module.css';
 
 interface EditFieldsProps {
   data: KnowledgeBaseSummary;
@@ -49,7 +48,7 @@ function VersionConflictAlert({
     onReloaded(result.data);
   }
   return (
-    <Alert color="red" icon={<AlertCircleIcon aria-hidden="true" size={16} />}>
+    <Alert color="danger" icon={<AlertCircleIcon aria-hidden="true" size={16} />}>
       <Stack gap="xs">
         <Text size="sm">存在新版本。你的输入已保留，请读取最新版本后重新保存。</Text>
         {failure && <Text size="sm">{failure.message}</Text>}
@@ -76,13 +75,14 @@ function EditKnowledgeBaseFields({
       {failure?.code === 'VERSION_CONFLICT' ? (
         <VersionConflictAlert data={data} onReloaded={onReloaded} />
       ) : failure ? (
-        <Alert color="red" icon={<AlertCircleIcon aria-hidden="true" size={16} />}>
+        <Alert color="danger" icon={<AlertCircleIcon aria-hidden="true" size={16} />}>
           {failure.message}
         </Alert>
       ) : null}
       <TextInput
+        autoFocus
         label="名称"
-        maxLength={200}
+        maxLength={KNOWLEDGE_BASE_NAME_MAX_LENGTH}
         onChange={(event) => onNameChange(event.currentTarget.value)}
         required
         value={name}
@@ -232,10 +232,11 @@ function DeleteKnowledgeBaseModal({
     <Modal onClose={onClose} opened={opened} title="移入回收站">
       <Stack gap="md">
         <Text>
-          “{data.name}”及其中 {data.documentCount} 篇文档将从正常知识库中隐藏，可稍后在回收站恢复。
+          “{data.name}”及其中 {data.documentCount} 篇文档将从正常列表中移除。回收站页面尚未提供，
+          移入后当前无法自行恢复，请确认后再继续。
         </Text>
         {failure && (
-          <Alert color="red" icon={<AlertCircleIcon aria-hidden="true" size={16} />}>
+          <Alert color="danger" icon={<AlertCircleIcon aria-hidden="true" size={16} />}>
             {failure.code === 'VERSION_CONFLICT'
               ? '知识库已发生变化。请取消操作并刷新后重新确认。'
               : failure.message}
@@ -245,7 +246,7 @@ function DeleteKnowledgeBaseModal({
           <Button onClick={onClose} variant="default">
             取消
           </Button>
-          <Button color="red" loading={deleting} onClick={() => void confirmDelete()}>
+          <Button color="danger" loading={deleting} onClick={() => void confirmDelete()}>
             确认移入回收站
           </Button>
         </Group>
@@ -256,10 +257,12 @@ function DeleteKnowledgeBaseModal({
 
 /** 用于渲染一次只打开一个管理对话框的受控 Mantine 菜单。 */
 function ManagementMenu({
+  disabled,
   onChange,
   onSelect,
   opened,
 }: {
+  disabled: boolean;
   onChange: (opened: boolean) => void;
   onSelect: (dialog: 'delete' | 'edit') => void;
   opened: boolean;
@@ -276,6 +279,7 @@ function ManagementMenu({
       <Menu.Target>
         <Button
           aria-label="知识库操作"
+          disabled={disabled}
           leftSection={<MoreHorizontalIcon aria-hidden="true" size={ICON_SIZE} />}
           variant="default"
         >
@@ -291,7 +295,7 @@ function ManagementMenu({
         </Menu.Item>
         <Menu.Divider />
         <Menu.Item
-          color="red"
+          color="danger"
           leftSection={<Trash2Icon aria-hidden="true" size={16} />}
           onClick={() => onSelect('delete')}
         >
@@ -302,12 +306,14 @@ function ManagementMenu({
   );
 }
 
-/** 用于通过 Mantine 菜单和对话框提供仅桌面管理。 */
+/** 用于提供桌面知识库管理。 */
 export function KnowledgeManagement({
   data,
+  offline,
   onSaved,
 }: {
   data: KnowledgeBaseSummary;
+  offline: boolean;
   onSaved: (data: KnowledgeBaseSummary) => void;
 }) {
   const [dialog, setDialog] = useState<'delete' | 'edit'>();
@@ -318,8 +324,13 @@ export function KnowledgeManagement({
     setDialog(selected);
   }
   return (
-    <div className={styles.desktopManagement}>
-      <ManagementMenu onChange={setMenuOpened} onSelect={selectDialog} opened={menuOpened} />
+    <div>
+      <ManagementMenu
+        disabled={offline}
+        onChange={setMenuOpened}
+        onSelect={selectDialog}
+        opened={menuOpened}
+      />
       {dialog === 'edit' && (
         <EditKnowledgeBaseModal
           data={data}

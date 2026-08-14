@@ -76,7 +76,7 @@ export function MobileNavigation({ pathname }: Pick<PrimaryNavigationProps, 'pat
   const [opened, { close, toggle }] = useDisclosure(false);
   return (
     <div className={styles['mobile-navigation']}>
-      <Burger aria-label="打开导航" onClick={toggle} opened={opened} size="sm" />
+      <Burger aria-label="打开导航" onClick={toggle} opened={opened} size="md" />
       <Drawer
         classNames={{ content: styles['mobile-drawer'] }}
         closeButtonProps={{ 'aria-label': '关闭导航' }}
@@ -101,8 +101,7 @@ export function MobileNavigation({ pathname }: Pick<PrimaryNavigationProps, 'pat
 export function CreationAction({ route }: { route: WorkspaceRoute }) {
   const [opened, { close, open }] = useDisclosure(false);
   const mobilePolicy = getMobileRoutePolicy(route);
-  const creationHref =
-    route.id === 'knowledge' ? '/knowledge?create=knowledge-base' : '/knowledge?create=document';
+  const creationHref = '/knowledge?create=knowledge-base';
   return (
     <>
       <Button

@@ -1,4 +1,34 @@
-/* 定义所有语义主题共享的浏览器级布局默认值。 */
+/* 定义浏览器级默认值，并把 Mantine 语义变量接管到 Everlearn 令牌。 */
+
+/* Mantine 语义变量与 design-system.md「Mantine 映射」清单保持一致。 */
+:root {
+  --mantine-color-text: var(--ink);
+  --mantine-color-body: var(--ink);
+  --mantine-color-dimmed: var(--ink-muted);
+  --mantine-color-anchor: var(--accent);
+  --mantine-color-default: var(--surface-raised);
+  --mantine-color-default-hover: var(--surface);
+  --mantine-color-default-color: var(--ink);
+  --mantine-color-default-border: var(--border);
+
+  /* 全 shade 同值的色阶无法派生 light 变体，hover 背景与文字会同色。 */
+  --mantine-color-everlearn-light: var(--accent-soft);
+  --mantine-color-everlearn-light-hover: var(--hover-overlay);
+  --mantine-color-everlearn-light-color: var(--accent);
+  --mantine-color-danger-light: var(--danger);
+  --mantine-color-danger-light-hover: var(--hover-overlay);
+  --mantine-color-danger-light-color: var(--danger);
+  --mantine-color-success-light: var(--success);
+  --mantine-color-success-light-hover: var(--hover-overlay);
+  --mantine-color-success-light-color: var(--success);
+  --mantine-color-warning-light: var(--warning);
+  --mantine-color-warning-light-hover: var(--hover-overlay);
+  --mantine-color-warning-light-color: var(--warning);
+  --mantine-color-everlearn-text: var(--accent-contrast);
+  --mantine-color-danger-text: var(--accent-contrast);
+  --mantine-color-success-text: var(--accent-contrast);
+  --mantine-color-warning-text: var(--accent-contrast);
+}
 
 * {
   box-sizing: border-box;
@@ -28,4 +58,18 @@ textarea {
 
 ::selection {
   background: var(--accent-soft);
+}
+
+/* ponytail: 依赖 mantine-{Component}-{part} 命名归零浮层动画，升级 Mantine 需回归。 */
+@media (prefers-reduced-motion: reduce) {
+  .mantine-Modal-content,
+  .mantine-Modal-overlay,
+  .mantine-Drawer-content,
+  .mantine-Drawer-overlay,
+  .mantine-Menu-dropdown,
+  .mantine-Tooltip-popup,
+  .mantine-Select-dropdown,
+  .mantine-Select-option {
+    transition-duration: var(--duration-micro);
+  }
 }

@@ -1,9 +1,9 @@
-/** @fileoverview 管理知识库列表同步和浏览器网络状态。 */
+/** @fileoverview 管理知识库列表的初始同步和游标分页。 */
 
 'use client';
 
 import type { KnowledgeBaseListResponse, KnowledgeBaseSummary } from '@everlearn/contracts';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 
 import { listKnowledgeBases } from './knowledge-api';
 import type { KnowledgeApiFailure, KnowledgeApiResult } from './knowledge-api';
@@ -57,29 +57,4 @@ export function useKnowledgeList() {
     setLoad({ loading: false, nextCursor: result.data.nextCursor });
   }
   return { items, load, read };
-}
-
-/** 用于订阅浏览器在线和离线变化。 */
-function subscribeOnline(callback: () => void): () => void {
-  window.addEventListener('online', callback);
-  window.addEventListener('offline', callback);
-  return /** Removes the paired connectivity listeners. */ function unsubscribe(): void {
-    window.removeEventListener('online', callback);
-    window.removeEventListener('offline', callback);
-  };
-}
-
-/** 用于返回当前浏览器网络状态。 */
-function getOnlineSnapshot(): boolean {
-  return navigator.onLine;
-}
-
-/** 用于在浏览器水合前保持服务端渲染确定。 */
-function getServerOnlineSnapshot(): boolean {
-  return true;
-}
-
-/** 用于提供浏览器网络状态且不重复注册监听器。 */
-export function useOnline(): boolean {
-  return useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getServerOnlineSnapshot);
 }

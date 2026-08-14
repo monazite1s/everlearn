@@ -1,36 +1,45 @@
 /* 定义围绕真实数据状态的安静知识优先首页布局。 */
 
-.page {
-  margin-inline: var(--space-auto);
-  max-width: 76rem;
-  padding: var(--space-8);
-  width: 100%;
+.section-description {
+  color: var(--ink-muted);
+  font-size: var(--text-interface);
+  margin: var(--space-1) 0 0;
 }
 
-.header {
-  border-bottom: 0.0625rem solid var(--border);
-  padding-block-end: var(--space-6);
+.section-body {
+  margin-block-start: var(--space-4);
 }
 
-.eyebrow {
-  color: var(--accent);
-  font-size: 0.75rem;
-  font-weight: 650;
-  letter-spacing: 0.12em;
-  margin-block-end: var(--space-2);
+.alert-message {
+  font-size: var(--text-interface);
+  margin: 0;
+}
+
+.alert-action {
+  margin-block-start: var(--space-2);
 }
 
 .recent {
   padding-block: var(--space-8);
 }
 
-.supporting-copy {
-  margin-block-start: var(--space-1);
+.recent-placeholder {
+  align-items: center;
+  color: var(--ink-muted);
+  display: flex;
+  font-size: var(--text-interface);
+  gap: var(--space-2);
+  line-height: var(--leading-interface);
+  margin-block-start: var(--space-3);
 }
 
 .knowledge {
   border-top: 0.0625rem solid var(--border);
   padding-block-start: var(--space-8);
+}
+
+.knowledge-heading {
+  min-height: 3.5rem;
 }
 
 .knowledge-list {
@@ -42,16 +51,13 @@
   padding: 0;
 }
 
-@media (width <= 768px) {
-  .page {
-    padding: var(--space-6) var(--space-4);
-  }
-
+@media (width <= 48em) {
   .knowledge-list {
     grid-template-columns: 1fr;
   }
 
-  .desktop-create {
-    display: none;
+  .knowledge-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

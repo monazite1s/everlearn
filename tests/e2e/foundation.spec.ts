@@ -5,23 +5,21 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-/** 用于验证主题控件支持键盘操作并在刷新后保持。 */
+/** 用于验证主题菜单支持切换并在刷新后保持。 */
 async function opensFoundationPage({ page }: { page: Page }): Promise<void> {
   await page.goto('/');
 
   await expect(page).toHaveTitle('Everlearn');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('首页');
 
-  const theme = page.getByLabel('主题', { exact: true });
-  const appearance = page.getByLabel('外观', { exact: true });
-  await theme.focus();
-  await expect(theme).toBeFocused();
-  await theme.selectOption('neutral');
-  await appearance.selectOption('dark');
+  const menu = page.getByRole('button', { name: '外观与主题' });
+  await menu.click();
+  await page.getByRole('menuitem', { name: '雾灰中性' }).click();
+  await menu.click();
+  await page.getByRole('menuitem', { name: '深色' }).click();
   await page.reload();
 
-  await expect(theme).toHaveValue('neutral');
-  await expect(appearance).toHaveValue('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'neutral');
   await expect(page.locator('html')).toHaveAttribute('data-color-mode', 'dark');
 }
 

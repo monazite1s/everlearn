@@ -1,4 +1,4 @@
-/* 定义 Mantine 工作区外壳和 Everlearn 知识导航样式。 */
+/* 定义工作区外壳和知识导航样式。 */
 
 .shell {
   background: var(--canvas);
@@ -23,7 +23,7 @@
 .header,
 .navbar,
 .aside {
-  background: var(--surface);
+  background: var(--shell);
 }
 
 .header {
@@ -53,15 +53,10 @@
 }
 
 .top-actions,
-.theme-controls,
 .desktop-controls {
   align-items: center;
   display: flex;
   gap: var(--space-2);
-}
-
-.theme-controls > div {
-  width: 7rem;
 }
 
 .mobile-navigation,
@@ -71,34 +66,41 @@
 
 .navbar {
   border-right: 0.0625rem solid var(--border);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   padding: var(--space-3) var(--space-2);
-}
-
-.navbar-header {
-  display: flex;
-  justify-content: flex-end;
-  margin-block-end: var(--space-3);
-}
-
-.shell[data-left-collapsed='true'] .navbar-header {
-  justify-content: center;
 }
 
 .navigation {
   display: grid;
   gap: var(--space-1);
+  justify-items: start;
 }
 
 .nav-link {
-  border-inline-start: 0.125rem solid transparent;
+  border-radius: var(--radius-small);
   color: var(--ink-muted);
-  min-height: 2.5rem;
+  min-height: 2rem;
+
+  /* 零延迟变色；知识脊线由 active 背景承担。 */
+  transition: none;
+  width: fit-content;
+}
+
+.nav-link:hover {
+  background: var(--hover-overlay);
+  color: var(--ink);
+}
+
+@media (pointer: coarse) {
+  .nav-link {
+    min-height: 2.75rem;
+  }
 }
 
 .nav-link[data-active] {
   background: var(--accent-soft);
-  border-inline-start-color: var(--accent);
   color: var(--ink);
   font-weight: 650;
 }
@@ -106,42 +108,67 @@
 .shell[data-left-collapsed='true'] .nav-link {
   justify-content: center;
   padding-inline: var(--space-2);
+  width: 100%;
+}
+
+.navbar-footer {
+  border-top: 0.0625rem solid var(--border);
+  margin-block-start: var(--space-auto);
+  padding-block-start: var(--space-2);
+}
+
+.shell[data-left-collapsed='true'] .navbar-footer {
+  border-top: none;
+  display: grid;
+  justify-items: center;
+  padding-block-start: 0;
 }
 
 .main {
   background: var(--canvas);
   min-width: 0;
   overflow: auto;
+  position: relative;
 }
 
 .aside {
   border-left: 0.0625rem solid var(--border);
   overflow: hidden;
-  padding: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+}
+
+.aside-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-block-end: var(--space-2);
 }
 
 .context-label {
   color: var(--accent);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 650;
   letter-spacing: 0.08em;
-  margin: 0 0 var(--space-2);
+  margin: 0;
 }
 
-.aside h2 {
+.aside-title {
   font-family: var(--font-reading);
   font-size: var(--text-title-small);
   margin: 0;
 }
 
-.aside > p:last-child,
+.aside-description {
+  color: var(--ink-muted);
+  font-size: var(--text-interface);
+  line-height: var(--leading-interface);
+  margin: var(--space-2) 0 0;
+}
+
 .creation-description {
   color: var(--ink-muted);
   font-size: var(--text-interface);
   line-height: var(--leading-interface);
-}
-
-.creation-description {
   margin-block: 0 var(--space-4);
 }
 
@@ -151,16 +178,53 @@
   max-width: calc(100vw - 2rem);
 }
 
+/* 移动端汉堡触发器；44px 触控目标。 */
+.mobile-navigation {
+  align-items: center;
+  display: none;
+  justify-content: center;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+/* 右栏收起时的贴边展开把手。 */
+.context-tab {
+  align-items: center;
+  background: var(--shell);
+  border: 0.0625rem solid var(--border);
+  border-right: none;
+  border-radius: var(--radius-small) 0 0 var(--radius-small);
+  color: var(--ink-muted);
+  cursor: pointer;
+  display: none;
+  padding: var(--space-2) var(--space-1);
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.context-tab:hover {
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+@media (width > 80em) {
+  .context-tab {
+    display: flex;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .navbar,
   .aside,
   .skip-link {
-    transition-duration: var(--motion-fast);
+    transition-duration: var(--duration-panel);
     transition-property: transform, width;
   }
 }
 
-@media (width <= 68rem) {
+@media (width <= 80em) {
   .location {
     display: none;
   }
@@ -170,7 +234,7 @@
   }
 }
 
-@media (width <= 48rem) {
+@media (width <= 48em) {
   .topbar {
     gap: var(--space-2);
     grid-template-columns: auto auto 1fr;
@@ -178,7 +242,7 @@
   }
 
   .mobile-navigation {
-    display: block;
+    display: flex;
   }
 
   .mobile-creation {
@@ -195,17 +259,9 @@
     min-width: 0;
   }
 
-  .top-actions > a:first-child {
-    min-width: 0;
-    padding-inline: var(--space-2);
-  }
-
-  .top-actions > a:last-of-type {
-    display: none;
-  }
-
   .main {
-    min-height: calc(100vh - 3rem);
+    /* dvh 适配移动端浏览器工具栏。 */
+    min-height: calc(100dvh - var(--header-height));
     overflow-x: hidden;
   }
 }

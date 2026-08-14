@@ -7,6 +7,7 @@
   --font-reading: 'Source Han Serif SC', 'Songti SC', 'STSong', serif;
   --font-interface: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-code: 'JetBrains Mono', 'SFMono-Regular', 'Consolas', monospace;
+  --text-caption: 0.75rem;
   --text-interface: 0.875rem;
   --text-body: 1rem;
   --text-title-small: 1.125rem;
@@ -36,19 +37,30 @@
   --shadow-float: 0 0.75rem 2rem rgb(35 28 19 / 12%);
   --shadow-drag: 0 1rem 2.5rem rgb(35 28 19 / 18%);
 
+  /* 与 app-shell.tsx 的 header 高度同步。 */
+  --header-height: 3rem;
+
   /* 动效 */
   --duration-micro: 150ms;
   --duration-panel: 260ms;
+  --duration-cycle: 1.4s;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* 断点锚点；实现写 48em/80em 字面量。 */
+  --breakpoint-mobile: 48em;
+  --breakpoint-desktop: 80em;
 
   /* 纸张色板浅色模式 */
   --canvas: #f3efe6;
+  --shell: #ede8dc;
   --surface: #fbf8f1;
   --surface-raised: #fffdf8;
   --ink: #29241e;
   --ink-muted: #746b5d;
   --border: #d9d0c1;
+  --hover-overlay: rgb(41 36 30 / 6%);
   --accent: #8a5a24;
+  --accent-contrast: #fffdf8;
   --accent-soft: #e9dcc8;
   --danger: #a33a32;
   --warning: #9b671d;
@@ -59,13 +71,16 @@
 :root[data-theme='paper'][data-color-mode='dark'] {
   color-scheme: dark;
 
-  --canvas: #1e1b17;
-  --surface: #28231d;
-  --surface-raised: #312a22;
+  --canvas: #171410;
+  --shell: #221c15;
+  --surface: #262019;
+  --surface-raised: #322a21;
   --ink: #eee5d6;
   --ink-muted: #b7ab9a;
-  --border: #4b4237;
+  --border: #57493a;
+  --hover-overlay: rgb(255 253 248 / 8%);
   --accent: #d0a363;
+  --accent-contrast: #29241e;
   --accent-soft: #4a3824;
   --danger: #e18478;
   --warning: #e2b15f;
@@ -77,12 +92,15 @@
   color-scheme: light;
 
   --canvas: #f1f3f5;
+  --shell: #e9edf1;
   --surface: #f9fafb;
   --surface-raised: #fff;
   --ink: #20252a;
   --ink-muted: #626b75;
   --border: #d2d7dc;
+  --hover-overlay: rgb(32 37 42 / 6%);
   --accent: #415f73;
+  --accent-contrast: #fff;
   --accent-soft: #dce6ec;
   --danger: #9f3b35;
   --warning: #875d19;
@@ -93,13 +111,16 @@
 :root[data-theme='neutral'][data-color-mode='dark'] {
   color-scheme: dark;
 
-  --canvas: #171a1d;
-  --surface: #202429;
-  --surface-raised: #292e34;
+  --canvas: #121518;
+  --shell: #1d2228;
+  --surface: #1f2429;
+  --surface-raised: #2a3038;
   --ink: #edf0f2;
   --ink-muted: #adb5bd;
-  --border: #414850;
+  --border: #4a5158;
+  --hover-overlay: rgb(237 240 242 / 8%);
   --accent: #98b6c9;
+  --accent-contrast: #12181d;
   --accent-soft: #2d3d47;
   --danger: #e18478;
   --warning: #dfb35f;
@@ -111,5 +132,6 @@
   :root {
     --duration-micro: 0ms;
     --duration-panel: 0ms;
+    --duration-cycle: 0ms;
   }
 }

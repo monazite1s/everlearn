@@ -9,9 +9,10 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "check": "pnpm check:file-size && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-    "check:full": "pnpm check:file-size && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build",
+    "check": "pnpm check:file-size && pnpm check:design-tokens && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check:full": "pnpm check:file-size && pnpm check:design-tokens && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build",
     "check:file-size": "node scripts/check-file-size.mjs",
+    "check:design-tokens": "node scripts/check-design-tokens.mjs",
     "dev": "turbo run dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

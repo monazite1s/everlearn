@@ -2,14 +2,14 @@
 
 'use client';
 
-import { ActionIcon, AppShell as MantineAppShell, Button, Select, Tooltip } from '@mantine/core';
+import { ActionIcon, AppShell as MantineAppShell, Button, Menu, Tooltip } from '@mantine/core';
 import {
-  ActivityIcon,
+  CheckIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   PanelRightCloseIcon,
   PanelRightOpenIcon,
-  SearchIcon,
+  PaletteIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -32,57 +32,63 @@ interface AppShellProps {
 
 interface TopbarProps {
   pathname: string;
-  rightOpen: boolean;
   route: WorkspaceRoute;
-  toggleRightPanel: () => void;
 }
 
 interface WorkspacePanelsProps extends AppShellProps {
   leftCollapsed: boolean;
   pathname: string;
+  rightOpen: boolean;
   route: WorkspaceRoute;
   toggleLeftPanel: () => void;
+  toggleRightPanel: () => void;
 }
 
 const ICON_SIZE = 18;
 
-/** 用于提供由单一主题存储驱动的紧凑主题控件。 */
-function ThemeControls() {
+/** 用于渲染外观与主题设置菜单。 */
+function ThemeMenu() {
   const theme = useTheme();
-  /** 用于应用已校验的语义色板。 */
-  function handleThemeChange(value: string | null): void {
-    theme.setTheme(value === 'neutral' ? 'neutral' : 'paper');
-  }
-  /** 用于应用已校验的外观偏好。 */
-  function handleAppearanceChange(value: string | null): void {
-    theme.setAppearance(value === 'dark' || value === 'light' ? value : 'system');
+  /** 用于标记菜单项当前值。 */
+  function renderCheck(active: boolean) {
+    return active ? <CheckIcon aria-hidden="true" size={14} /> : undefined;
   }
   return (
-    <div className={styles['theme-controls']}>
-      <Select
-        allowDeselect={false}
-        aria-label="主题"
-        data={themeOptions.map(({ id, label }) => ({ label, value: id }))}
-        onChange={handleThemeChange}
-        size="xs"
-        value={theme.theme}
-      />
-      <Select
-        allowDeselect={false}
-        aria-label="外观"
-        data={appearanceOptions.map(({ id, label }) => ({ label, value: id }))}
-        onChange={handleAppearanceChange}
-        size="xs"
-        value={theme.appearance}
-      />
-    </div>
+    <Menu shadow="md" width={200} withinPortal>
+      <Menu.Target>
+        <ActionIcon aria-label="外观与主题" size="lg" variant="subtle">
+          <PaletteIcon aria-hidden="true" size={ICON_SIZE} />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Label>外观</Menu.Label>
+        {appearanceOptions.map(({ id, label }) => (
+          <Menu.Item
+            key={id}
+            leftSection={renderCheck(theme.appearance === id)}
+            onClick={() => theme.setAppearance(id)}
+          >
+            {label}
+          </Menu.Item>
+        ))}
+        <Menu.Divider />
+        <Menu.Label>主题</Menu.Label>
+        {themeOptions.map(({ id, label }) => (
+          <Menu.Item
+            key={id}
+            leftSection={renderCheck(theme.theme === id)}
+            onClick={() => theme.setTheme(id)}
+          >
+            {label}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 }
 
-/** 用于渲染全局位置、搜索、创建、状态、主题和上下文操作。 */
-function Topbar({ pathname, rightOpen, route, toggleRightPanel }: TopbarProps) {
-  const contextLabel = rightOpen ? '收起上下文' : '展开上下文';
-  const ContextIcon = rightOpen ? PanelRightCloseIcon : PanelRightOpenIcon;
+/** 用于渲染全局位置、创建和外观操作。 */
+function Topbar({ pathname, route }: TopbarProps) {
   return (
     <div className={styles.topbar}>
       <MobileNavigation pathname={pathname} />
@@ -91,78 +97,85 @@ function Topbar({ pathname, rightOpen, route, toggleRightPanel }: TopbarProps) {
       </Link>
       <span className={styles.location}>{route.label}</span>
       <div className={styles['top-actions']}>
-        <Button
-          component={Link}
-          href="/knowledge?search=open"
-          leftSection={<SearchIcon aria-hidden="true" size={ICON_SIZE} />}
-          variant="subtle"
-        >
-          搜索
-        </Button>
         <CreationAction route={route} />
-        <Button
-          component={Link}
-          href={`${route.href}?view=runs`}
-          leftSection={<ActivityIcon aria-hidden="true" size={ICON_SIZE} />}
-          variant="subtle"
-        >
-          运行中 2
-        </Button>
         <div className={styles['desktop-controls']}>
-          <ThemeControls />
-          <Tooltip label={contextLabel}>
-            <ActionIcon
-              aria-controls="context-panel"
-              aria-expanded={rightOpen}
-              aria-label={contextLabel}
-              onClick={toggleRightPanel}
-              size="lg"
-              variant="subtle"
-            >
-              <ContextIcon aria-hidden="true" size={ICON_SIZE} />
-            </ActionIcon>
-          </Tooltip>
+          <ThemeMenu />
         </div>
       </div>
     </div>
   );
 }
 
+/** 用于渲染侧栏底部的收起入口。 */
+function SidebarFooter({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  const label = collapsed ? '展开导航' : '收起导航';
+  const CollapseIcon = collapsed ? PanelLeftOpenIcon : PanelLeftCloseIcon;
+  return (
+    <div className={styles['navbar-footer']}>
+      <Button
+        aria-controls="primary-navigation"
+        aria-expanded={!collapsed}
+        leftSection={<CollapseIcon aria-hidden="true" size={16} />}
+        onClick={onToggle}
+        size="compact-sm"
+        variant="subtle"
+      >
+        {label}
+      </Button>
+    </div>
+  );
+}
+
+/** 用于在右栏收起时提供贴边展开把手。 */
+function ContextReopenTab({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      aria-label="展开上下文"
+      className={styles['context-tab']}
+      onClick={onOpen}
+      type="button"
+    >
+      <PanelRightOpenIcon aria-hidden="true" size={16} />
+    </button>
+  );
+}
+
 /** 用于在持久导航和上下文信息之间排列当前页面。 */
 function WorkspacePanels(props: WorkspacePanelsProps) {
-  const { children, leftCollapsed, pathname, route, toggleLeftPanel } = props;
-  const CollapseIcon = leftCollapsed ? PanelLeftOpenIcon : PanelLeftCloseIcon;
-  const collapseLabel = leftCollapsed ? '展开导航' : '收起导航';
+  const { children, leftCollapsed, pathname, rightOpen, route, toggleLeftPanel, toggleRightPanel } =
+    props;
   return (
     <>
       <MantineAppShell.Navbar aria-label="工作区导航" className={styles.navbar} component="aside">
-        <div className={styles['navbar-header']}>
-          <Tooltip label={collapseLabel} position="right">
-            <ActionIcon
-              aria-controls="primary-navigation"
-              aria-expanded={!leftCollapsed}
-              aria-label={collapseLabel}
-              onClick={toggleLeftPanel}
-              size="lg"
-              variant="subtle"
-            >
-              <CollapseIcon aria-hidden="true" size={ICON_SIZE} />
-            </ActionIcon>
-          </Tooltip>
-        </div>
         <PrimaryNavigation
           collapsed={leftCollapsed}
           navigationId="primary-navigation"
           pathname={pathname}
         />
+        <SidebarFooter collapsed={leftCollapsed} onToggle={toggleLeftPanel} />
       </MantineAppShell.Navbar>
       <MantineAppShell.Main className={styles.main} id="main-content">
         {children}
+        {!rightOpen && <ContextReopenTab onOpen={toggleRightPanel} />}
       </MantineAppShell.Main>
       <MantineAppShell.Aside aria-label="当前上下文" className={styles.aside} id="context-panel">
-        <p className={styles['context-label']}>当前上下文</p>
-        <h2>{route.label}</h2>
-        <p>{route.context}</p>
+        <div className={styles['aside-header']}>
+          <p className={styles['context-label']}>当前上下文</p>
+          <Tooltip label="收起上下文">
+            <ActionIcon
+              aria-controls="context-panel"
+              aria-expanded
+              aria-label="收起上下文"
+              onClick={toggleRightPanel}
+              size="lg"
+              variant="subtle"
+            >
+              <PanelRightCloseIcon aria-hidden="true" size={ICON_SIZE} />
+            </ActionIcon>
+          </Tooltip>
+        </div>
+        <h2 className={styles['aside-title']}>{route.label}</h2>
+        <p className={styles['aside-description']}>{route.context}</p>
       </MantineAppShell.Aside>
     </>
   );
@@ -198,18 +211,15 @@ export function AppShell({ children }: AppShellProps) {
         withBorder={false}
       >
         <MantineAppShell.Header className={styles.header}>
-          <Topbar
-            pathname={pathname}
-            rightOpen={rightOpen}
-            route={route}
-            toggleRightPanel={toggleRightPanel}
-          />
+          <Topbar pathname={pathname} route={route} />
         </MantineAppShell.Header>
         <WorkspacePanels
           leftCollapsed={leftCollapsed}
           pathname={pathname}
+          rightOpen={rightOpen}
           route={route}
           toggleLeftPanel={toggleLeftPanel}
+          toggleRightPanel={toggleRightPanel}
         >
           {children}
         </WorkspacePanels>

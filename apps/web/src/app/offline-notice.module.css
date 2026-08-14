@@ -1,0 +1,5 @@
+/* 定义离线提示布局。 */
+
+.offline {
+  margin-block-start: var(--space-6);
+}

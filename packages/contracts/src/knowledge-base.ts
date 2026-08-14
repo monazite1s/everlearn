@@ -1,5 +1,8 @@
 /** @fileoverview 定义知识库 API 的公开请求与响应投影。 */
 
+/** 用于让客户端输入与服务端校验共享同一名称长度上限。 */
+export const KNOWLEDGE_BASE_NAME_MAX_LENGTH = 200;
+
 /** 用于限定知识库由产品定义的用途。 */
 export type KnowledgeBaseKind = 'news' | 'normal' | 'tutorial';
 

@@ -9,10 +9,18 @@ description: Design, implement, or review Everlearn pages, layouts, components, 
 
 1. Read the target page specification, design-system.md, and layout-and-navigation.md when relevant.
 2. Inspect the current page and search packages/ui plus the approved component library before proposing markup.
-3. Produce a component reuse map: need, existing component, chosen variant, and any justified gap.
+3. Produce a component reuse map: need, existing component, chosen variant, and justified gap.
 4. Define information hierarchy, interaction states, responsive behavior, keyboard flow, focus behavior, and reduced-motion behavior.
 5. Implement only after the specification and reuse map are consistent.
 6. Verify the real rendered page at desktop and mobile widths. Exercise loading, empty, error, disabled, overflow, and long-content states that apply.
+7. Capture real-browser screenshots (light, dark, and 390px mobile) into the task evidence, and run `pnpm check:design-tokens`. A UI change without screenshot evidence is not done.
+
+Hard gates that block delivery:
+
+- Compliance checks (states, tokens, contrast) prove the UI breaks no rule; they do not prove it looks good. Hierarchy, card affordance, empty-state structure, and spacing rhythm must be judged from the real rendering, not from code.
+- No global entry point (top bar, navigation) may ship counters, badges, or links without a real data source. Dead or fake controls fail delivery.
+- CSS Modules must access kebab-case class names via `styles['class-name']`; the project exports locals `asIs`, so camelCase access silently no-ops.
+- Mantine semantic colors must come from the mapping table in design-system.md («Mantine 映射»); `color="red"` and bare hex values are rejected.
 
 Read references/delivery-checklist.md before approving a new page or a material redesign.
 

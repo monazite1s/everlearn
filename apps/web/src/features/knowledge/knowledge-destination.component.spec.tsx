@@ -102,9 +102,7 @@ async function updatesMetadata(): Promise<void> {
   fireEvent.click(within(dialog).getByRole('button', { name: '保存修改' }));
 
   expect(await screen.findByRole('heading', { level: 1, name: '新名称' })).toBeVisible();
-  expect(
-    within(screen.getByRole('main', { name: '知识库内容' })).getByText('新说明'),
-  ).toBeVisible();
+  expect(await screen.findByText('新说明')).toBeVisible();
   const request = fetchMock.mock.calls[1]?.[1] as RequestInit;
   expect(request.method).toBe('PATCH');
   expect(request.body).toBe(JSON.stringify({ description: '新说明', name: '新名称', version: 1 }));
