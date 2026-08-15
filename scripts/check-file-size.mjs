@@ -33,6 +33,8 @@ const checkedExtensions = new Set([
   '.yml',
 ]);
 const ignoredFiles = new Set(['pnpm-lock.yaml']);
+/** shadcn CLI 生成的 vendored 组件源码（第三方代码豁免，ADR 001）。 */
+const ignoredPathPrefixes = [path.join('packages', 'ui', 'src', 'components')];
 
 /** 用于跳过生成目录和外部依赖目录。 */
 function shouldIgnoreDirectory(name) {
@@ -41,8 +43,12 @@ function shouldIgnoreDirectory(name) {
 
 /** 用于识别受规模门禁约束的手写文件。 */
 function shouldCheckFile(filePath) {
+  const relativePath = path.relative(repositoryRoot, filePath);
+  const underVendoredPrefix = ignoredPathPrefixes.some((prefix) => relativePath.startsWith(prefix));
   return (
-    !ignoredFiles.has(path.basename(filePath)) && checkedExtensions.has(path.extname(filePath))
+    !underVendoredPrefix &&
+    !ignoredFiles.has(path.basename(filePath)) &&
+    checkedExtensions.has(path.extname(filePath))
   );
 }
 

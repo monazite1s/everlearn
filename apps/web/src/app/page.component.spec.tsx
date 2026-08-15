@@ -1,10 +1,10 @@
 /** @fileoverview 验证根路由渲染知识优先首页组合。 */
 
 import { cleanup, render, screen } from '@testing-library/react';
-import { EverlearnUiProvider } from '@everlearn/ui';
 import { afterEach, expect, test, vi } from 'vitest';
 
 import HomePage from './page';
+import { ThemeProvider } from './theme-provider';
 
 /** 用于在路由场景后恢复 DOM 和请求状态。 */
 function resetRoute(): void {
@@ -26,9 +26,9 @@ function rendersWorkspaceEntry(): void {
     ),
   );
   render(
-    <EverlearnUiProvider colorMode="light">
+    <ThemeProvider>
       <HomePage />
-    </EverlearnUiProvider>,
+    </ThemeProvider>,
   );
 
   const heading = screen.getByRole('heading', { level: 1, name: '首页' });

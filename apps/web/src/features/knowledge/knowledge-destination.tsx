@@ -2,18 +2,20 @@
 
 'use client';
 
-import { Alert, Button, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
 import type { KnowledgeBaseSummary } from '@everlearn/contracts';
-import { AlertCircleIcon, ArrowLeftIcon, RefreshCwIcon } from 'lucide-react';
+import { ArrowLeftIcon, CalendarClockIcon, FileTextIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
+import { Badge, Button, Skeleton } from '@everlearn/ui';
+
+import { formatDateTime } from '../../shared/format-datetime';
+import { LoadFailure } from '../../shared/load-failure';
 import { PageShell } from '../../shared/page-shell';
+import { SectionCards } from '../../shared/section-cards';
 import { useOnline } from '../../shared/use-online';
 import { getKnowledgeBase, type KnowledgeApiFailure } from './knowledge-api';
-import styles from './knowledge-page.module.css';
 
 interface KnowledgeDestinationProps {
   knowledgeBaseId: string;
@@ -26,7 +28,6 @@ interface DestinationState {
   readonly resourceId: string;
 }
 
-const ICON_SIZE = 18;
 const DESKTOP_QUERY = '(min-width: 48.0625em)';
 /** 内容性失败重试必然复现。 */
 const NON_RETRYABLE_CODES = new Set([
@@ -45,6 +46,36 @@ const KnowledgeManagement = dynamic(
 /** 用于判断失败是否可重试。 */
 function isRetryable(error: KnowledgeApiFailure): boolean {
   return error.code === undefined || !NON_RETRYABLE_CODES.has(error.code);
+}
+
+/** 用于按媒体查询返回挂载后的稳定匹配结果。 */
+function useMediaQuery(query: string): boolean | undefined {
+  const subscribe = useCallback(
+    /** 用于订阅查询结果变化。 */
+    function subscribeMatch(listener: () => void): () => void {
+      const media = window.matchMedia(query);
+      media.addEventListener('change', listener);
+      return function stopSubscribing(): void {
+        media.removeEventListener('change', listener);
+      };
+    },
+    [query],
+  );
+  const getSnapshot = useCallback(
+    /** 用于读取当前查询匹配。 */
+    function readMatch(): boolean {
+      return window.matchMedia(query).matches;
+    },
+    [query],
+  );
+  const getServerSnapshot = useCallback(
+    /** 用于在服务端渲染期间保持未匹配。 */
+    function readServerMatch(): undefined {
+      return undefined;
+    },
+    [],
+  );
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 /** 用于启动和取消详情读取并提供权威刷新操作。 */
@@ -94,10 +125,14 @@ function useKnowledgeSummary(
 /** 用于渲染布局稳定的概览加载态。 */
 function OverviewSkeleton() {
   return (
-    <Stack aria-label="正在加载知识库摘要" gap="sm" role="status">
-      <Skeleton height={20} width="60%" />
-      <Skeleton height={112} />
-    </Stack>
+    <div aria-label="正在加载知识库" className="grid gap-4" role="status">
+      <Skeleton className="h-11 w-65" />
+      <div className="grid gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+        {[0, 1].map((index) => (
+          <Skeleton className="h-32" key={index} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -105,41 +140,48 @@ function OverviewSkeleton() {
 function OverviewFailure({ error, retry }: { error: KnowledgeApiFailure; retry: () => void }) {
   const notFound = error.code === 'NOT_FOUND';
   return (
-    <Alert
-      color="danger"
-      icon={<AlertCircleIcon aria-hidden="true" size={ICON_SIZE} />}
+    <LoadFailure
+      description={error.message}
+      {...(isRetryable(error) ? { onRetry: retry } : {})}
       title={notFound ? '知识库不可访问' : '知识库未加载'}
-    >
-      <p className={styles['alert-message']}>{error.message}</p>
-      {isRetryable(error) && (
-        <Button
-          className={styles['alert-action']}
-          leftSection={<RefreshCwIcon aria-hidden="true" size={16} />}
-          onClick={retry}
-          size="compact-sm"
-          variant="light"
-        >
-          重新读取
-        </Button>
-      )}
-    </Alert>
+    />
   );
 }
 
-/** 用于渲染持久化概览及明确的文档能力边界。 */
+/** 用于渲染持久化概览的统计卡与能力边界说明。 */
 function OverviewContent({ data }: { data: KnowledgeBaseSummary }) {
   return (
-    <section aria-labelledby="knowledge-overview-title" className={styles['overview-section']}>
-      <Title id="knowledge-overview-title" order={2} size="h4">
-        知识库概览
-      </Title>
-      <Text c="dimmed">
-        文档树、Inbox 与回收站将在对应施工任务中接入；当前版本用于确认知识库元数据。
-      </Text>
-      <Group gap="xs">
-        <Text size="sm">{data.documentCount} 篇文档</Text>
-      </Group>
-    </section>
+    <div aria-label="知识库内容" className="grid gap-4 pb-8">
+      <SectionCards
+        items={[
+          {
+            hint: '当前知识库内的文档数量',
+            icon: FileTextIcon,
+            label: '文档',
+            value: String(data.documentCount),
+          },
+          {
+            hint: '最近一次内容更新时间',
+            icon: CalendarClockIcon,
+            label: '最近更新',
+            value: formatDateTime(data.updatedAt),
+          },
+        ]}
+      />
+      <section aria-labelledby="knowledge-overview-title" className="grid gap-2 pt-2">
+        <h2 className="m-0 text-title-small text-foreground" id="knowledge-overview-title">
+          知识库概览
+        </h2>
+        <p className="m-0 text-sm text-muted-foreground">
+          文档树、Inbox 与回收站将在对应施工任务中接入；当前版本用于确认知识库元数据。
+        </p>
+        {data.kind !== 'normal' && (
+          <Badge className="w-fit" variant="secondary">
+            系统知识库
+          </Badge>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -156,7 +198,7 @@ function resolveLead(state: DestinationState): string | undefined {
   return description;
 }
 
-/** 用于渲染详情页操作区。 */
+/** 用于渲染详情页操作区的返回入口与桌面管理菜单。 */
 function DestinationActions(props: {
   data: KnowledgeBaseSummary | undefined;
   desktop: boolean;
@@ -164,17 +206,16 @@ function DestinationActions(props: {
   onSaved: (data: KnowledgeBaseSummary) => void;
 }) {
   const { data, desktop, offline, onSaved } = props;
-  if (!desktop || !data) return null;
-  return <KnowledgeManagement data={data} offline={offline} onSaved={onSaved} />;
-}
-
-/** 用于渲染返回列表的页头返回入口。 */
-function BackToKnowledge() {
   return (
-    <Link className={styles['back-link']} href="/knowledge">
-      <ArrowLeftIcon aria-hidden="true" size={ICON_SIZE} />
-      返回列表
-    </Link>
+    <>
+      <Button asChild variant="ghost">
+        <Link href="/knowledge">
+          <ArrowLeftIcon aria-hidden="true" />
+          返回列表
+        </Link>
+      </Button>
+      {desktop && data && <KnowledgeManagement data={data} offline={offline} onSaved={onSaved} />}
+    </>
   );
 }
 
@@ -194,7 +235,6 @@ export function KnowledgeDestination({ knowledgeBaseId }: KnowledgeDestinationPr
           onSaved={apply}
         />
       }
-      eyebrow="Everlearn · 知识库"
       lead={resolveLead(state)}
       title={
         title ? (
@@ -202,12 +242,11 @@ export function KnowledgeDestination({ knowledgeBaseId }: KnowledgeDestinationPr
             {title}
           </h1>
         ) : (
-          <Skeleton aria-label="正在加载知识库" height={43} width={260} />
+          <Skeleton className="h-11 w-65" />
         )
       }
     >
-      <BackToKnowledge />
-      <main aria-label="知识库内容">
+      <main aria-label="知识库内容" className="pb-8">
         {state.loading ? (
           <OverviewSkeleton />
         ) : state.error ? (
