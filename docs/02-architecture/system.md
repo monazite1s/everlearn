@@ -13,14 +13,14 @@ Next.js Web ── HTTP/SSE ── NestJS API ───── PostgreSQL + pgvec
                                └── Search Provider / RSS
 ```
 
-| 单元                     | 职责                                                           |
-| ------------------------ | -------------------------------------------------------------- |
-| `apps/web`               | 路由、UI、只读渲染器、编辑器与 SSE 客户端。                    |
-| `apps/api`               | 业务 API、鉴权边界、事务、Provider Gateway 和运行查询。        |
-| `apps/worker`            | BullMQ 消费、LangGraph 执行、调度任务、索引和到期清理。        |
-| `packages/contracts`     | API DTO 派生类型、错误码、事件信封和共享枚举。                 |
-| `packages/ui`            | Mantine Theme、Provider、Design Tokens 和稳定产品组合组件。    |
-| `packages/agent-runtime` | LangGraph 定义、工具注册、检查点协议和 Agent 专用 Zod Schema。 |
+| 单元                     | 职责                                                                             |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `apps/web`               | 路由、UI、只读渲染器、编辑器与 SSE 客户端。                                      |
+| `apps/api`               | 业务 API、鉴权边界、事务、Provider Gateway 和运行查询。                          |
+| `apps/worker`            | BullMQ 消费、LangGraph 执行、调度任务、索引和到期清理。                          |
+| `packages/contracts`     | API DTO 派生类型、错误码、事件信封和共享枚举。                                   |
+| `packages/ui`            | shadcn/ui 组件源码、主题 Provider、Design Tokens 和稳定产品组合组件（ADR 001）。 |
+| `packages/agent-runtime` | LangGraph 定义、工具注册、检查点协议和 Agent 专用 Zod Schema。                   |
 
 Docker Compose 是首个部署基线，包含 Web、API、Worker、PostgreSQL、Redis 和 SeaweedFS。Web、API 与 Worker 使用同一源码版本；部署不得让不同版本同时处理同一 Workflow 定义格式。
 

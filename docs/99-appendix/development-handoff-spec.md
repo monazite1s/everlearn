@@ -57,9 +57,9 @@ Everlearn 是面向个人长期学习的一体化知识工作台，一级能力�
 - 一级导航固定为：首页、知识库、资讯、教程、工作流、设置；模块同级，首页知识库优先。
 - 视觉方向为温润纸张、低饱和棕金与安静正文区，支持预设主题、明暗模式和 reduced motion。
 - UI 追求商业产品的克制与精致，禁止模板化“AI 风格”、大面积渐变和无意义发光。
-- 组件采用 Mantine，图标采用 Lucide；Menu、Modal、Card、Select、Breadcrumb、Tooltip 等成熟能力不得自研重复实现。
+- 组件采用 shadcn/ui（ADR 001），图标采用 Lucide；Menu、Dialog、Card、Select、Breadcrumb、Tooltip 等成熟能力不得自研重复实现。
 - `packages/ui` 只保存 Design Tokens、Provider 或统一产品语义的共享组件；禁止仅转发 props 的包装层。
-- Web 只使用 CSS Modules 与语义化 Design Tokens，禁止 Tailwind、UnoCSS 等原子化 CSS。
+- Web 使用 Tailwind CSS v4 + shadcn/ui + 语义 Design Tokens（ADR 001）；迁移完成后新代码禁止新建 CSS Modules；禁止 UnoCSS 等其他原子化 CSS。
 - 页面必须明确空、加载、部分成功、失败、离线、不可访问、取消、冲突与恢复状态；桌面和移动行为分别验收。
 - 标志动效只用于教程生成、Workflow 节点流转和引用汇聚，正文阅读区保持安静。
 
@@ -68,7 +68,7 @@ Everlearn 是面向个人长期学习的一体化知识工作台，一级能力�
 ### 5.1 技术栈
 
 - Monorepo：pnpm workspace + Turborepo。
-- Web：Next.js App Router、React、Mantine、Lucide、CSS Modules。
+- Web：Next.js App Router、React、shadcn/ui、Tailwind CSS v4、Lucide。
 - API：NestJS 模块化单体、DTO + `class-validator`、Kysely。
 - Worker：独立 NestJS 进程；后续承载 BullMQ Job Schedulers 与异步流程。
 - 业务事实源：PostgreSQL 17 + pgvector。

@@ -25,11 +25,11 @@
 ## 视觉与动效
 
 - 只使用语义 Token，不写主题色值；`pnpm check:design-tokens` 通过（无未定义 var() 引用、断点只有 48em/80em）。
-- Mantine 语义色走 design-system.md 映射表；无 `color="red"` 或裸色值。
-- CSS Modules 一律 `styles['kebab-name']` 访问；无 camelCase 访问 kebab 类名。
+- 颜色只走语义 utility（`bg-canvas`/`text-ink`…）；无裸色值、原始色阶或 `dark:` 换色。
+- 存量 CSS Modules 一律 `styles['kebab-name']` 访问；新代码不新建 CSS Modules（ADR 001）。
 - 阅读区安静；卡片、阴影与强调色有信息职责。
-- 主动画唯一；reduced motion 下取消位移、缩放和路径运动（含 Mantine 浮层，globals.css 兜底块已覆盖）。
-- 浏览器实页完成桌面与移动走查，并附浅色、深色、390px 移动端三张截图进任务证据；无截图不得声明完成。
+- 主动画唯一；reduced motion 下取消位移、缩放和路径运动（浮层动效在主题入口 CSS 兜底块归零）。
+- 浏览器实页完成浅色、深色与 390px 移动端走查，把页面、状态和结论写入任务；临时截图不进仓库。
 
 ## 精致度
 

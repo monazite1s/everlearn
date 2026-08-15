@@ -19,8 +19,8 @@ Hard gates that block delivery:
 
 - Compliance checks (states, tokens, contrast) prove the UI breaks no rule; they do not prove it looks good. Hierarchy, card affordance, empty-state structure, and spacing rhythm must be judged from the real rendering, not from code.
 - No global entry point (top bar, navigation) may ship counters, badges, or links without a real data source. Dead or fake controls fail delivery.
-- CSS Modules must access kebab-case class names via `styles['class-name']`; the project exports locals `asIs`, so camelCase access silently no-ops.
-- Mantine semantic colors must come from the mapping table in design-system.md («Mantine 映射»); `color="red"` and bare hex values are rejected.
+- Colors only via semantic Tailwind utilities (`bg-canvas`, `text-ink`, `bg-accent-soft`); bare hex values, raw palette scales (`text-neutral-500`), and `dark:` color swaps are rejected. Follow everlearn-shadcn-ui for styling and component composition.
+- Components come from shadcn/ui via the CLI (ADR 001); do not hand-copy registry files or keep a second overlapping component library.
 
 Read references/delivery-checklist.md before approving a new page or a material redesign.
 
@@ -35,8 +35,8 @@ Read references/delivery-checklist.md before approving a new page or a material 
 
 ## Component Rules
 
-- Use the approved component library through the import boundary defined by the current design and dependency documents.
-- Do not hand-build Menu, MenuItem, Select, Dialog, Popover, Tooltip, Tabs, Breadcrumb, Command, SearchField, Card, Skeleton, or form controls when the library covers the behavior.
+- Use shadcn/ui (ADR 001) as the component system; install and upgrade only through the shadcn CLI (see everlearn-shadcn-ui/references/cli.md).
+- Do not hand-build Menu, MenuItem, Select, Dialog, Popover, Tooltip, Tabs, Breadcrumb, Command, SearchField, Card, Empty, Skeleton, or form controls when the library covers the behavior.
 - Create a shared component only when it standardizes product semantics, accessibility, state behavior, or a composition used in at least two confirmed places.
 - Keep page-specific compositions in the feature. Do not create pass-through wrappers that only rename props or attach a class.
 - Every reusable navigation or action item must support an icon, label, accessible name, disabled state, and active or destructive state where relevant.

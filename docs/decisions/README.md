@@ -2,6 +2,9 @@
 
 跨模块、公共契约、数据格式、安全或供应商锁定决策在此记录（依据 `docs/03-engineering/research-and-dependencies.md` 与 `docs/03-engineering/vibe-coding-standards.md`）。
 
+- [001 - shadcn/ui + Tailwind v4 迁移](001-shadcn-tailwind-migration.md)
+- [002 - 删除自定义主题色板并整体重写布局](002-default-theme-and-layout-rewrite.md)
+
 ## 命名与格式
 
 - 文件名：`<NNN>-<slug>.md`，`NNN` 为三位递增序号（如 `001-mantine-migration.md`）。
