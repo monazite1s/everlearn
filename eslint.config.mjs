@@ -55,6 +55,17 @@ const documentationRules = {
   ],
 };
 
+/** 用于豁免 vendored 第三方源码的文档与规模规则。 */
+const documentationRulesOff = {
+  complexity: 'off',
+  '@typescript-eslint/array-type': 'off',
+  '@typescript-eslint/consistent-type-definitions': 'off',
+  'jsdoc/require-file-overview': 'off',
+  'jsdoc/require-jsdoc': 'off',
+  'max-lines': 'off',
+  'max-lines-per-function': 'off',
+};
+
 export default defineConfig([
   globalIgnores(ignoredPaths),
   {
@@ -108,6 +119,13 @@ export default defineConfig([
     files: ['**/migrations/**/*.ts'],
     rules: {
       '@typescript-eslint/no-unsafe-argument': 'off',
+    },
+  },
+  /* shadcn CLI 生成的 vendored 组件源码：第三方代码豁免注释与规模规则（ADR 001）。 */
+  {
+    files: ['packages/ui/src/components/**', 'packages/ui/src/hooks/**'],
+    rules: {
+      ...documentationRulesOff,
     },
   },
   {

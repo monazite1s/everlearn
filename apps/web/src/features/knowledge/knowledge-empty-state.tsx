@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { LibraryBigIcon } from 'lucide-react';
 
-import styles from './knowledge-empty-state.module.css';
+import { EmptyState } from '../../shared/empty-state';
 
 interface KnowledgeEmptyStateProps {
   /** 空态主行动。 */
@@ -12,16 +12,14 @@ interface KnowledgeEmptyStateProps {
   title?: string;
 }
 
-/** 用于渲染知识库空态。 */
+/** 用于渲染知识库实体的统一空态文案结构。 */
 export function KnowledgeEmptyState({ action, title }: KnowledgeEmptyStateProps) {
   return (
-    <div className={styles['empty-state']}>
-      <span className={styles['empty-anchor']} aria-hidden="true">
-        <LibraryBigIcon size={28} strokeWidth={1.5} />
-      </span>
-      <h3 className={styles['empty-title']}>{title ?? '建立你的第一个知识库'}</h3>
-      <p className={styles['empty-description']}>从一个明确主题开始，之后可继续添加嵌套文档。</p>
-      {action && <div className={styles['empty-action']}>{action}</div>}
-    </div>
+    <EmptyState
+      action={action}
+      description="从一个明确主题开始，之后可继续添加嵌套文档。"
+      icon={LibraryBigIcon}
+      title={title ?? '建立你的第一个知识库'}
+    />
   );
 }

@@ -1,36 +1,25 @@
 /**
- * @fileoverview 在首次绘制前应用持久语义主题并提供主题控制。
+ * @fileoverview 在首次绘制前应用持久外观（浅色/深色/跟随系统，ADR 002）。
  */
 
 'use client';
 
-import { EverlearnUiProvider } from '@everlearn/ui';
 import { createContext, useContext, useEffect, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 
-export const themeOptions = [
-  { id: 'paper', label: '纸张棕金' },
-  { id: 'neutral', label: '雾灰中性' },
-] as const;
 export const appearanceOptions = [
   { id: 'system', label: '跟随系统' },
   { id: 'light', label: '浅色' },
   { id: 'dark', label: '深色' },
 ] as const;
 
-export type ThemeId = (typeof themeOptions)[number]['id'];
 export type Appearance = (typeof appearanceOptions)[number]['id'];
 
-interface ThemeSelection {
+interface ThemeContextValue {
   appearance: Appearance;
-  theme: ThemeId;
-}
-
-interface ThemeContextValue extends ThemeSelection {
   colorMode: 'dark' | 'light';
   persistenceAvailable: boolean;
   setAppearance: (appearance: Appearance) => void;
-  setTheme: (theme: ThemeId) => void;
 }
 
 interface ThemeProviderProps {
@@ -40,15 +29,15 @@ interface ThemeProviderProps {
 interface ThemeState {
   colorMode: 'dark' | 'light';
   persistenceAvailable: boolean;
-  selection: ThemeSelection;
+  appearance: Appearance;
 }
 
 const STORAGE_KEY = 'everlearn-theme';
-const DEFAULT_SELECTION: ThemeSelection = { appearance: 'system', theme: 'paper' };
+const DEFAULT_APPEARANCE: Appearance = 'system';
 const DEFAULT_STATE: ThemeState = {
   colorMode: 'light',
   persistenceAvailable: true,
-  selection: DEFAULT_SELECTION,
+  appearance: DEFAULT_APPEARANCE,
 };
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 const themeListeners = new Set<() => void>();
@@ -57,17 +46,14 @@ let clientState: ThemeState | undefined;
 export const themeInitializer = `
 (function () {
   var root = document.documentElement;
-  var value = 'paper:system';
+  var value = 'system';
   try { value = localStorage.getItem('${STORAGE_KEY}') || value; }
   catch (error) { root.dataset.themeStorage = 'unavailable'; }
-  var parts = value.split(':');
-  var theme = parts[0] === 'neutral' ? 'neutral' : 'paper';
-  var appearance = ['light', 'dark', 'system'].includes(parts[1]) ? parts[1] : 'system';
+  var appearance = ['light', 'dark', 'system'].includes(value) ? value : 'system';
   var dark = appearance === 'dark' || (appearance === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-  root.dataset.theme = theme;
   root.dataset.appearance = appearance;
   root.dataset.colorMode = dark ? 'dark' : 'light';
-  root.dataset.mantineColorScheme = dark ? 'dark' : 'light';
+  root.classList.toggle('dark', dark);
 }());`;
 
 /** 用于解析系统外观且不假设测试环境存在 matchMedia。 */
@@ -76,14 +62,12 @@ function resolveSystemAppearance(): 'dark' | 'light' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-/** 用于应用语义主题属性并返回解析后的颜色模式。 */
-function applyTheme(selection: ThemeSelection): 'dark' | 'light' {
-  const colorMode =
-    selection.appearance === 'system' ? resolveSystemAppearance() : selection.appearance;
-  document.documentElement.dataset.appearance = selection.appearance;
+/** 用于应用外观属性并返回解析后的颜色模式。 */
+function applyAppearance(appearance: Appearance): 'dark' | 'light' {
+  const colorMode = appearance === 'system' ? resolveSystemAppearance() : appearance;
+  document.documentElement.dataset.appearance = appearance;
   document.documentElement.dataset.colorMode = colorMode;
-  document.documentElement.dataset.mantineColorScheme = colorMode;
-  document.documentElement.dataset.theme = selection.theme;
+  document.documentElement.classList.toggle('dark', colorMode === 'dark');
   return colorMode;
 }
 
@@ -92,27 +76,20 @@ function isAppearance(value: string | undefined): value is Appearance {
   return value === 'dark' || value === 'light' || value === 'system';
 }
 
-/** 用于将持久化输入解析为有效主题选择。 */
-function parseThemeSelection(value: string | null): ThemeSelection {
-  const [theme, appearance] = value?.split(':') ?? [];
-  return {
-    appearance: isAppearance(appearance) ? appearance : DEFAULT_SELECTION.appearance,
-    theme: theme === 'neutral' || theme === 'paper' ? theme : DEFAULT_SELECTION.theme,
-  };
-}
-
-/** 用于读取并校验紧凑本地主题偏好。 */
-function readTheme(): ThemeState {
+/** 用于读取并校验本地外观偏好。 */
+function readAppearance(): ThemeState {
   if (typeof window === 'undefined') {
     return DEFAULT_STATE;
   }
   try {
-    const selection = parseThemeSelection(localStorage.getItem(STORAGE_KEY));
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const appearance = isAppearance(stored ?? undefined)
+      ? (stored as Appearance)
+      : DEFAULT_APPEARANCE;
     return {
-      colorMode:
-        selection.appearance === 'system' ? resolveSystemAppearance() : selection.appearance,
+      appearance,
+      colorMode: appearance === 'system' ? resolveSystemAppearance() : appearance,
       persistenceAvailable: true,
-      selection,
     };
   } catch {
     return { ...DEFAULT_STATE, persistenceAvailable: false };
@@ -121,7 +98,7 @@ function readTheme(): ThemeState {
 
 /** 用于为 React 外部存储契约返回稳定客户端快照。 */
 function getClientState(): ThemeState {
-  clientState ??= readTheme();
+  clientState ??= readAppearance();
   return clientState;
 }
 
@@ -130,54 +107,55 @@ function getServerState(): ThemeState {
   return DEFAULT_STATE;
 }
 
-/** 用于让 React 订阅本地和其他标签页的主题变化。 */
-function subscribeTheme(listener: () => void): () => void {
+/** 用于让 React 订阅本地和其他标签页的外观变化。 */
+function subscribeAppearance(listener: () => void): () => void {
   /** 用于在其他标签页修改本地存储后刷新快照。 */
   function handleStorage(): void {
-    clientState = readTheme();
-    applyTheme(clientState.selection);
+    const next = readAppearance();
+    clientState = { ...next, colorMode: applyAppearance(next.appearance) };
     listener();
   }
   /** 用于移除当前订阅者及跨标签页监听。 */
-  function unsubscribeTheme(): void {
+  function unsubscribeAppearance(): void {
     themeListeners.delete(listener);
     window.removeEventListener('storage', handleStorage);
   }
-  clientState = readTheme();
+  clientState = readAppearance();
   themeListeners.add(listener);
   window.addEventListener('storage', handleStorage);
-  return unsubscribeTheme;
+  return unsubscribeAppearance;
 }
 
-/** 用于向所有已挂载主题订阅者发布稳定快照。 */
-function publishTheme(state: ThemeState): void {
-  /** 用于通知单个已挂载主题订阅者。 */
-  function notifyThemeListener(listener: () => void): void {
+/** 用于向所有已挂载订阅者发布稳定快照。 */
+function publishAppearance(state: ThemeState): void {
+  /** 用于通知单个已挂载订阅者。 */
+  function notifyListener(listener: () => void): void {
     listener();
   }
   clientState = state;
-  themeListeners.forEach(notifyThemeListener);
+  themeListeners.forEach(notifyListener);
 }
 
-/** 用于保存有效主题偏好并返回存储是否可用。 */
-function persistTheme(selection: ThemeSelection): boolean {
+/** 用于保存有效外观偏好并返回存储是否可用。 */
+function persistAppearance(appearance: Appearance): boolean {
   try {
-    localStorage.setItem(STORAGE_KEY, `${selection.theme}:${selection.appearance}`);
+    localStorage.setItem(STORAGE_KEY, appearance);
     return true;
   } catch {
     return false;
   }
 }
 
-/** 用于仅在选择系统外观时监听系统颜色变化。 */
-function watchSystemAppearance(selection: ThemeSelection): (() => void) | undefined {
-  if (selection.appearance !== 'system' || typeof window.matchMedia !== 'function') return;
+/** 用于仅在跟随系统时监听系统颜色变化。 */
+function watchSystemAppearance(appearance: Appearance): (() => void) | undefined {
+  if (appearance !== 'system' || typeof window.matchMedia !== 'function') return;
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   /** 用于发布新解析的系统颜色模式。 */
   function handleSystemChange(): void {
-    publishTheme({ ...getClientState(), colorMode: applyTheme(selection) });
+    const current = getClientState();
+    publishAppearance({ ...current, colorMode: applyAppearance(current.appearance) });
   }
-  /** 用于在当前选择变化时移除媒体监听。 */
+  /** 用于在偏好变化时移除媒体监听。 */
   function stopWatching(): void {
     media.removeEventListener('change', handleSystemChange);
   }
@@ -186,12 +164,12 @@ function watchSystemAppearance(selection: ThemeSelection): (() => void) | undefi
 }
 
 /** 用于保持外部主题存储与系统外观同步。 */
-function useSystemAppearance(selection: ThemeSelection): void {
+function useSystemAppearance(appearance: Appearance): void {
   /** 用于让当前选择订阅系统外观变化。 */
   function synchronizeSystemAppearance(): (() => void) | undefined {
-    return watchSystemAppearance(selection);
+    return watchSystemAppearance(appearance);
   }
-  useEffect(synchronizeSystemAppearance, [selection]);
+  useEffect(synchronizeSystemAppearance, [appearance]);
 }
 
 /** 用于在 React 水合前注入可信预绘制初始化器。 */
@@ -201,46 +179,34 @@ export function ThemeScript() {
 
 /** 用于管理持久外观状态且不向使用方暴露色值。 */
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const state = useSyncExternalStore(subscribeTheme, getClientState, getServerState);
-  const { selection } = state;
-  useSystemAppearance(selection);
+  const state = useSyncExternalStore(subscribeAppearance, getClientState, getServerState);
+  const { appearance } = state;
+  useSystemAppearance(appearance);
 
-  /** 用于只更新色板标识并保留外观。 */
-  function setTheme(theme: ThemeId): void {
-    const next = { ...selection, theme };
-    publishTheme({
-      colorMode: applyTheme(next),
-      persistenceAvailable: persistTheme(next),
-      selection: next,
-    });
-  }
-
-  /** 用于更新浅色、深色或系统外观并保留色板。 */
-  function setAppearance(appearance: Appearance): void {
-    const next = { ...selection, appearance };
-    publishTheme({
-      colorMode: applyTheme(next),
-      persistenceAvailable: persistTheme(next),
-      selection: next,
+  /** 用于更新浅色、深色或跟随系统偏好。 */
+  function setAppearance(next: Appearance): void {
+    publishAppearance({
+      appearance: next,
+      colorMode: applyAppearance(next),
+      persistenceAvailable: persistAppearance(next),
     });
   }
 
   return (
     <ThemeContext
       value={{
-        ...selection,
+        appearance,
         colorMode: state.colorMode,
         persistenceAvailable: state.persistenceAvailable,
         setAppearance,
-        setTheme,
       }}
     >
-      <EverlearnUiProvider colorMode={state.colorMode}>{children}</EverlearnUiProvider>
+      {children}
     </ThemeContext>
   );
 }
 
-/** 用于返回应用根节点中的当前主题控制器。 */
+/** 用于返回应用根节点中的当前外观控制器。 */
 export function useTheme(): ThemeContextValue {
   const value = useContext(ThemeContext);
   if (!value) throw new Error('useTheme must be used within ThemeProvider.');

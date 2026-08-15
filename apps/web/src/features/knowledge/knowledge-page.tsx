@@ -2,25 +2,35 @@
 
 'use client';
 
-import {
-  Alert,
-  Button,
-  Group,
-  Modal,
-  Skeleton,
-  Stack,
-  Textarea,
-  TextInput,
-  Title,
-} from '@mantine/core';
 import { KNOWLEDGE_BASE_NAME_MAX_LENGTH, type KnowledgeBaseSummary } from '@everlearn/contracts';
-import { AlertCircleIcon, PlusIcon, RefreshCwIcon } from 'lucide-react';
+import { AlertCircleIcon, FileTextIcon, LibraryBigIcon, Loader2Icon, PlusIcon } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  Textarea,
+} from '@everlearn/ui';
+
+import { ListSkeleton } from '../../shared/list-skeleton';
+import { LoadFailure } from '../../shared/load-failure';
 import { OfflineNotice } from '../../shared/offline-notice';
 import { PageShell } from '../../shared/page-shell';
+import { SectionCards } from '../../shared/section-cards';
 import { useOnline } from '../../shared/use-online';
 import { createKnowledgeBase } from './knowledge-api';
 import type { KnowledgeApiFailure } from './knowledge-api';
@@ -28,7 +38,6 @@ import { KnowledgeBaseCard } from './knowledge-base-card';
 import { KnowledgeEmptyState } from './knowledge-empty-state';
 import { useKnowledgeList } from './knowledge-list-state';
 import type { KnowledgeLoadState } from './knowledge-list-state';
-import styles from './knowledge-page.module.css';
 
 interface CreateFormState {
   readonly description: string;
@@ -36,38 +45,17 @@ interface CreateFormState {
 }
 
 const EMPTY_FORM: CreateFormState = { description: '', name: '' };
-const ICON_SIZE = 18;
 const DESCRIPTION_MAX_LENGTH = 2000;
 
-/** 用于在首屏加载时保持最终列表结构。 */
-function KnowledgeLoading() {
+/** 用于渲染创建失败告警。 */
+function CreateFailureAlert({ error }: { error: KnowledgeApiFailure }) {
   return (
-    <Stack aria-label="正在加载知识库" gap="sm" role="status">
-      {[0, 1, 2].map((index) => (
-        <Skeleton height={124} key={index} radius="md" />
-      ))}
-    </Stack>
-  );
-}
-
-/** 用于展示可恢复读取失败且不替换成功内容。 */
-function LoadFailure({ failure, onRetry }: { failure: KnowledgeApiFailure; onRetry: () => void }) {
-  return (
-    <Alert
-      color="danger"
-      icon={<AlertCircleIcon aria-hidden="true" size={ICON_SIZE} />}
-      title="知识库列表未加载"
-    >
-      <p className={styles['alert-message']}>{failure.message}</p>
-      <Button
-        className={styles['alert-action']}
-        leftSection={<RefreshCwIcon aria-hidden="true" size={16} />}
-        onClick={onRetry}
-        size="compact-sm"
-        variant="light"
-      >
-        重新读取
-      </Button>
+    <Alert variant="destructive">
+      <AlertCircleIcon aria-hidden="true" />
+      <AlertTitle>创建失败</AlertTitle>
+      <AlertDescription>
+        <p className="m-0">{error.message}</p>
+      </AlertDescription>
     </Alert>
   );
 }
@@ -77,9 +65,11 @@ function CreateFields(props: {
   disabled: boolean;
   form: CreateFormState;
   nameError?: string;
+  nameId: string;
+  descriptionId: string;
   onChange: (form: CreateFormState) => void;
 }) {
-  const { disabled, form, nameError, onChange } = props;
+  const { disabled, form, nameError, nameId, descriptionId, onChange } = props;
   /** 用于更新名称并保留当前说明。 */
   function updateName(event: ChangeEvent<HTMLInputElement>): void {
     onChange({ ...form, name: event.currentTarget.value });
@@ -89,41 +79,35 @@ function CreateFields(props: {
     onChange({ ...form, description: event.currentTarget.value });
   }
   return (
-    <>
-      <TextInput
-        autoFocus
-        disabled={disabled}
-        error={nameError}
-        label="名称"
-        maxLength={KNOWLEDGE_BASE_NAME_MAX_LENGTH}
-        onChange={updateName}
-        placeholder="例如：Agent 工程"
-        required
-        value={form.name}
-      />
-      <Textarea
-        disabled={disabled}
-        label="说明"
-        maxLength={DESCRIPTION_MAX_LENGTH}
-        rows={3}
-        onChange={updateDescription}
-        placeholder="记录这个知识库的范围与用途"
-        value={form.description}
-      />
-    </>
-  );
-}
-
-/** 用于渲染创建失败告警。 */
-function CreateFailureAlert({ error }: { error: KnowledgeApiFailure }) {
-  return (
-    <Alert
-      color="danger"
-      icon={<AlertCircleIcon aria-hidden="true" size={ICON_SIZE} />}
-      title="创建失败"
-    >
-      <p className={styles['alert-message']}>{error.message}</p>
-    </Alert>
+    <FieldGroup>
+      <Field data-invalid={nameError ? true : undefined}>
+        <FieldLabel htmlFor={nameId}>名称</FieldLabel>
+        <Input
+          aria-invalid={nameError ? true : undefined}
+          autoFocus
+          disabled={disabled}
+          id={nameId}
+          maxLength={KNOWLEDGE_BASE_NAME_MAX_LENGTH}
+          onChange={updateName}
+          placeholder="例如：Agent 工程"
+          required
+          value={form.name}
+        />
+        {nameError && <FieldError>{nameError}</FieldError>}
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={descriptionId}>说明</FieldLabel>
+        <Textarea
+          disabled={disabled}
+          id={descriptionId}
+          maxLength={DESCRIPTION_MAX_LENGTH}
+          onChange={updateDescription}
+          placeholder="记录这个知识库的范围与用途"
+          rows={3}
+          value={form.description}
+        />
+      </Field>
+    </FieldGroup>
   );
 }
 
@@ -135,14 +119,15 @@ function CreateDialogActions(props: {
 }) {
   const { invalid, submitting, onCancel } = props;
   return (
-    <Group justify="flex-end">
-      <Button disabled={submitting} onClick={onCancel} type="button" variant="default">
+    <DialogFooter>
+      <Button disabled={submitting} onClick={onCancel} type="button" variant="outline">
         取消
       </Button>
-      <Button disabled={invalid} loading={submitting} type="submit">
+      <Button disabled={invalid || submitting} type="submit">
+        {submitting && <Loader2Icon aria-hidden="true" className="animate-spin" />}
         创建并进入
       </Button>
-    </Group>
+    </DialogFooter>
   );
 }
 
@@ -158,6 +143,8 @@ function CreateDialog(props: {
   opened: boolean;
 }) {
   const { error, form, offline, onChange, onClose, onSubmit, opened, submitting } = props;
+  const nameId = useId();
+  const descriptionId = useId();
   const nameError =
     form.name.trim().length > KNOWLEDGE_BASE_NAME_MAX_LENGTH
       ? `名称不能超过 ${KNOWLEDGE_BASE_NAME_MAX_LENGTH} 个字符。`
@@ -169,27 +156,27 @@ function CreateDialog(props: {
     onSubmit();
   }
   return (
-    <Modal
-      closeButtonProps={{ 'aria-label': '关闭新建知识库' }}
-      closeOnClickOutside={!submitting}
-      closeOnEscape={!submitting}
-      onClose={onClose}
-      opened={opened}
-      title="新建知识库"
-    >
-      <form onSubmit={submit}>
-        <Stack gap="md">
-          {error && <CreateFailureAlert error={error} />}
-          <CreateFields
-            disabled={submitting || offline}
-            form={form}
-            {...(nameError ? { nameError } : {})}
-            onChange={onChange}
-          />
-          <CreateDialogActions invalid={invalid} submitting={submitting} onCancel={onClose} />
-        </Stack>
-      </form>
-    </Modal>
+    <Dialog onOpenChange={(next) => (next ? undefined : onClose())} open={opened}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>新建知识库</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit}>
+          <div className="grid gap-4">
+            {error && <CreateFailureAlert error={error} />}
+            <CreateFields
+              descriptionId={descriptionId}
+              disabled={submitting || offline}
+              form={form}
+              nameId={nameId}
+              {...(nameError ? { nameError } : {})}
+              onChange={onChange}
+            />
+            <CreateDialogActions invalid={invalid} submitting={submitting} onCancel={onClose} />
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -201,22 +188,27 @@ function KnowledgeListContent(props: {
   onRetry: () => void;
 }) {
   const { items, load, onLoadMore, onRetry } = props;
-  if (load.loading && items.length === 0) return <KnowledgeLoading />;
+  if (load.loading && items.length === 0) return <ListSkeleton />;
   if (load.error && items.length === 0)
-    return <LoadFailure failure={load.error} onRetry={onRetry} />;
+    return (
+      <LoadFailure description={load.error.message} onRetry={onRetry} title="知识库列表未加载" />
+    );
   if (items.length === 0) return <KnowledgeEmptyState />;
   return (
     <>
-      <ul className={styles.list}>
+      <ul className="grid list-none gap-4 p-0 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
         {items.map((item) => (
           <li key={item.id}>
             <KnowledgeBaseCard knowledgeBase={item} />
           </li>
         ))}
       </ul>
-      {load.error && <LoadFailure failure={load.error} onRetry={onRetry} />}
+      {load.error && (
+        <LoadFailure description={load.error.message} onRetry={onRetry} title="知识库列表未加载" />
+      )}
       {!load.error && load.nextCursor && (
-        <Button loading={load.loading} onClick={onLoadMore} variant="subtle">
+        <Button className="mt-4" disabled={load.loading} onClick={onLoadMore} variant="outline">
+          {load.loading && <Loader2Icon aria-hidden="true" className="animate-spin" />}
           加载更多
         </Button>
       )}
@@ -265,7 +257,31 @@ function useCreateKnowledgeBase(refresh: () => Promise<void>) {
   return { close, error, form, open, opened, setForm, submit, submitting };
 }
 
-/** 用于渲染列表页主操作。 */
+/** 用于渲染统计当前已加载列表的总量指标。 */
+function KnowledgeSectionCards({ items }: { items: readonly KnowledgeBaseSummary[] }) {
+  if (items.length === 0) return null;
+  const documentCount = items.reduce((total, item) => total + item.documentCount, 0);
+  return (
+    <SectionCards
+      items={[
+        {
+          hint: '当前账号下的知识库总数',
+          icon: LibraryBigIcon,
+          label: '全部知识库',
+          value: String(items.length),
+        },
+        {
+          hint: '各知识库文档数量之和',
+          icon: FileTextIcon,
+          label: '文档总数',
+          value: String(documentCount),
+        },
+      ]}
+    />
+  );
+}
+
+/** 用于渲染页头主操作与离线禁用的新建入口。 */
 function KnowledgeCreateAction({
   disabled,
   onCreate,
@@ -274,12 +290,8 @@ function KnowledgeCreateAction({
   onCreate: () => void;
 }) {
   return (
-    <Button
-      className={styles['desktop-create']}
-      disabled={disabled}
-      leftSection={<PlusIcon aria-hidden="true" size={ICON_SIZE} />}
-      onClick={onCreate}
-    >
+    <Button disabled={disabled} onClick={onCreate}>
+      <PlusIcon aria-hidden="true" />
       新建知识库
     </Button>
   );
@@ -305,7 +317,6 @@ export function KnowledgePage() {
   return (
     <PageShell
       actions={<KnowledgeCreateAction disabled={!online} onCreate={create.open} />}
-      eyebrow="Everlearn · 知识库"
       lead="长期沉淀文档、教程与资讯简报，按最近活动排序。"
       title={
         <h1 data-page-title tabIndex={-1}>
@@ -314,10 +325,11 @@ export function KnowledgePage() {
       }
     >
       {!online && <OfflineNotice />}
-      <section aria-labelledby="knowledge-list-title" className={styles.content}>
-        <Title id="knowledge-list-title" order={2} size="h3">
+      <KnowledgeSectionCards items={items} />
+      <section aria-labelledby="knowledge-list-title" className="mt-6 grid gap-4 md:mt-8">
+        <h2 className="m-0 text-title-small text-foreground" id="knowledge-list-title">
           全部知识库
-        </Title>
+        </h2>
         <KnowledgeListContent items={items} load={load} onLoadMore={loadMore} onRetry={retry} />
       </section>
       <CreateDialog

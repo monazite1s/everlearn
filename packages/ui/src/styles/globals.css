@@ -1,0 +1,220 @@
+/* Everlearn 主题入口：shadcn/ui 官方默认主题（ADR 002）+ 项目排版/断点 token。 */
+
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── 颜色：shadcn 官方默认 neutral 色板（oklch，浅色/深色） ─────────── */
+
+:root {
+  color-scheme: light;
+
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.925 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* 状态语言补充色（shadcn 默认主题不含 success/warning） */
+  --success: oklch(0.527 0.154 150.069);
+  --warning: oklch(0.666 0.179 58.318);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.32 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+
+  --success: oklch(0.723 0.219 149.579);
+  --warning: oklch(0.795 0.184 86.047);
+}
+
+/* ── 与主题色无关的项目 token：排版、断点、应用壳 ──────────────────── */
+
+:root {
+  /* 字体（中文界面栈；标题可另用阅读衬线） */
+  --font-reading: 'Source Han Serif SC', 'Songti SC', 'STSong', serif;
+  --font-interface: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-code: 'JetBrains Mono', 'SFMono-Regular', 'Consolas', monospace;
+
+  /* 应用壳 */
+  --header-height: calc(var(--spacing) * 12);
+
+  /* 动效 */
+  --duration-micro: 150ms;
+  --duration-panel: 260ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ── 映射层：生成语义 utility ─────────────────────────────────────── */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  --font-sans: var(--font-interface);
+  --font-serif: var(--font-reading);
+  --font-mono: var(--font-code);
+
+  /* 字号（含行高伴生） */
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.5;
+  --text-interface: 0.875rem;
+  --text-interface--line-height: 1.5;
+  --text-body: 1rem;
+  --text-body--line-height: 1.75;
+  --text-title-small: 1.125rem;
+  --text-title-small--line-height: 1.4;
+  --text-title-medium: 1.375rem;
+  --text-title-medium--line-height: 1.3;
+  --text-title-large: 1.75rem;
+  --text-title-large--line-height: 1.25;
+  --text-title-page: 2.125rem;
+  --text-title-page--line-height: 1.2;
+
+  /* 官方圆角派生 */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  /* 断点双档制 */
+  --breakpoint-md: 48rem;
+  --breakpoint-xl: 80rem;
+}
+
+/* ── 基础层 ───────────────────────────────────────────────────────── */
+
+@layer base {
+  * {
+    border-color: var(--border);
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-interface);
+    margin: 0;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  /* 焦点环由组件自带 focus-visible 样式负责；禁止全局描边（会框住自动聚焦的页面标题）。 */
+  :focus-visible {
+    outline: none;
+  }
+
+  a:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-micro: 0ms;
+    --duration-panel: 0ms;
+  }
+}

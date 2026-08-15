@@ -2,7 +2,6 @@
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { KnowledgeBaseSummary } from '@everlearn/contracts';
-import { EverlearnUiProvider } from '@everlearn/ui';
 import { afterEach, expect, test, vi } from 'vitest';
 
 import { KnowledgeDestination } from './knowledge-destination';
@@ -62,11 +61,7 @@ function matchViewport(matches: boolean): (query: string) => MediaQueryList {
 /** 用于在生产 UI Provider 中渲染概览页面。 */
 function renderDestination(id = summary().id, desktop = true): ReturnType<typeof render> {
   vi.stubGlobal('matchMedia', matchViewport(desktop));
-  return render(
-    <EverlearnUiProvider colorMode="light">
-      <KnowledgeDestination knowledgeBaseId={id} />
-    </EverlearnUiProvider>,
-  );
+  return render(<KnowledgeDestination knowledgeBaseId={id} />);
 }
 
 /** 用于在每个场景后恢复请求、路由和 DOM 状态。 */
@@ -90,7 +85,10 @@ async function updatesMetadata(): Promise<void> {
   renderDestination();
   await screen.findByRole('heading', { level: 1, name: initial.name });
 
-  fireEvent.click(await screen.findByRole('button', { name: '知识库操作' }));
+  expect(screen.getByRole('link', { name: '返回列表' })).toBeVisible();
+  expect(screen.getByText('当前知识库内的文档数量')).toBeVisible();
+  expect(screen.getByText('最近一次内容更新时间')).toBeVisible();
+  fireEvent.pointerDown(await screen.findByRole('button', { name: '知识库操作' }));
   fireEvent.click(await screen.findByRole('menuitem', { name: '编辑名称与说明' }));
   const dialog = await screen.findByRole('dialog', { name: '编辑知识库' });
   fireEvent.change(within(dialog).getByRole('textbox', { name: '名称' }), {
@@ -124,7 +122,7 @@ async function retainsInputAfterConflict(): Promise<void> {
   vi.stubGlobal('fetch', fetchMock);
   renderDestination();
   await screen.findByRole('heading', { level: 1, name: 'Agent 工程' });
-  fireEvent.click(await screen.findByRole('button', { name: '知识库操作' }));
+  fireEvent.pointerDown(await screen.findByRole('button', { name: '知识库操作' }));
   fireEvent.click(await screen.findByRole('menuitem', { name: '编辑名称与说明' }));
   const dialog = await screen.findByRole('dialog', { name: '编辑知识库' });
   const input = within(dialog).getByRole('textbox', { name: '名称' });
@@ -152,7 +150,7 @@ async function preservesFailureUntilCancelled(): Promise<void> {
   );
   renderDestination();
   await screen.findByRole('heading', { level: 1, name: 'Agent 工程' });
-  fireEvent.click(await screen.findByRole('button', { name: '知识库操作' }));
+  fireEvent.pointerDown(await screen.findByRole('button', { name: '知识库操作' }));
   fireEvent.click(await screen.findByRole('menuitem', { name: '编辑名称与说明' }));
   const dialog = await screen.findByRole('dialog', { name: '编辑知识库' });
   const input = within(dialog).getByRole('textbox', { name: '名称' });
@@ -175,9 +173,9 @@ async function deletesAfterConfirmation(): Promise<void> {
   vi.stubGlobal('fetch', fetchMock);
   renderDestination();
   await screen.findByRole('heading', { level: 1, name: 'Agent 工程' });
-  fireEvent.click(await screen.findByRole('button', { name: '知识库操作' }));
+  fireEvent.pointerDown(await screen.findByRole('button', { name: '知识库操作' }));
   fireEvent.click(await screen.findByRole('menuitem', { name: '移入回收站' }));
-  const dialog = await screen.findByRole('dialog', { name: '移入回收站' });
+  const dialog = await screen.findByRole('alertdialog', { name: '移入回收站' });
   expect(within(dialog).getByText(/3 篇文档/)).toBeVisible();
   fireEvent.click(within(dialog).getByRole('button', { name: '确认移入回收站' }));
 
@@ -197,9 +195,9 @@ async function retriesUnknownDelete(): Promise<void> {
   vi.stubGlobal('fetch', fetchMock);
   renderDestination();
   await screen.findByRole('heading', { level: 1, name: 'Agent 工程' });
-  fireEvent.click(screen.getByRole('button', { name: '知识库操作' }));
+  fireEvent.pointerDown(screen.getByRole('button', { name: '知识库操作' }));
   fireEvent.click(await screen.findByRole('menuitem', { name: '移入回收站' }));
-  const dialog = await screen.findByRole('dialog', { name: '移入回收站' });
+  const dialog = await screen.findByRole('alertdialog', { name: '移入回收站' });
   const confirm = within(dialog).getByRole('button', { name: '确认移入回收站' });
   fireEvent.click(confirm);
   expect(await within(dialog).findByText(/可以安全重试/)).toBeVisible();
@@ -224,9 +222,9 @@ async function keepsDeleteConflictVisible(): Promise<void> {
   );
   renderDestination();
   await screen.findByRole('heading', { level: 1, name: 'Agent 工程' });
-  fireEvent.click(await screen.findByRole('button', { name: '知识库操作' }));
+  fireEvent.pointerDown(await screen.findByRole('button', { name: '知识库操作' }));
   fireEvent.click(await screen.findByRole('menuitem', { name: '移入回收站' }));
-  const dialog = await screen.findByRole('dialog', { name: '移入回收站' });
+  const dialog = await screen.findByRole('alertdialog', { name: '移入回收站' });
   fireEvent.click(within(dialog).getByRole('button', { name: '确认移入回收站' }));
   expect(await within(dialog).findByText(/知识库已发生变化/)).toBeVisible();
   expect(routerPush).not.toHaveBeenCalled();
@@ -264,11 +262,7 @@ async function isolatesDynamicRouteChanges(): Promise<void> {
   const view = renderDestination();
   await screen.findByRole('heading', { level: 1, name: 'Agent 工程' });
   await screen.findByRole('button', { name: '知识库操作' });
-  view.rerender(
-    <EverlearnUiProvider colorMode="light">
-      <KnowledgeDestination knowledgeBaseId={nextId} />
-    </EverlearnUiProvider>,
-  );
+  view.rerender(<KnowledgeDestination knowledgeBaseId={nextId} />);
   expect(screen.queryByRole('heading', { level: 1, name: 'Agent 工程' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '知识库操作' })).not.toBeInTheDocument();
   expect(screen.getByLabelText('正在加载知识库')).toBeVisible();

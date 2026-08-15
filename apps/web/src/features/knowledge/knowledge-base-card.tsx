@@ -1,47 +1,37 @@
 /** @fileoverview 渲染列表页面共享的知识库入口卡片。 */
 
-import { Badge, Card, Group, Text } from '@mantine/core';
 import type { KnowledgeBaseSummary } from '@everlearn/contracts';
 import { BookOpenIcon } from 'lucide-react';
 import Link from 'next/link';
 
-import styles from './knowledge-page.module.css';
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@everlearn/ui';
 
-/** 用于将 UTC 时间转换为简洁本地阅读信息。 */
-function formatUpdatedAt(value: string): string {
-  return new Intl.DateTimeFormat('zh-CN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
+import { formatDateTime } from '../../shared/format-datetime';
 
 /** 用于将真实知识库呈现为单一可访问导航目标。 */
 export function KnowledgeBaseCard({ knowledgeBase }: { knowledgeBase: KnowledgeBaseSummary }) {
   return (
-    <Card
-      className={styles.card}
-      component={Link}
-      href={`/knowledge/${knowledgeBase.id}`}
-      padding="lg"
-      withBorder
-    >
-      <Group align="flex-start" justify="space-between" wrap="nowrap">
-        <div className={styles['card-copy']}>
-          <Text fw={650} lineClamp={1} size="lg">
-            {knowledgeBase.name}
-          </Text>
-          <Text c="dimmed" lineClamp={2} size="sm">
+    <Link className="group/link h-full no-underline" href={`/knowledge/${knowledgeBase.id}`}>
+      <Card className="h-full gap-3 py-5 transition-colors group-hover/link:border-primary/40">
+        <CardHeader className="px-5">
+          <CardDescription className="text-caption">
+            {knowledgeBase.documentCount} 篇文档 · 更新于 {formatDateTime(knowledgeBase.updatedAt)}
+          </CardDescription>
+          <CardTitle className="flex items-center gap-2 font-medium text-title-small text-foreground">
+            <span className="line-clamp-1">{knowledgeBase.name}</span>
+            {knowledgeBase.kind !== 'normal' && <Badge variant="secondary">系统</Badge>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-start gap-2 px-5">
+          <BookOpenIcon
+            aria-hidden="true"
+            className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+          />
+          <p className="m-0 line-clamp-2 text-sm text-muted-foreground">
             {knowledgeBase.description || '还没有说明。'}
-          </Text>
-        </div>
-        {knowledgeBase.kind !== 'normal' && <Badge variant="light">系统</Badge>}
-      </Group>
-      <Group className={styles.meta} gap="xs">
-        <BookOpenIcon aria-hidden="true" size={15} />
-        <Text c="dimmed" size="xs">
-          {knowledgeBase.documentCount} 篇文档 · 更新于 {formatUpdatedAt(knowledgeBase.updatedAt)}
-        </Text>
-      </Group>
-    </Card>
+          </p>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }

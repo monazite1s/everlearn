@@ -1,7 +1,6 @@
 /** @fileoverview 验证真实知识库列表、创建、恢复和目标读取。 */
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { EverlearnUiProvider } from '@everlearn/ui';
 import type { KnowledgeBaseSummary } from '@everlearn/contracts';
 import type { ReactElement } from 'react';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -62,7 +61,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 /** 用于在生产 UI Provider 中渲染功能组件。 */
 function renderKnowledge(element: ReactElement): void {
-  render(<EverlearnUiProvider colorMode="light">{element}</EverlearnUiProvider>);
+  render(element);
 }
 
 /** 用于在每个场景后恢复 DOM、导航、查询和请求状态。 */
@@ -140,6 +139,8 @@ async function retainsItemsAfterPaginationFailure(): Promise<void> {
   renderKnowledge(<KnowledgePage />);
 
   expect(await screen.findByText('Agent 工程')).toBeVisible();
+  expect(screen.getByText('当前账号下的知识库总数')).toBeVisible();
+  expect(screen.getByText('各知识库文档数量之和')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: '加载更多' }));
   expect(await screen.findByText('服务暂不可用。')).toBeVisible();
   expect(screen.getByText('Agent 工程')).toBeVisible();
@@ -155,16 +156,13 @@ async function readsPersistedDestination(): Promise<void> {
   );
   vi.stubGlobal('fetch', fetchMock);
 
-  const first = render(
-    <EverlearnUiProvider colorMode="light">
-      <KnowledgeDestination knowledgeBaseId={persisted.id} />
-    </EverlearnUiProvider>,
-  );
+  const first = render(<KnowledgeDestination knowledgeBaseId={persisted.id} />);
   expect(await screen.findByRole('heading', { level: 1, name: persisted.name })).toBeVisible();
   first.unmount();
   fetchMock.mockClear();
   renderKnowledge(<KnowledgeDestination knowledgeBaseId={persisted.id} />);
-  await screen.findByText('0 篇文档');
+  expect(await screen.findByText('0')).toBeVisible();
+  expect(screen.getByText('当前知识库内的文档数量')).toBeVisible();
   expect(fetchMock).toHaveBeenCalledOnce();
 }
 

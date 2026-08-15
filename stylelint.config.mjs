@@ -1,5 +1,5 @@
 /**
- * @fileoverview 统一 CSS Modules 结构和语义化设计令牌用法。
+ * @fileoverview 校验存量 CSS Modules 的结构与语义令牌用法（ADR 001 迁移期过渡门禁）。
  */
 
 export default {
@@ -12,12 +12,14 @@ export default {
     '**/playwright-report/**',
     '**/test-results/**',
     '**/blob-report/**',
+    // Tailwind 主题入口与 shadcn vendored 源码由 check-design-tokens 与 CLI 治理，不经 stylelint。
+    'packages/ui/src/**',
+    'apps/web/src/app/globals.css',
   ],
   plugins: ['stylelint-declaration-strict-value'],
   rules: {
     'declaration-no-important': true,
-    // 允许 Mantine 官方 mantine-{Component}-{part} 命名（用于 globals.css 的浮层 reduced-motion 兜底）。
-    'selector-class-pattern': '^(?:[a-z][a-z0-9]*)(?:-[a-z0-9]+)*$|^mantine-[A-Za-z][A-Za-z0-9-]*$',
+    'selector-class-pattern': '^(?:[a-z][a-z0-9]*)(?:-[a-z0-9]+)*$',
     'max-nesting-depth': 3,
     'scale-unlimited/declaration-strict-value': [
       [

@@ -2,11 +2,46 @@
 
 'use client';
 
-import { Alert, Button, Group, Menu, Modal, Stack, Text, Textarea, TextInput } from '@mantine/core';
 import { KNOWLEDGE_BASE_NAME_MAX_LENGTH, type KnowledgeBaseSummary } from '@everlearn/contracts';
-import { AlertCircleIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from 'lucide-react';
+import {
+  AlertCircleIcon,
+  Loader2Icon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Trash2Icon,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useId, useState } from 'react';
+
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Field,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  Textarea,
+} from '@everlearn/ui';
 
 import {
   deleteKnowledgeBase,
@@ -20,12 +55,24 @@ interface EditFieldsProps {
   description: string;
   failure: KnowledgeApiFailure | undefined;
   name: string;
+  saving: boolean;
   onDescriptionChange: (value: string) => void;
   onNameChange: (value: string) => void;
   onReloaded: (data: KnowledgeBaseSummary) => void;
 }
 
-const ICON_SIZE = 18;
+/** 用于渲染管理对话框共享的失败提示块。 */
+function ManagementFailure({ message }: { message: string }) {
+  return (
+    <Alert variant="destructive">
+      <AlertCircleIcon aria-hidden="true" />
+      <AlertTitle>操作失败</AlertTitle>
+      <AlertDescription>
+        <p className="m-0">{message}</p>
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 /** 用于重新读取服务端版本且保留用户编辑字段。 */
 function VersionConflictAlert({
@@ -48,77 +95,71 @@ function VersionConflictAlert({
     onReloaded(result.data);
   }
   return (
-    <Alert color="danger" icon={<AlertCircleIcon aria-hidden="true" size={16} />}>
-      <Stack gap="xs">
-        <Text size="sm">存在新版本。你的输入已保留，请读取最新版本后重新保存。</Text>
-        {failure && <Text size="sm">{failure.message}</Text>}
-        <Button loading={loading} onClick={() => void reload()} size="compact-sm" variant="light">
+    <Alert variant="destructive">
+      <AlertCircleIcon aria-hidden="true" />
+      <AlertTitle>版本冲突</AlertTitle>
+      <AlertDescription>
+        <p className="m-0">存在新版本。你的输入已保留，请读取最新版本后重新保存。</p>
+        {failure && <p className="m-0">{failure.message}</p>}
+        <Button
+          className="mt-2"
+          disabled={loading}
+          onClick={() => void reload()}
+          size="sm"
+          variant="outline"
+        >
+          {loading && <Loader2Icon aria-hidden="true" className="animate-spin" />}
           读取最新版本
         </Button>
-      </Stack>
+      </AlertDescription>
     </Alert>
   );
 }
 
-/** 用于以 Mantine 表单控件渲染编辑字段和冲突指引。 */
+/** 用于以共享表单结构渲染编辑字段和冲突指引。 */
 function EditKnowledgeBaseFields({
   data,
   description,
   failure,
   name,
+  saving,
   onDescriptionChange,
   onNameChange,
   onReloaded,
 }: EditFieldsProps) {
+  const nameId = useId();
+  const descriptionId = useId();
   return (
-    <>
+    <FieldGroup>
       {failure?.code === 'VERSION_CONFLICT' ? (
         <VersionConflictAlert data={data} onReloaded={onReloaded} />
       ) : failure ? (
-        <Alert color="danger" icon={<AlertCircleIcon aria-hidden="true" size={16} />}>
-          {failure.message}
-        </Alert>
+        <ManagementFailure message={failure.message} />
       ) : null}
-      <TextInput
-        autoFocus
-        label="名称"
-        maxLength={KNOWLEDGE_BASE_NAME_MAX_LENGTH}
-        onChange={(event) => onNameChange(event.currentTarget.value)}
-        required
-        value={name}
-      />
-      <Textarea
-        label="说明"
-        maxLength={2000}
-        minRows={3}
-        onChange={(event) => onDescriptionChange(event.currentTarget.value)}
-        value={description}
-      />
-    </>
-  );
-}
-
-/** 用于渲染元数据对话框的取消和保存操作。 */
-function EditKnowledgeBaseActions({
-  disabled,
-  onCancel,
-  onSave,
-  saving,
-}: {
-  disabled: boolean;
-  onCancel: () => void;
-  onSave: () => void;
-  saving: boolean;
-}) {
-  return (
-    <Group justify="flex-end">
-      <Button onClick={onCancel} variant="default">
-        取消
-      </Button>
-      <Button disabled={disabled} loading={saving} onClick={onSave} type="button">
-        保存修改
-      </Button>
-    </Group>
+      <Field>
+        <FieldLabel htmlFor={nameId}>名称</FieldLabel>
+        <Input
+          autoFocus
+          disabled={saving}
+          id={nameId}
+          maxLength={KNOWLEDGE_BASE_NAME_MAX_LENGTH}
+          onChange={(event) => onNameChange(event.currentTarget.value)}
+          required
+          value={name}
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={descriptionId}>说明</FieldLabel>
+        <Textarea
+          disabled={saving}
+          id={descriptionId}
+          maxLength={2000}
+          onChange={(event) => onDescriptionChange(event.currentTarget.value)}
+          rows={3}
+          value={description}
+        />
+      </Field>
+    </FieldGroup>
   );
 }
 
@@ -183,8 +224,11 @@ function EditKnowledgeBaseModal({
 }) {
   const edit = useEditKnowledgeBase({ data, onClose, onSaved });
   return (
-    <Modal onClose={onClose} opened={opened} title="编辑知识库">
-      <Stack gap="md">
+    <Dialog onOpenChange={(next) => (next ? undefined : onClose())} open={opened}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>编辑知识库</DialogTitle>
+        </DialogHeader>
         <EditKnowledgeBaseFields
           data={data}
           description={edit.description}
@@ -193,28 +237,24 @@ function EditKnowledgeBaseModal({
           onDescriptionChange={edit.setDescription}
           onNameChange={edit.setName}
           onReloaded={edit.acceptLatest}
-        />
-        <EditKnowledgeBaseActions
-          disabled={!edit.name.trim()}
-          onCancel={onClose}
-          onSave={() => void edit.submit()}
           saving={edit.saving}
         />
-      </Stack>
-    </Modal>
+        <DialogFooter>
+          <Button disabled={edit.saving} onClick={onClose} type="button" variant="outline">
+            取消
+          </Button>
+          <Button disabled={!edit.name.trim() || edit.saving} onClick={() => void edit.submit()}>
+            {edit.saving && <Loader2Icon aria-hidden="true" className="animate-spin" size={16} />}
+            保存修改
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-/** 用于在知识库移入回收站前确认子树影响。 */
-function DeleteKnowledgeBaseModal({
-  data,
-  onClose,
-  opened,
-}: {
-  data: KnowledgeBaseSummary;
-  onClose: () => void;
-  opened: boolean;
-}) {
+/** 用于管理删除请求状态且只在成功后离开页面。 */
+function useDeleteKnowledgeBase(data: KnowledgeBaseSummary) {
   const router = useRouter();
   const [failure, setFailure] = useState<KnowledgeApiFailure>();
   const [deleting, setDeleting] = useState(false);
@@ -228,81 +268,85 @@ function DeleteKnowledgeBaseModal({
     if (!result.ok) return setFailure(result.error);
     router.push('/knowledge');
   }
+  return { confirmDelete, deleting, failure };
+}
+
+/** 用于在知识库移入回收站前确认子树影响。 */
+function DeleteKnowledgeBaseModal({
+  data,
+  onClose,
+  opened,
+}: {
+  data: KnowledgeBaseSummary;
+  onClose: () => void;
+  opened: boolean;
+}) {
+  const { confirmDelete, deleting, failure } = useDeleteKnowledgeBase(data);
   return (
-    <Modal onClose={onClose} opened={opened} title="移入回收站">
-      <Stack gap="md">
-        <Text>
-          “{data.name}”及其中 {data.documentCount} 篇文档将从正常列表中移除。回收站页面尚未提供，
-          移入后当前无法自行恢复，请确认后再继续。
-        </Text>
+    <AlertDialog onOpenChange={(next) => (next ? undefined : onClose())} open={opened}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>移入回收站</AlertDialogTitle>
+          <AlertDialogDescription>
+            “{data.name}”及其中 {data.documentCount} 篇文档将从正常列表中移除。回收站页面尚未提供，
+            移入后当前无法自行恢复，请确认后再继续。
+          </AlertDialogDescription>
+        </AlertDialogHeader>
         {failure && (
-          <Alert color="danger" icon={<AlertCircleIcon aria-hidden="true" size={16} />}>
-            {failure.code === 'VERSION_CONFLICT'
-              ? '知识库已发生变化。请取消操作并刷新后重新确认。'
-              : failure.message}
-          </Alert>
+          <ManagementFailure
+            message={
+              failure.code === 'VERSION_CONFLICT'
+                ? '知识库已发生变化。请取消操作并刷新后重新确认。'
+                : failure.message
+            }
+          />
         )}
-        <Group justify="flex-end">
-          <Button onClick={onClose} variant="default">
-            取消
-          </Button>
-          <Button color="danger" loading={deleting} onClick={() => void confirmDelete()}>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(event) => {
+              event.preventDefault();
+              void confirmDelete();
+            }}
+            variant="destructive"
+          >
+            {deleting && <Loader2Icon aria-hidden="true" className="animate-spin" size={16} />}
             确认移入回收站
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
-/** 用于渲染一次只打开一个管理对话框的受控 Mantine 菜单。 */
+/** 用于渲染一次只打开一个管理对话框的桌面菜单。 */
 function ManagementMenu({
   disabled,
-  onChange,
   onSelect,
-  opened,
 }: {
   disabled: boolean;
-  onChange: (opened: boolean) => void;
   onSelect: (dialog: 'delete' | 'edit') => void;
-  opened: boolean;
 }) {
   return (
-    <Menu
-      keepMounted={false}
-      onChange={onChange}
-      opened={opened}
-      position="bottom-end"
-      shadow="md"
-      width={220}
-    >
-      <Menu.Target>
-        <Button
-          aria-label="知识库操作"
-          disabled={disabled}
-          leftSection={<MoreHorizontalIcon aria-hidden="true" size={ICON_SIZE} />}
-          variant="default"
-        >
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button aria-label="知识库操作" disabled={disabled} variant="outline">
+          <MoreHorizontalIcon aria-hidden="true" size={18} />
           管理
         </Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item
-          leftSection={<PencilIcon aria-hidden="true" size={16} />}
-          onClick={() => onSelect('edit')}
-        >
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => onSelect('edit')}>
+          <PencilIcon aria-hidden="true" size={16} />
           编辑名称与说明
-        </Menu.Item>
-        <Menu.Divider />
-        <Menu.Item
-          color="danger"
-          leftSection={<Trash2Icon aria-hidden="true" size={16} />}
-          onClick={() => onSelect('delete')}
-        >
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onSelect('delete')} variant="destructive">
+          <Trash2Icon aria-hidden="true" size={16} />
           移入回收站
-        </Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -317,20 +361,9 @@ export function KnowledgeManagement({
   onSaved: (data: KnowledgeBaseSummary) => void;
 }) {
   const [dialog, setDialog] = useState<'delete' | 'edit'>();
-  const [menuOpened, setMenuOpened] = useState(false);
-  /** 用于在挂载所选管理对话框前关闭菜单。 */
-  function selectDialog(selected: 'delete' | 'edit'): void {
-    setMenuOpened(false);
-    setDialog(selected);
-  }
   return (
     <div>
-      <ManagementMenu
-        disabled={offline}
-        onChange={setMenuOpened}
-        onSelect={selectDialog}
-        opened={menuOpened}
-      />
+      <ManagementMenu disabled={offline} onSelect={setDialog} />
       {dialog === 'edit' && (
         <EditKnowledgeBaseModal
           data={data}

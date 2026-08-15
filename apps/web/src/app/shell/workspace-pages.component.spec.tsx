@@ -31,6 +31,7 @@ function rendersExplicitWorkspacePages(): void {
     const title = screen.getByRole('heading', { level: 1, name: page.title });
     expect(title).toHaveAttribute('data-page-title');
     expect(title).toHaveAttribute('tabindex', '-1');
+    expect(view.container.textContent).toContain('工作区已就绪');
     view.unmount();
   }
 }

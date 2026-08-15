@@ -31,6 +31,11 @@ const ignoredDirectories = new Set([
   'tmp',
 ]);
 const ignoredFiles = new Set(['next-env.d.ts', 'pnpm-lock.yaml']);
+/** shadcn CLI 生成的 vendored 组件源码（第三方代码豁免，ADR 001）。 */
+const ignoredPathPrefixes = [
+  path.join('packages', 'ui', 'src', 'components'),
+  path.join('.agents', 'skills', 'shadcn'),
+];
 const chineseText = /\p{Script=Han}/u;
 
 /** 用于判断目录是否由工具生成或由外部依赖拥有。 */
@@ -40,8 +45,11 @@ function shouldIgnoreDirectory(name) {
 
 /** 用于识别需要检查自然语言注释的手写文件。 */
 function shouldCheckFile(filePath) {
+  const relativePath = path.relative(repositoryRoot, filePath);
+  const underVendoredPrefix = ignoredPathPrefixes.some((prefix) => relativePath.startsWith(prefix));
   const extension = path.extname(filePath);
   return (
+    !underVendoredPrefix &&
     !ignoredFiles.has(path.basename(filePath)) &&
     (codeExtensions.has(extension) ||
       headerExtensions.has(extension) ||

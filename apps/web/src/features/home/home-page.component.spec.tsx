@@ -2,7 +2,6 @@
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { KnowledgeBaseSummary } from '@everlearn/contracts';
-import { EverlearnUiProvider } from '@everlearn/ui';
 import { afterEach, expect, test, vi } from 'vitest';
 
 import { HomePage } from './home-page';
@@ -31,11 +30,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 /** 用于在标准 UI Provider 中渲染生产首页。 */
 function renderHome(): void {
-  render(
-    <EverlearnUiProvider colorMode="light">
-      <HomePage />
-    </EverlearnUiProvider>,
-  );
+  render(<HomePage />);
 }
 
 /** 用于在每个场景后恢复 DOM、网络和请求状态。 */
@@ -56,6 +51,10 @@ async function rendersRealKnowledge(): Promise<void> {
 
   expect(await screen.findByText('Everlearn 开发记录')).toBeVisible();
   expect(screen.getByText('最近打开记录将在文档阅读能力接入后显示。')).toBeVisible();
+  expect(screen.getByText('当前账号下的知识库总数')).toBeVisible();
+  expect(screen.getByText('各知识库文档数量之和')).toBeVisible();
+  expect(screen.getByText('最近一次内容更新时间')).toBeVisible();
+  expect(screen.getByText('1')).toBeVisible();
   expect(screen.queryByRole('heading', { name: '进行中' })).not.toBeInTheDocument();
   expect(screen.queryByRole('textbox', { name: '记录内容' })).not.toBeInTheDocument();
 }
