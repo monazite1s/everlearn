@@ -30,7 +30,7 @@ Before requesting approval, record:
 
 - exact requirement and current gap;
 - project activity, release recency, license, documentation, runtime boundary, bundle or operational cost;
-- compatibility with Next.js, NestJS, CSS Modules, SSR, accessibility, and current Node version as applicable;
+- compatibility with Next.js, NestJS, Tailwind v4, SSR, accessibility, and current Node version as applicable;
 - rejected alternatives and removal cost;
 - smallest proof needed before broad adoption.
 

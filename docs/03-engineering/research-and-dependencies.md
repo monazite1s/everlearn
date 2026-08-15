@@ -8,7 +8,30 @@
 
 ## 研究记录
 
-### 2026-08-12 Mantine 组件系统迁移
+### 2026-08-15 默认主题与布局整体重写（ADR 002）
+
+- 决策记录：`docs/decisions/002-default-theme-and-layout-rewrite.md`（用户于 2026-08-15 批准）。
+- 采用：shadcn/ui 官方默认 neutral oklch 色板（`:root`/`.dark` 全量 + sidebar/chart 系列），`--radius: 0.625rem`；删除 paper/neutral 自定义色板与主题切换 UI；外观收敛为浅色/深色/跟随系统三态（SidebarFooter DropdownMenu，官方推荐模式）。
+- 布局重写依据：官方 dashboard-01/sidebar-07 骨架与文件粒度（app-sidebar/nav-main/nav-secondary/site-header/section-cards）、官方 Card 顺序（Description 上/Title 下/CardAction 右上）、容器查询命名容器（`@container/main`、`@xl/main` 响应式换列）、Breadcrumb 由 pathname 分段生成。
+- 补充 token：success/warning 两个 oklch 状态色（官方默认主题不含）；排版/断点/间距 token 与主题色无关，保留。
+- 拒绝 next-themes：与简化后的自研 provider 功能重叠。
+- 官方证据：[Theming 默认值](https://ui.shadcn.com/docs/theming)、[Sidebar](https://ui.shadcn.com/docs/components/sidebar)、[Blocks dashboard-01/sidebar-07](https://ui.shadcn.com/blocks)、[shadcn-ui/ui 仓库 blocks 源码](https://github.com/shadcn-ui/ui)。查阅日期：2026-08-15。
+
+### 2026-08-15 shadcn/ui + Tailwind v4 组件与样式系统迁移
+
+- 决策记录：`docs/decisions/001-shadcn-tailwind-migration.md`（用户于 2026-08-15 批准）。本记录取代 2026-08-12 Mantine 迁移决策，Mantine 记录保留作历史。
+- 采用候选：`shadcn`（CLI 源码所有权模式）、`tailwindcss` v4 + `@tailwindcss/postcss`、`class-variance-authority`、`clsx`、`tailwind-merge`、`tw-animate-css`。全部 MIT。底层原语采用本次 CLI 生成的 Radix 预设与 `new-york` 风格，以 `shadcn info` 复核。
+- 采用范围：shadcn 负责标准控件、浮层、Sidebar 应用壳骨架与可访问行为；Tailwind v4 CSS-first 配置负责 utility 与主题映射；暗色走 class 策略（`@custom-variant dark`），由自研 theme-provider 驱动，不引入 next-themes。迁移初版保留的 paper/neutral 四套色板已由 ADR 002 取代为官方 neutral 浅色/深色两态。
+- 所有权与升级：组件源码进 `packages/ui`，通过 `shadcn add` 安装、`shadcn add --diff/--dry-run` 合并上游更新；禁止手工从 GitHub 拷贝 registry 文件，禁止未经用户批准使用 `--overwrite`。
+- monorepo 边界：`packages/ui` 以源码 exports 被消费；主题入口 CSS 放 packages/ui，`apps/web` 的 `components.json` 以 `tailwind.css` 指回；`@source` 显式注册跨包扫描（v4 自动检测不跨 workspace）。
+- 迁移策略：一次性迁移并删除 Mantine，禁止双组件库并存；Tailwind 与 CSS Modules 仅迁移期共存，完成后新代码禁止新建 CSS Modules。
+- 暂不采用：shadcn MCP server（当前 agent 工作流用 `shadcn search/docs` CLI 已覆盖，形成实际需要后再评估）、prettier-plugin-tailwindcss（迁移稳定后再评估引入）、第三方主题 preset（nova/vega 等，仅作参考不直接 apply）。
+- 官方证据：[shadcn 安装 manual](https://ui.shadcn.com/docs/installation/manual)、[shadcn CLI](https://ui.shadcn.com/docs/cli)、[shadcn monorepo](https://ui.shadcn.com/docs/monorepo)、[shadcn theming](https://ui.shadcn.com/docs/theming)、[shadcn Skills](https://ui.shadcn.com/docs/skills)、[官方 skill 源码 shadcn-ui/ui/skills](https://github.com/shadcn-ui/ui/blob/main/skills/shadcn/SKILL.md)、[Tailwind v4 @theme](https://tailwindcss.com/docs/theme)、[Tailwind dark-mode](https://tailwindcss.com/docs/dark-mode)、[Tailwind Next.js 安装](https://tailwindcss.com/docs/installation/framework-guides/nextjs)、[Tailwind 源检测](https://tailwindcss.com/docs/detecting-classes-in-source-files)。查阅日期：2026-08-15。
+- 拒绝继续 Mantine：视觉基线与商业化目标存在持续摩擦，且组件级视觉系统无论如何需要自建；此前 2026-08-12 记录未评估 shadcn，属对比面不足的决策。
+- 拒绝 shadcn 源码改写 CSS Modules：失去官方 CLI 工作流，形成自维护分叉。
+- 替换成本：数据获取 hook、API 层与领域模块不依赖 UI 库，不受影响；应用壳、约 10 个源码文件与组件测试需重写。
+
+### 2026-08-12 Mantine 组件系统迁移（已被 2026-08-15 记录取代）
 
 - 采用候选：`@mantine/core` 9.5.1、`@mantine/hooks` 9.5.1 与 `lucide-react` 1.31.0；用户于 2026-08-12 明确批准迁移，随后批准以 Lucide 替换类型不兼容的 Tabler。Mantine 为 MIT，Lucide 为 ISC；npm 官方源确认三者兼容项目 React 19.2.8。
 - 采用范围：Mantine 负责标准控件、布局原语、浮层、反馈和可访问行为；Lucide 提供唯一图标集；CSS Modules 与项目语义 Token 继续负责产品布局和品牌视觉。
@@ -53,22 +76,22 @@
 
 ## 已采用基线
 
-| 领域          | 选择                                                                                                                                                                                                                                   | 用途与边界                                                                                      |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 编辑器        | [Tiptap](https://github.com/ueberdosis/tiptap)                                                                                                                                                                                         | Headless ProseMirror 编辑器、扩展和拖拽；不采用协作云或 Yjs。                                   |
-| UI 组件       | [Mantine 9.5.1](https://mantine.dev/)                                                                                                                                                                                                  | 标准控件、布局、浮层与可访问行为；Web 可直接使用，产品视觉由 Theme、Token 与 CSS Modules 约束。 |
-| 图标          | [Lucide React 1.31.0](https://lucide.dev/guide/packages/lucide-react)                                                                                                                                                                  | 唯一界面图标集；禁止字符、Emoji 和重复手写 SVG。                                                |
-| 动效          | [Motion for React](https://motion.dev/docs/react)                                                                                                                                                                                      | 编排与布局动效；简单变化使用 CSS。                                                              |
-| 画布          | [React Flow](https://reactflow.dev/learn/concepts/terms-and-definitions)                                                                                                                                                               | Workflow 可视化；列表仍是完整编辑入口。                                                         |
-| Agent Runtime | [LangGraph.js](https://github.com/langchain-ai/langgraphjs)                                                                                                                                                                            | 图执行、检查点、子图和人工中断。                                                                |
-| 队列          | [BullMQ Job Schedulers](https://docs.bullmq.io/guide/job-schedulers)                                                                                                                                                                   | 后台分发与每日/每周调度；不用废弃 repeatable API。                                              |
-| 搜索          | PostgreSQL FTS + pgvector                                                                                                                                                                                                              | 普通搜索与 AI 混合召回；不引入独立搜索集群。                                                    |
-| Web 搜索      | Tavily Adapter                                                                                                                                                                                                                         | 首个实现；业务只依赖 Provider 接口。                                                            |
-| 组件样式      | CSS Modules + CSS variables                                                                                                                                                                                                            | 禁止原子化 CSS。                                                                                |
-| 主题运行时    | [prefers-color-scheme](https://developer.mozilla.org/docs/Web/CSS/@media/prefers-color-scheme) + [Web Storage](https://developer.mozilla.org/docs/Web/API/Web_Storage_API) + [next-themes](https://github.com/pacocoursey/next-themes) | 采用 CSS 变量、`data-*`、`matchMedia` 和 `localStorage`；功能窄且原生能力完整，不引入主题依赖。 |
-| 应用壳导航    | [Next.js Accessibility](https://nextjs.org/docs/architecture/accessibility) + [usePathname](https://nextjs.org/docs/app/api-reference/functions/use-pathname)                                                                          | 使用真实 Link 路由、唯一标题和路由播报；壳只在客户端读取 pathname，切换后聚焦页面标题。         |
-| 服务端配置    | [Nest Config](https://docs.nestjs.com/techniques/configuration) + [class-validator](https://github.com/typestack/class-validator)                                                                                                      | API/Worker 启动前同步校验白名单字段；普通业务不使用 Zod。                                       |
-| 本地依赖镜像  | pgvector 0.8.2/PostgreSQL 17、Redis 8.8.0、SeaweedFS 4.29                                                                                                                                                                              | 固定镜像版本；SeaweedFS 使用维护者推荐的单节点 `weed mini`。                                    |
+| 领域          | 选择                                                                                                                                                                       | 用途与边界                                                                                                    |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 编辑器        | [Tiptap](https://github.com/ueberdosis/tiptap)                                                                                                                             | Headless ProseMirror 编辑器、扩展和拖拽；不采用协作云或 Yjs。                                                 |
+| UI 组件       | [shadcn/ui](https://ui.shadcn.com/)（源码所有权，ADR 001）                                                                                                                 | 标准控件、浮层、Sidebar 应用壳与可访问行为；组件源码在 packages/ui，经 shadcn CLI 管理。                      |
+| 图标          | [Lucide React 1.31.0](https://lucide.dev/guide/packages/lucide-react)                                                                                                      | 唯一界面图标集；禁止字符、Emoji 和重复手写 SVG。                                                              |
+| 动效          | [Motion for React](https://motion.dev/docs/react)                                                                                                                          | 编排与布局动效；简单变化使用 CSS。                                                                            |
+| 画布          | [React Flow](https://reactflow.dev/learn/concepts/terms-and-definitions)                                                                                                   | Workflow 可视化；列表仍是完整编辑入口。                                                                       |
+| Agent Runtime | [LangGraph.js](https://github.com/langchain-ai/langgraphjs)                                                                                                                | 图执行、检查点、子图和人工中断。                                                                              |
+| 队列          | [BullMQ Job Schedulers](https://docs.bullmq.io/guide/job-schedulers)                                                                                                       | 后台分发与每日/每周调度；不用废弃 repeatable API。                                                            |
+| 搜索          | PostgreSQL FTS + pgvector                                                                                                                                                  | 普通搜索与 AI 混合召回；不引入独立搜索集群。                                                                  |
+| Web 搜索      | Tavily Adapter                                                                                                                                                             | 首个实现；业务只依赖 Provider 接口。                                                                          |
+| 组件样式      | Tailwind CSS v4（ADR 001）+ 语义 Token 三层变量                                                                                                                            | Tailwind 禁令已废止；utility 只消费语义 token，禁止任意值与裸色。                                             |
+| 主题运行时    | [prefers-color-scheme](https://developer.mozilla.org/docs/Web/CSS/@media/prefers-color-scheme) + [Web Storage](https://developer.mozilla.org/docs/Web/API/Web_Storage_API) | 自研外观 provider（浅色/深色/跟随系统，ADR 002）；`.dark` class 切换，`localStorage` 持久化，不引入主题依赖。 |
+| 应用壳导航    | [Next.js Accessibility](https://nextjs.org/docs/architecture/accessibility) + [usePathname](https://nextjs.org/docs/app/api-reference/functions/use-pathname)              | 使用真实 Link 路由、唯一标题和路由播报；壳只在客户端读取 pathname，切换后聚焦页面标题。                       |
+| 服务端配置    | [Nest Config](https://docs.nestjs.com/techniques/configuration) + [class-validator](https://github.com/typestack/class-validator)                                          | API/Worker 启动前同步校验白名单字段；普通业务不使用 Zod。                                                     |
+| 本地依赖镜像  | pgvector 0.8.2/PostgreSQL 17、Redis 8.8.0、SeaweedFS 4.29                                                                                                                  | 固定镜像版本；SeaweedFS 使用维护者推荐的单节点 `weed mini`。                                                  |
 
 ## 工程门禁基线（2026-08-09）
 
@@ -87,17 +110,17 @@
 
 ## 已拒绝或延期
 
-| 方案                           | 结论         | 原因                                                            |
-| ------------------------------ | ------------ | --------------------------------------------------------------- |
-| Superpowers                    | 禁止         | Token 成本与收益不符合项目工作方式。                            |
-| 继续扩展 Radix 包装层          | 已替换       | 应用级组件缺口导致重复实现；Mantine 迁移完成后删除依赖与包装。  |
-| OpenAI Agents SDK 作为 Runtime | 不采用       | 当前需要可编辑图、持久检查点和明确子图；Provider 仍保持可替换。 |
-| 自研 Workflow DSL/状态机       | 不采用       | 重复建设持久化、中断和恢复能力。                                |
-| 固定 Planner/Executor/Critic   | 不采用       | 不是所有流程都需要三角色，节点和质量门槛应按模板定义。          |
-| Tailwind/UnoCSS                | 禁止         | 原子化样式不符合可读性和主题约束。                              |
-| Yjs/CRDT                       | 延期且无计划 | 产品不允许同时协作编辑。                                        |
-| Browser automation             | 首期排除     | 资讯仅支持 RSS/Atom 和 Search API。                             |
-| 任意 HTTP/代码节点             | 首期排除     | 密钥、SSRF、隔离与资源治理成本过高。                            |
+| 方案                           | 结论              | 原因                                                                                     |
+| ------------------------------ | ----------------- | ---------------------------------------------------------------------------------------- |
+| Superpowers                    | 禁止              | Token 成本与收益不符合项目工作方式。                                                     |
+| 继续扩展 Radix 包装层          | 已替换            | 应用级组件缺口导致重复实现；Mantine 迁移完成后删除依赖与包装。                           |
+| OpenAI Agents SDK 作为 Runtime | 不采用            | 当前需要可编辑图、持久检查点和明确子图；Provider 仍保持可替换。                          |
+| 自研 Workflow DSL/状态机       | 不采用            | 重复建设持久化、中断和恢复能力。                                                         |
+| 固定 Planner/Executor/Critic   | 不采用            | 不是所有流程都需要三角色，节点和质量门槛应按模板定义。                                   |
+| ~~Tailwind/UnoCSS~~ 禁令       | 已废止（ADR 001） | 2026-08-15 迁移 shadcn/ui 后解除；纪律改由 everlearn-shadcn-ui skill 与 token 门禁承担。 |
+| Yjs/CRDT                       | 延期且无计划      | 产品不允许同时协作编辑。                                                                 |
+| Browser automation             | 首期排除          | 资讯仅支持 RSS/Atom 和 Search API。                                                      |
+| 任意 HTTP/代码节点             | 首期排除          | 密钥、SSRF、隔离与资源治理成本过高。                                                     |
 
 ## 已校验的重要限制
 

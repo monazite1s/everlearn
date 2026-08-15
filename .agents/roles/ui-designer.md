@@ -11,7 +11,7 @@
 ## 必须遵守
 
 - 安静书房气质，但打磨水准对标 Linear/Notion/Raycast：像素级一致、状态完备、焦点可见、动效克制、文案可行动（见 `design-system.md`「商业化精致度」）。
-- 组件复用优先：先用 Mantine 与 `packages/ui`，禁止自研重复控件或同名转发包装；图标只用 Lucide。
+- 组件复用优先：先用 shadcn/ui（CLI 管理）与 `packages/ui`，禁止自研重复控件或同名转发包装；图标只用 Lucide。
 - 每个页面明确布局、桌面/移动行为，以及空、加载、失败、离线、无权限状态。
 - 用户可见文案集中声明（模块内 `copy.ts`），禁止 JSX 散落裸字符串，为 i18n 预留。
 - 对比度按 WCAG AA 校验；关键页面验收时跑 axe 扫描，Critical/Serious 归零。

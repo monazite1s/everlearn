@@ -1,5 +1,7 @@
 # UI 改版设计方案 v2（提案，待用户放行）
 
+> ⚠️ 2026-08-15 起组件层基线已切换为 shadcn/ui + Tailwind v4（ADR 001）：本文档的视觉方向、密度、层级与状态规范继续有效，但所有 Mantine 映射、Mantine 陷阱与 CSS Modules 实现表述仅作历史参考。
+>
 > 依据 8 路调研合成（Linear/Notion/Raycast/Arc 生产级实测、Geist/shadcn/Radix 组件工艺、Mantine 9.5 源码、中文排版研究、AI-UX 指南、动效规范、导航列表源码调研），经设计总监审核（有条件通过）后修订。v2 修订记录见文末。
 
 ## 一、设计原则（五条铁律）
@@ -14,35 +16,35 @@
 
 ### 2.1 表面阶梯（`--surface` 更名 `--shell`，语义=外壳面板）
 
-| Token | paper 浅 | paper 深 | neutral 浅 | neutral 深 | 用途 |
-|---|---|---|---|---|---|
-| `--canvas` | `#FBF8F1`（最亮，纸面） | `#191510`（最深，纸面） | `#F9FAFB` | `#171A1E` | 主内容区 |
-| `--shell` | `#F0EBE1`（深一档） | `#211C16`（亮一档） | `#EFF1F4` | `#1E2328` | 侧栏/顶栏 |
-| `--surface-raised` | `#FFFDF8` | `#2A231C` | `#FFFFFF` | `#272E36` | 卡片/输入框 |
-| `--surface-overlay` | `#FFFDF8`（浅色=raised 同底，靠阴影分层） | `#332B22` | `#FFFFFF` | `#2F3740` | Modal/Menu/Popover |
+| Token               | paper 浅                                  | paper 深                | neutral 浅 | neutral 深 | 用途               |
+| ------------------- | ----------------------------------------- | ----------------------- | ---------- | ---------- | ------------------ |
+| `--canvas`          | `#FBF8F1`（最亮，纸面）                   | `#191510`（最深，纸面） | `#F9FAFB`  | `#171A1E`  | 主内容区           |
+| `--shell`           | `#F0EBE1`（深一档）                       | `#211C16`（亮一档）     | `#EFF1F4`  | `#1E2328`  | 侧栏/顶栏          |
+| `--surface-raised`  | `#FFFDF8`                                 | `#2A231C`               | `#FFFFFF`  | `#272E36`  | 卡片/输入框        |
+| `--surface-overlay` | `#FFFDF8`（浅色=raised 同底，靠阴影分层） | `#332B22`               | `#FFFFFF`  | `#2F3740`  | Modal/Menu/Popover |
 
 层级语义：**浅色** canvas 最亮 → shell 深一档 → raised 最亮白（浮起物）；**深色** canvas 最暗 → shell 亮一档 → raised/overlay 逐级更亮。侧栏与主区之间**不画分割线**（Notion：纯背景差）。
 
 ### 2.2 文字与边框（四套全量）
 
-| Token | paper 浅 | paper 深 | neutral 浅 | neutral 深 | 实测对比度（on canvas） |
-|---|---|---|---|---|---|
-| `--ink` | `#37322A` | `#EDE6D8` | `#24292F` | `#E8ECEF` | ≈12:1 AAA |
-| `--ink-muted` | `#6B6255` | `#AFA392` | `#5C6670` | `#A6B0BA` | 5.6:1 AA（自算） |
-| `--ink-faint` | `#6F6759` | `#998F7F` | `#626C76` | `#96A0AA` | 4.6:1 AA（自算，占位符/禁用亦达标） |
-| `--border` | `rgb(55 50 42 / 10%)` | `rgb(237 230 216 / 13%)` | `rgb(36 41 47 / 10%)` | `rgb(232 236 239 / 13%)` | alpha 前景轨 |
-| `--border-strong` | `rgb(55 50 42 / 18%)` | `rgb(237 230 216 / 22%)` | `rgb(36 41 47 / 18%)` | `rgb(232 236 239 / 22%)` | 输入框常驻边界 |
-| `--hover-overlay` | `rgb(55 50 42 / 6%)`（列表/大面可升 8% 实测定档） | `rgb(237 230 216 / 8%)` | `rgb(36 41 47 / 6%)` | `rgb(232 236 239 / 8%)` | 基础色随新 ink 更新 |
+| Token             | paper 浅                                          | paper 深                 | neutral 浅            | neutral 深               | 实测对比度（on canvas）             |
+| ----------------- | ------------------------------------------------- | ------------------------ | --------------------- | ------------------------ | ----------------------------------- |
+| `--ink`           | `#37322A`                                         | `#EDE6D8`                | `#24292F`             | `#E8ECEF`                | ≈12:1 AAA                           |
+| `--ink-muted`     | `#6B6255`                                         | `#AFA392`                | `#5C6670`             | `#A6B0BA`                | 5.6:1 AA（自算）                    |
+| `--ink-faint`     | `#6F6759`                                         | `#998F7F`                | `#626C76`             | `#96A0AA`                | 4.6:1 AA（自算，占位符/禁用亦达标） |
+| `--border`        | `rgb(55 50 42 / 10%)`                             | `rgb(237 230 216 / 13%)` | `rgb(36 41 47 / 10%)` | `rgb(232 236 239 / 13%)` | alpha 前景轨                        |
+| `--border-strong` | `rgb(55 50 42 / 18%)`                             | `rgb(237 230 216 / 22%)` | `rgb(36 41 47 / 18%)` | `rgb(232 236 239 / 22%)` | 输入框常驻边界                      |
+| `--hover-overlay` | `rgb(55 50 42 / 6%)`（列表/大面可升 8% 实测定档） | `rgb(237 230 216 / 8%)`  | `rgb(36 41 47 / 6%)`  | `rgb(232 236 239 / 8%)`  | 基础色随新 ink 更新                 |
 
 ### 2.3 状态色（新增，四套同步定义，进 design-system 映射表审批）
 
-| Token | 浅 | 深 | 用途 |
-|---|---|---|---|
-| `--info`（运行中） | `#2F6FA8` | `#7FB3E3` | 运行中徽章/进度，配脉冲动画（禁 spinner 叠加） |
-| `--info-soft` | `rgb(47 111 168 / 12%)` | `rgb(127 179 227 / 14%)` | 运行中浅底 |
-| 排队/取消 | 复用 `--ink-muted` | 同左 | 灰 |
-| 超时 | 复用 `--warning` | 同左 | 橙 |
-| 失败/成功 | 复用 `--danger` / `--success` | 同左 | — |
+| Token              | 浅                            | 深                       | 用途                                           |
+| ------------------ | ----------------------------- | ------------------------ | ---------------------------------------------- |
+| `--info`（运行中） | `#2F6FA8`                     | `#7FB3E3`                | 运行中徽章/进度，配脉冲动画（禁 spinner 叠加） |
+| `--info-soft`      | `rgb(47 111 168 / 12%)`       | `rgb(127 179 227 / 14%)` | 运行中浅底                                     |
+| 排队/取消          | 复用 `--ink-muted`            | 同左                     | 灰                                             |
+| 超时               | 复用 `--warning`              | 同左                     | 橙                                             |
+| 失败/成功          | 复用 `--danger` / `--success` | 同左                     | —                                              |
 
 ### 2.4 圆角（维持 6/10/14）
 
@@ -52,15 +54,15 @@
 
 ```css
 /* 浅色 */
---shadow-card:       0 1px 2px rgb(55 50 42 / 5%);
+--shadow-card: 0 1px 2px rgb(55 50 42 / 5%);
 --shadow-card-hover: 0 1px 2px rgb(55 50 42 / 5%), 0 6px 14px rgb(55 50 42 / 8%);
---shadow-overlay:    0 0 0 1px var(--border), 0 4px 8px -4px rgb(55 50 42 / 7%),
-                     0 16px 24px -8px rgb(55 50 42 / 6%);
---shadow-modal:      0 0 0 1px var(--border), 0 8px 16px -4px rgb(55 50 42 / 7%),
-                     0 24px 32px -8px rgb(55 50 42 / 6%);
+--shadow-overlay:
+  0 0 0 1px var(--border), 0 4px 8px -4px rgb(55 50 42 / 7%), 0 16px 24px -8px rgb(55 50 42 / 6%);
+--shadow-modal:
+  0 0 0 1px var(--border), 0 8px 16px -4px rgb(55 50 42 / 7%), 0 24px 32px -8px rgb(55 50 42 / 6%);
 /* 深色（加重至可见；假亮边 --border 承担主要层级） */
---shadow-overlay:    0 4px 16px rgb(0 0 0 / 24%), 0 8px 24px rgb(0 0 0 / 20%);
---shadow-modal:      0 8px 24px rgb(0 0 0 / 32%), 0 16px 40px rgb(0 0 0 / 24%);
+--shadow-overlay: 0 4px 16px rgb(0 0 0 / 24%), 0 8px 24px rgb(0 0 0 / 20%);
+--shadow-modal: 0 8px 24px rgb(0 0 0 / 32%), 0 16px 40px rgb(0 0 0 / 24%);
 ```
 
 要点：假亮边（`0 0 0 1px var(--border)`，Geist/Raycast 手法）；卡片 hover 用阴影升档**替代现有 translateY + accent 边框**（现状方案廉价，是本次性价比最高的单项改动）；neutral 深色阴影同值。
@@ -93,17 +95,17 @@
 
 ## 四、组件规范
 
-| 组件 | 规格 |
-|---|---|
-| 卡片 | raised 背景 + 假亮边 + `--shadow-card`；hover 边框加深至 strong + `--shadow-card-hover`（**移除 translateY 与 accent 边框 hover**）；整卡可点 + `:focus-visible` |
-| 按钮 | filled=accent；default=raised+border，hover 叠 overlay（表面重排后复核 `--mantine-color-default-hover` 方向）；subtle hover 同律；按压 `scale(.97)`/150ms |
-| 输入框 | 36px 高、6px 圆角、`--border-strong`；聚焦=边框变 accent + 3px 50% 透明贴合光环（无 offset） |
-| 状态徽章 | 列表 8px dot+文本 / 详情 20px pill；运行中 `--info`+脉冲；颜色必配文本（Geist/Temporal/Inngest 收敛） |
-| 列表行 | 42px（表头 36px）；hover 叠 overlay；行内操作图标"行 hover 时 opacity 0→1 显现"（语义描述，实现用 CSS Modules `:hover`） |
-| 骨架 | 300ms 延迟出现；呼吸 opacity 0.4→1.0 / 1.5s / linear；<1s 不显示指示器；2-10s 骨架；>10s 阶段文案 |
-| 空态 | 视觉锚点 + 一句说明 + 主行动（已有组件维持） |
-| 焦点环 | 控件=3px 50% 贴合环 + 描边变色；卡片/导航=outline 2px + offset 2px；Mantine `focusRing: 'auto'` |
-| kbd | 等宽、87.5%、1px 边框 + 2px 底边、4px 圆角 |
+| 组件     | 规格                                                                                                                                                             |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 卡片     | raised 背景 + 假亮边 + `--shadow-card`；hover 边框加深至 strong + `--shadow-card-hover`（**移除 translateY 与 accent 边框 hover**）；整卡可点 + `:focus-visible` |
+| 按钮     | filled=accent；default=raised+border，hover 叠 overlay（表面重排后复核 `--mantine-color-default-hover` 方向）；subtle hover 同律；按压 `scale(.97)`/150ms        |
+| 输入框   | 36px 高、6px 圆角、`--border-strong`；聚焦=边框变 accent + 3px 50% 透明贴合光环（无 offset）                                                                     |
+| 状态徽章 | 列表 8px dot+文本 / 详情 20px pill；运行中 `--info`+脉冲；颜色必配文本（Geist/Temporal/Inngest 收敛）                                                            |
+| 列表行   | 42px（表头 36px）；hover 叠 overlay；行内操作图标"行 hover 时 opacity 0→1 显现"（语义描述，实现用 CSS Modules `:hover`）                                         |
+| 骨架     | 300ms 延迟出现；呼吸 opacity 0.4→1.0 / 1.5s / linear；<1s 不显示指示器；2-10s 骨架；>10s 阶段文案                                                                |
+| 空态     | 视觉锚点 + 一句说明 + 主行动（已有组件维持）                                                                                                                     |
+| 焦点环   | 控件=3px 50% 贴合环 + 描边变色；卡片/导航=outline 2px + offset 2px；Mantine `focusRing: 'auto'`                                                                  |
+| kbd      | 等宽、87.5%、1px 边框 + 2px 底边、4px 圆角                                                                                                                       |
 
 ## 五、中文排版与文案
 
@@ -130,6 +132,7 @@ Toast 4s（带操作 6-8s、错误不自动关、上限 3、hover/focus 暂停�
 ## 十、现状 → 目标 delta 表与实施分期
 
 **P0（视觉地基 PR）真实 delta**：
+
 1. 表面反转：侧栏/顶栏 surface→shell（浅深一档/深亮一档）、主区 canvas 提亮至 `#FBF8F1`、分割线移除（header/navbar border 删除）。
 2. 卡片 hover：translateY + accent 边框 → 阴影升档 + 边框加深（knowledge-page.module.css）。
 3. token 重构全量（2.1-2.7 四套）+ ink 换暖黑 + 边框 alpha 化 + 阴影四枚。

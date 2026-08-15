@@ -17,6 +17,7 @@
 | -------------------------------- | -------------------------------------------------------------------- |
 | everlearn-requirements           | 新功能、行为变化、需求含糊、跨页面流程或拆分施工任务                 |
 | everlearn-ui-design              | 新建或修改页面、布局、组件、交互、视觉、响应式、可访问性或动效       |
+| everlearn-shadcn-ui              | 新建或修改 Tailwind 样式、shadcn 组件、主题 Token、应用壳或浮层      |
 | everlearn-reuse-first            | 新建组件、封装、工具、基础设施能力，或考虑新增/替换依赖              |
 | everlearn-api-contract           | 新建或修改 HTTP、SSE、错误结构、分页、并发控制或前后端数据交互       |
 | everlearn-postgres-design        | 新建或修改表、列、约束、索引、查询形态、迁移或数据保留规则           |
@@ -24,7 +25,7 @@
 
 组合门禁：
 
-- UI 工作必须同时使用 everlearn-ui-design 与 everlearn-reuse-first。
+- UI 工作必须同时使用 everlearn-ui-design、everlearn-shadcn-ui 与 everlearn-reuse-first。
 - 跨前后端功能必须使用 everlearn-requirements 与 everlearn-api-contract；涉及数据持久化时再使用 everlearn-postgres-design。
 - Agent、Workflow、编辑器、复杂动效、抓取、队列、认证和分享设计必须使用 everlearn-reuse-first 与 everlearn-pragmatic-architecture。
 - Skill 改变了决策、范围或实现时，必须在任务完成证据中记录影响。
@@ -88,8 +89,10 @@
 
 ## 技术边界
 
-- Web 使用 Next.js、CSS Modules 与语义化 Design Tokens。禁止 Tailwind CSS、UnoCSS 和其他原子化 CSS。
-- 组件系统及导入边界以 docs/03-engineering/research-and-dependencies.md 的当前批准项为准；packages/ui 只承载文档明确要求的 Token、Provider 和有产品语义的共享组件。
+- Web 使用 Next.js + Tailwind CSS v4 + shadcn/ui（ADR 001），颜色为 shadcn 官方默认主题（ADR 002）。语义 Token 走三层变量结构（`:root`/`.dark` 裸值层、`@theme inline` 映射层、utility 消费层）；utility 只消费官方语义 token，禁止裸色、任意值与 `dark:` 换色实现双模式。
+- 组件系统为 shadcn/ui 源码所有权模式：组件源码位于 packages/ui，只经 `shadcn` CLI 安装与升级（`add`、`add --diff`、`--dry-run`），禁止手工从 GitHub 拷贝 registry 文件；`--overwrite` 必须先获用户批准。packages/ui 额外只承载主题 Provider 与有产品语义的共享组件，禁止为组件建立同名转发包装。
+- 暗色模式为 class 策略（`@custom-variant dark`），由自研外观 provider（浅色/深色/跟随系统）驱动；应用壳基于 shadcn Sidebar 官方骨架（dashboard-01 粒度拆分）。
+- 迁移完成后新代码禁止新建 CSS Modules；存量 CSS Modules 在后续任务中逐步消解。禁止 UnoCSS 及 Tailwind 之外的其他原子化 CSS。
 - Motion for React 只处理协调或布局动效；React Flow 只处理 Workflow 画布；所有动效支持 reduced motion。
 - API 与 Worker 使用 NestJS；PostgreSQL 是业务事实源；Redis 与 BullMQ 只负责队列、调度和短期协调。
 - 普通业务边界使用 Nest DTO、class-validator 与领域校验。Zod 仅允许在 packages/agent-runtime 校验 LLM 结构化输出、Agent 状态和工具参数。

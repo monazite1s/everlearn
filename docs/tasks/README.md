@@ -11,21 +11,23 @@
 
 ## 里程碑索引
 
-| 顺序 | 文件                                               | 结果                                   | 状态   |
-| ---- | -------------------------------------------------- | -------------------------------------- | ------ |
-| 0    | [工程基线](00-foundation.md)                       | 可构建、可检查的 Monorepo 与本地依赖。 | 已完成 |
-| 1    | [设计系统与应用壳](01-design-shell.md)             | 主题、通用组件、导航和响应式壳。       | 已完成 |
-| 1A   | [Mantine 迁移与 UI 修正](01a-mantine-migration.md) | 组件系统、显式路由和既有 UI 组件化。   | 已完成 |
-| 2    | [知识库模型与 API](02-knowledge-model.md)          | 多知识库、文档树、Inbox 和回收站。     | 进行中 |
-| 3    | [编辑器与修订](03-editor.md)                       | Tiptap、自动保存、修订和附件。         | 未开始 |
-| 4    | [搜索与知识连接](04-search-import.md)              | 搜索、标签、链接和 Markdown 交换。     | 未开始 |
-| 5    | [AI 编辑与问答](05-ai-editing.md)                  | LLM Gateway、差异接受和带引用问答。    | 未开始 |
-| 6    | [Workflow Runtime](06-workflow-runtime.md)         | LangGraph、版本、检查点、工具和调度。  | 未开始 |
-| 7    | [资讯自动化](07-news.md)                           | 订阅、采集、简报和自动发布。           | 未开始 |
-| 8    | [系统教程](08-tutorials.md)                        | 两次确认、逐章生成与恢复。             | 未开始 |
-| 9    | [Workflow UI](09-workflow-ui.md)                   | 模板、步骤编辑、画布和运行观察。       | 未开始 |
-| 10   | [账号、分享与克隆](10-accounts-sharing.md)         | 多账号与只读分享、独立克隆。           | 未开始 |
-| 11   | [生产加固](11-production.md)                       | 备份、安全、性能和完整 E2E。           | 未开始 |
+| 顺序 | 文件                                                               | 结果                                                        | 状态   |
+| ---- | ------------------------------------------------------------------ | ----------------------------------------------------------- | ------ |
+| 0    | [工程基线](00-foundation.md)                                       | 可构建、可检查的 Monorepo 与本地依赖。                      | 已完成 |
+| 1    | [设计系统与应用壳](01-design-shell.md)                             | 主题、通用组件、导航和响应式壳。                            | 已完成 |
+| 1A   | [Mantine 迁移与 UI 修正](01a-mantine-migration.md)                 | 组件系统、显式路由和既有 UI 组件化。                        | 已完成 |
+| 1B   | [shadcn/Tailwind 迁移与 UI 重构](01b-shadcn-tailwind-migration.md) | 组件与样式系统迁移 ADR 001、新规范与 Skill、UI 重构。       | 已完成 |
+| 1C   | [默认主题与布局整体重写](01c-default-theme-layout-rewrite.md)      | ADR 002：shadcn 默认主题、官方 dashboard 骨架、布局组件化。 | 已完成 |
+| 2    | [知识库模型与 API](02-knowledge-model.md)                          | 多知识库、文档树、Inbox 和回收站。                          | 进行中 |
+| 3    | [编辑器与修订](03-editor.md)                                       | Tiptap、自动保存、修订和附件。                              | 未开始 |
+| 4    | [搜索与知识连接](04-search-import.md)                              | 搜索、标签、链接和 Markdown 交换。                          | 未开始 |
+| 5    | [AI 编辑与问答](05-ai-editing.md)                                  | LLM Gateway、差异接受和带引用问答。                         | 未开始 |
+| 6    | [Workflow Runtime](06-workflow-runtime.md)                         | LangGraph、版本、检查点、工具和调度。                       | 未开始 |
+| 7    | [资讯自动化](07-news.md)                                           | 订阅、采集、简报和自动发布。                                | 未开始 |
+| 8    | [系统教程](08-tutorials.md)                                        | 两次确认、逐章生成与恢复。                                  | 未开始 |
+| 9    | [Workflow UI](09-workflow-ui.md)                                   | 模板、步骤编辑、画布和运行观察。                            | 未开始 |
+| 10   | [账号、分享与克隆](10-accounts-sharing.md)                         | 多账号与只读分享、独立克隆。                                | 未开始 |
+| 11   | [生产加固](11-production.md)                                       | 备份、安全、性能和完整 E2E。                                | 未开始 |
 
 ## 依赖图
 

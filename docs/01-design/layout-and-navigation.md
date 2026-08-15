@@ -37,10 +37,13 @@
 
 ### 实现约定
 
-- 断点只有两档，CSS 一律写字面量 `48em` / `80em`（对应上表 768/1280），与 Mantine `breakpoint: '48em' / '80em'` 对齐；禁止 768px、68rem 等第三种写法，`pnpm check:design-tokens` 强制。
-- 顶栏高度以 theme.css 的 `--header-height` 记录，与 Mantine `header={{ height: 48 }}` 同源；视口高度计算用 `dvh`。
+- 应用壳基于 shadcn Sidebar 官方骨架（ADR 001/002）：`SidebarProvider` + `Sidebar variant="inset" collapsible="icon"` + `SidebarInset`；文件按官方 dashboard-01 粒度拆分（app-sidebar / nav-main / appearance-menu / site-header / page-breadcrumb）；左栏宽 16rem、折叠 48px 图标列；`Cmd/Ctrl+B`、顶栏 SidebarTrigger 与 SidebarRail 均可折叠，状态持久化（localStorage）。品牌行采用官方 SidebarMenuButton size="lg" + tooltip 形态。
+- 外观控制（浅色/深色/跟随系统）是侧栏底部（SidebarFooter）的官方 mode-toggle 下拉；顶栏不承载「新建」等创作入口（创作入口在具体页面内）。
+- 断点只有两档：`md`（48rem/768px）与 `xl`（80rem/1280px），在主题入口 CSS 以 `--breakpoint-*` 定义；禁止第三种断点写法。移动端（< 768px）左栏复用 Sidebar 内置 Sheet 行为，不另写抽屉。
+- 顶栏高度以 `--header-height` token 记录；视口高度计算用 `dvh`。
+- 右侧上下文栏在编辑器上线前不渲染（ADR 002 决策：静态占位面板撤下，待真实对象上下文能力就绪后以 `aside`/Sheet 形态回归）；当前页面宽度全部由中央内容区使用。
 - 顶栏入口在对应能力上线前不渲染：全局搜索待 Command Menu，运行状态待运行系统数据源。禁止挂接假计数或死链接。
-- 页面容器、页头（眉题/标题/说明/操作区）统一使用 `apps/web/src/app/page-shell.tsx`，不得在 feature 内重写容器样式。
+- 页面容器、页头（标题/说明/操作区）统一使用 `apps/web/src/app/page-shell.tsx`，不得在 feature 内重写容器样式；模块定位由顶栏 Breadcrumb 表达，页头不再渲染眉题等伪面包屑。
 
 ## 导航行为
 
