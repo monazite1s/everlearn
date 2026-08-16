@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
+import type { FormEvent } from 'react';
 
 import {
   Alert,
@@ -28,7 +29,6 @@ import {
   Button,
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DropdownMenu,
@@ -49,6 +49,7 @@ import {
   type KnowledgeApiFailure,
   updateKnowledgeBase,
 } from './knowledge-api';
+import { KnowledgeDialogActions } from './knowledge-dialog-actions';
 
 interface EditFieldsProps {
   data: KnowledgeBaseSummary;
@@ -106,6 +107,7 @@ function VersionConflictAlert({
           disabled={loading}
           onClick={() => void reload()}
           size="sm"
+          type="button"
           variant="outline"
         >
           {loading && <Loader2Icon aria-hidden="true" className="animate-spin" />}
@@ -223,31 +225,37 @@ function EditKnowledgeBaseModal({
   opened: boolean;
 }) {
   const edit = useEditKnowledgeBase({ data, onClose, onSaved });
+  /** 用于通过原生表单提交统一键盘和指针行为。 */
+  function submit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    void edit.submit();
+  }
   return (
-    <Dialog onOpenChange={(next) => (next ? undefined : onClose())} open={opened}>
+    <Dialog onOpenChange={(next) => (!next && !edit.saving ? onClose() : undefined)} open={opened}>
       <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>编辑知识库</DialogTitle>
         </DialogHeader>
-        <EditKnowledgeBaseFields
-          data={data}
-          description={edit.description}
-          failure={edit.failure}
-          name={edit.name}
-          onDescriptionChange={edit.setDescription}
-          onNameChange={edit.setName}
-          onReloaded={edit.acceptLatest}
-          saving={edit.saving}
-        />
-        <DialogFooter>
-          <Button disabled={edit.saving} onClick={onClose} type="button" variant="outline">
-            取消
-          </Button>
-          <Button disabled={!edit.name.trim() || edit.saving} onClick={() => void edit.submit()}>
-            {edit.saving && <Loader2Icon aria-hidden="true" className="animate-spin" size={16} />}
-            保存修改
-          </Button>
-        </DialogFooter>
+        <form onSubmit={submit}>
+          <div className="grid gap-4">
+            <EditKnowledgeBaseFields
+              data={data}
+              description={edit.description}
+              failure={edit.failure}
+              name={edit.name}
+              onDescriptionChange={edit.setDescription}
+              onNameChange={edit.setName}
+              onReloaded={edit.acceptLatest}
+              saving={edit.saving}
+            />
+            <KnowledgeDialogActions
+              invalid={!edit.name.trim()}
+              onCancel={onClose}
+              submitLabel="保存修改"
+              submitting={edit.saving}
+            />
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
@@ -283,7 +291,10 @@ function DeleteKnowledgeBaseModal({
 }) {
   const { confirmDelete, deleting, failure } = useDeleteKnowledgeBase(data);
   return (
-    <AlertDialog onOpenChange={(next) => (next ? undefined : onClose())} open={opened}>
+    <AlertDialog
+      onOpenChange={(next) => (!next && !deleting ? onClose() : undefined)}
+      open={opened}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>移入回收站</AlertDialogTitle>

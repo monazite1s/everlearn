@@ -182,7 +182,7 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-05W 接入知识库概览与管理
 
-- 状态：进行中。
+- 状态：已完成（2026-08-17）。
 - 依赖：KB-05、KB-04W。
 - 必读：`docs/01-design/pages/knowledge-base.md`、`docs/01-design/design-system.md`、`docs/02-architecture/api-and-events.md`。
 - 目标：让 `/knowledge/:knowledgeBaseId` 显示真实概览，并可重命名、修改说明和移入回收站。
@@ -190,7 +190,13 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 - 非目标：文档树、正文、恢复 UI、协作锁和通用表单框架。
 - 失败恢复：更新或删除失败保持当前页面与输入；不可访问统一返回稳定页面状态。
 - 验收：更新刷新后保持；删除后返回 `/knowledge` 且列表不再显示；移动端只读。
-- 验证：Knowledge 组件测试、Web typecheck、ESLint、生产构建和真实页面走查。
+- 改动：`/knowledge/:id` 概览消费 KB-05 生命周期 API（更新/删除/冲突重读），管理菜单桌面渲染、移动端省略；新增创建与编辑对话框共享的 `KnowledgeDialogActions` 统一提交/取消语义。
+- 复用与评审：直接复用 shadcn Dialog/AlertDialog/DropdownMenu/Field/Input/Textarea 与共享 PageShell/SectionCards/LoadFailure，无新增依赖；独立 code-reviewer 评审结论 `REQUEST_CHANGES`（英文注释残留、保存/删除进行中 Escape 静默关闭对话框、冲突后版本传播无回归锁定），四项阻塞全部修复后复验通过，其中表单语义对齐暴露并修复了 form 内非提交按钮隐式提交陷阱。
+- 走查发现：shadcn 迁移丢失创建入口的移动端隐藏（列表页与首页两处），本任务恢复为 `hidden md:inline-flex` 并纳入走查断言。
+- 验证结果：`pnpm test:component apps/web/src/features` 3 个文件 `19 passed`；`pnpm lint:js:files 'apps/web/src/features/**'`、`node scripts/check-comments.mjs`（123 文件 703 条注释）、`node scripts/check-file-size.mjs`、`pnpm format:files apps/web/src/features/knowledge apps/web/src/features/home`、`pnpm --filter @everlearn/web typecheck` 与生产构建通过。
+- 真实证据：Playwright（Chrome headless，真实 API）7 步走查通过——概览真实数据、编辑保存后摘要可见更新、刷新后保持、并发 PATCH 构造的版本冲突保留输入并展示指引、读取最新版本后携带新版本重存成功、移入回收站确认文案如实说明无恢复入口且删除后返回列表不再显示、390px 视口详情无管理入口且列表/首页无创建入口；桌面与移动截图当次会话人工检查，未提交临时产物。
+- Skill 影响：everlearn-reuse-first 促成创建/编辑对话框底部操作合并为 `KnowledgeDialogActions`（两处确认复用并统一提交语义）；everlearn-shadcn-ui 约束全部样式走语义 token 且组件来自 `@everlearn/ui`。
+- 风险：说明字段 2000 字符上限在创建与编辑两处硬编码，出现第三处使用时提升为 contracts 常量；软删除对象在 KB-10W 回收站上线前无自助恢复入口，删除确认文案已如实告知。
 
 ### KB-06 实现文档读取、创建与重命名 API
 

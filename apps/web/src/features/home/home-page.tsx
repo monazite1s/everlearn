@@ -39,14 +39,14 @@ function CreateKnowledgeBaseAction({
   const icon = <PlusIcon aria-hidden="true" />;
   if (offline) {
     return (
-      <Button disabled>
+      <Button className="hidden md:inline-flex" disabled>
         {icon}
         {label}
       </Button>
     );
   }
   return (
-    <Button asChild>
+    <Button asChild className="hidden md:inline-flex">
       <Link href="/knowledge?create=knowledge-base">{label}</Link>
     </Button>
   );

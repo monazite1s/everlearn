@@ -39,7 +39,7 @@ export function useKnowledgeList() {
           if (active) applyInitial(result);
         },
       );
-      return /** Marks later request completion as stale. */ function cancel(): void {
+      return /** 用于忽略组件卸载后到达的过期响应。 */ function cancel(): void {
         active = false;
       };
     },

@@ -106,7 +106,7 @@ async function updatesMetadata(): Promise<void> {
   expect(request.body).toBe(JSON.stringify({ description: '新说明', name: '新名称', version: 1 }));
 }
 
-/** 用于验证版本冲突后保留编辑值并展示可操作指引。 */
+/** 用于验证冲突后保留输入且重新保存携带最新版本。 */
 async function retainsInputAfterConflict(): Promise<void> {
   const latest = summary({ description: '服务端新说明', version: 2 });
   const fetchMock = vi
@@ -135,6 +135,16 @@ async function retainsInputAfterConflict(): Promise<void> {
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
   expect(input).toHaveValue('未保存的新名称');
   expect(screen.queryByText(/存在新版本/)).not.toBeInTheDocument();
+
+  fetchMock.mockResolvedValueOnce(jsonResponse(summary({ name: '未保存的新名称', version: 3 })));
+  fireEvent.click(within(dialog).getByRole('button', { name: '保存修改' }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+  const request = fetchMock.mock.calls[3]?.[1] as RequestInit;
+  expect(request.method).toBe('PATCH');
+  expect(request.body).toBe(
+    JSON.stringify({ description: '长期学习说明。', name: '未保存的新名称', version: 2 }),
+  );
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 }
 
 /** 用于验证失败编辑保持可见直到取消清除草稿和错误。 */
@@ -162,6 +172,49 @@ async function preservesFailureUntilCancelled(): Promise<void> {
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   expect(screen.queryByDisplayValue('失败但保留')).not.toBeInTheDocument();
   expect(screen.queryByText('暂时无法保存。')).not.toBeInTheDocument();
+}
+
+/** 用于验证保存进行中 Escape 不丢弃输入和结果反馈。 */
+async function keepsEditDialogWhileSaving(): Promise<void> {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse(summary()))
+    .mockImplementationOnce(() => new Promise<Response>(() => undefined));
+  vi.stubGlobal('fetch', fetchMock);
+  renderDestination();
+  await screen.findByRole('heading', { level: 1, name: 'Agent 工程' });
+  fireEvent.pointerDown(await screen.findByRole('button', { name: '知识库操作' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: '编辑名称与说明' }));
+  const dialog = await screen.findByRole('dialog', { name: '编辑知识库' });
+  const input = within(dialog).getByRole('textbox', { name: '名称' });
+  fireEvent.change(input, { target: { value: '保存中名称' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: '保存修改' }));
+  fireEvent.keyDown(input, { key: 'Escape' });
+
+  expect(screen.getByRole('dialog', { name: '编辑知识库' })).toBeVisible();
+  expect(input).toHaveValue('保存中名称');
+  expect(within(dialog).getByRole('button', { name: '取消' })).toBeDisabled();
+}
+
+/** 用于验证删除进行中 Escape 保持确认与结果反馈。 */
+async function keepsDeleteDialogWhileDeleting(): Promise<void> {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse(summary()))
+    .mockImplementationOnce(() => new Promise<Response>(() => undefined));
+  vi.stubGlobal('fetch', fetchMock);
+  renderDestination();
+  await screen.findByRole('heading', { level: 1, name: 'Agent 工程' });
+  fireEvent.pointerDown(await screen.findByRole('button', { name: '知识库操作' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: '移入回收站' }));
+  const dialog = await screen.findByRole('alertdialog', { name: '移入回收站' });
+  const confirm = within(dialog).getByRole('button', { name: '确认移入回收站' });
+  fireEvent.click(confirm);
+  fireEvent.keyDown(confirm, { key: 'Escape' });
+
+  expect(screen.getByRole('alertdialog', { name: '移入回收站' })).toBeVisible();
+  expect(routerPush).not.toHaveBeenCalled();
+  expect(within(dialog).getByRole('button', { name: '取消' })).toBeDisabled();
 }
 
 /** 用于验证危险操作需要确认且成功后返回列表。 */
@@ -277,8 +330,13 @@ async function omitsMobileManagement(): Promise<void> {
 }
 
 test('updates metadata from the persisted overview', updatesMetadata);
-test('retains edit input after a version conflict', retainsInputAfterConflict);
+test(
+  'retains input after a conflict and resaves with the latest version',
+  retainsInputAfterConflict,
+);
 test('preserves failed input until cancellation removes it', preservesFailureUntilCancelled);
+test('keeps the edit dialog open while saving', keepsEditDialogWhileSaving);
+test('keeps the delete dialog open while deleting', keepsDeleteDialogWhileDeleting);
 test('deletes only after confirmation and returns to the list', deletesAfterConfirmation);
 test('retries an unknown deletion with the exact request', retriesUnknownDelete);
 test('keeps a version-conflicted deletion visible', keepsDeleteConflictVisible);

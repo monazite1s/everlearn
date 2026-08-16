@@ -15,7 +15,6 @@ import {
   Button,
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
@@ -35,6 +34,7 @@ import { useOnline } from '../../shared/use-online';
 import { createKnowledgeBase } from './knowledge-api';
 import type { KnowledgeApiFailure } from './knowledge-api';
 import { KnowledgeBaseCard } from './knowledge-base-card';
+import { KnowledgeDialogActions } from './knowledge-dialog-actions';
 import { KnowledgeEmptyState } from './knowledge-empty-state';
 import { useKnowledgeList } from './knowledge-list-state';
 import type { KnowledgeLoadState } from './knowledge-list-state';
@@ -46,6 +46,13 @@ interface CreateFormState {
 
 const EMPTY_FORM: CreateFormState = { description: '', name: '' };
 const DESCRIPTION_MAX_LENGTH = 2000;
+
+/** 用于返回超长名称的字段错误。 */
+function resolveNameError(name: string): string | undefined {
+  return name.trim().length > KNOWLEDGE_BASE_NAME_MAX_LENGTH
+    ? `名称不能超过 ${KNOWLEDGE_BASE_NAME_MAX_LENGTH} 个字符。`
+    : undefined;
+}
 
 /** 用于渲染创建失败告警。 */
 function CreateFailureAlert({ error }: { error: KnowledgeApiFailure }) {
@@ -111,26 +118,6 @@ function CreateFields(props: {
   );
 }
 
-/** 用于渲染对话框底部操作。 */
-function CreateDialogActions(props: {
-  invalid: boolean;
-  submitting: boolean;
-  onCancel: () => void;
-}) {
-  const { invalid, submitting, onCancel } = props;
-  return (
-    <DialogFooter>
-      <Button disabled={submitting} onClick={onCancel} type="button" variant="outline">
-        取消
-      </Button>
-      <Button disabled={invalid || submitting} type="submit">
-        {submitting && <Loader2Icon aria-hidden="true" className="animate-spin" />}
-        创建并进入
-      </Button>
-    </DialogFooter>
-  );
-}
-
 /** 用于收集创建输入并在提交失败后保留。 */
 function CreateDialog(props: {
   error?: KnowledgeApiFailure;
@@ -145,10 +132,7 @@ function CreateDialog(props: {
   const { error, form, offline, onChange, onClose, onSubmit, opened, submitting } = props;
   const nameId = useId();
   const descriptionId = useId();
-  const nameError =
-    form.name.trim().length > KNOWLEDGE_BASE_NAME_MAX_LENGTH
-      ? `名称不能超过 ${KNOWLEDGE_BASE_NAME_MAX_LENGTH} 个字符。`
-      : undefined;
+  const nameError = resolveNameError(form.name);
   const invalid = form.name.trim().length === 0 || Boolean(nameError) || offline;
   /** 用于通过原生表单提交以统一键盘和指针行为。 */
   function submit(event: FormEvent<HTMLFormElement>): void {
@@ -172,7 +156,12 @@ function CreateDialog(props: {
               {...(nameError ? { nameError } : {})}
               onChange={onChange}
             />
-            <CreateDialogActions invalid={invalid} submitting={submitting} onCancel={onClose} />
+            <KnowledgeDialogActions
+              invalid={invalid}
+              onCancel={onClose}
+              submitLabel="创建并进入"
+              submitting={submitting}
+            />
           </div>
         </form>
       </DialogContent>
@@ -290,7 +279,7 @@ function KnowledgeCreateAction({
   onCreate: () => void;
 }) {
   return (
-    <Button disabled={disabled} onClick={onCreate}>
+    <Button className="hidden md:inline-flex" disabled={disabled} onClick={onCreate}>
       <PlusIcon aria-hidden="true" />
       新建知识库
     </Button>

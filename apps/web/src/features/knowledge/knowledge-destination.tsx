@@ -102,7 +102,7 @@ function useKnowledgeSummary(
           );
         },
       );
-      return /** Prevents stale route responses from changing visible state. */ function cancel(): void {
+      return /** 用于丢弃路由或重试切换后的过期响应。 */ function cancel(): void {
         active = false;
       };
     },
@@ -193,9 +193,7 @@ function resolveTitle(state: DestinationState): string | undefined {
 
 /** 用于解析标题说明。 */
 function resolveLead(state: DestinationState): string | undefined {
-  const description = state.data?.description;
-  if (!description) return undefined;
-  return description;
+  return state.data?.description;
 }
 
 /** 用于渲染详情页操作区的返回入口与桌面管理菜单。 */
