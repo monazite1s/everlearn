@@ -1,4 +1,4 @@
-/** @fileoverview 管理按需文档树的展开、子节点分页与本地同步。 */
+/** @fileoverview 管理按需文档树的展开、子节点分页、本地同步与移动编排。 */
 
 'use client';
 
@@ -6,30 +6,28 @@ import type { DocumentDetail, DocumentTreeItem } from '@everlearn/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 
-import { listDocuments } from './document-api';
+import { listDocuments, moveDocument } from './document-api';
 import type { DocumentApiFailure } from './document-api';
-
-export interface DocumentChildList {
-  readonly error?: DocumentApiFailure;
-  readonly items: readonly DocumentTreeItem[];
-  readonly loaded: boolean;
-  readonly loading: boolean;
-  readonly nextCursor: string | null;
-}
-
-type ChildrenMap = Readonly<Record<string, DocumentChildList>>;
-
-const EMPTY_CHILD_LIST: DocumentChildList = {
-  items: [],
-  loaded: false,
-  loading: false,
-  nextCursor: null,
-};
-
-/** 用于把可空父节点收敛为子列表状态键。 */
-function keyOf(parentId?: string | null): string {
-  return parentId ?? 'root';
-}
+import {
+  applyMove,
+  childListOf,
+  findItem,
+  isInvalidMoveTarget,
+  keyOf,
+  moveParentOptions,
+  parentMapOf,
+  revertMove,
+  toMoveRequest,
+  updateItem,
+} from './document-tree-model';
+import type {
+  ChildrenMap,
+  DocumentChildList,
+  MoveFailureInfo,
+  MoveOutcome,
+  MoveParentOption,
+  MovePlacement,
+} from './document-tree-model';
 
 /** 用于从详情投影出树节点所需的稳定字段。 */
 function toTreeItem(detail: DocumentDetail): DocumentTreeItem {
@@ -40,24 +38,6 @@ function toTreeItem(detail: DocumentDetail): DocumentTreeItem {
     updatedAt: detail.updatedAt,
     version: detail.version,
   };
-}
-
-/** 用于只读取已存在的子列表状态。 */
-function childListOf(children: ChildrenMap, key: string): DocumentChildList {
-  return children[key] ?? EMPTY_CHILD_LIST;
-}
-
-/** 用于按标识在全部已加载列表中就地更新一个节点。 */
-function updateItem(
-  children: ChildrenMap,
-  id: string,
-  update: (item: DocumentTreeItem) => DocumentTreeItem,
-): ChildrenMap {
-  const entries = Object.entries(children).map(([key, list]) => {
-    const items = list.items.map((item) => (item.id === id ? update(item) : item));
-    return [key, { ...list, items }] as [string, DocumentChildList];
-  });
-  return Object.fromEntries(entries);
 }
 
 /** 用于把创建结果并入兄弟列表并递增父级计数。 */
@@ -84,6 +64,26 @@ function markLoading(setChildren: Dispatch<SetStateAction<ChildrenMap>>, key: st
     ...current,
     [key]: { ...childListOf(current, key), loading: true },
   }));
+}
+
+/** 用于把移动失败映射为可行动提示。 */
+function moveFailureOf(error: DocumentApiFailure): MoveFailureInfo {
+  if (error.code === 'VERSION_CONFLICT') {
+    return {
+      message: '文档在别处被修改，列表已恢复为最新状态，请重新选择位置。',
+      retryable: false,
+    };
+  }
+  if (error.code === 'IDEMPOTENCY_CONFLICT') {
+    return { message: '本次移动与上一次重复提交不一致，请再次提交完成移动。', retryable: true };
+  }
+  if (error.code === 'NOT_FOUND') {
+    return { message: '文档或目标位置已不存在，列表已恢复为最新状态。', retryable: false };
+  }
+  if (error.certainty === 'unknown') {
+    return { message: '无法连接文档服务，已恢复移动前的位置，请重试移动。', retryable: true };
+  }
+  return { message: error.message, retryable: false };
 }
 
 /** 用于提供子节点分页读取并在挂载时同步根列表。 */
@@ -130,7 +130,74 @@ function useDocumentReader(
   return read;
 }
 
-/** 用于提供展开、重试、分页与本地同步操作。 */
+/** 用于按移动意图在移入未展开目标时切换其展开态。 */
+function toggleOptimisticExpansion(
+  setExpanded: Dispatch<SetStateAction<ReadonlySet<string>>>,
+  targetId: string | null,
+  reveal: boolean,
+): void {
+  if (targetId === null) return;
+  setExpanded((current) => {
+    const next = new Set(current);
+    if (reveal) next.add(targetId);
+    else next.delete(targetId);
+    return next;
+  });
+}
+
+/** 用于提供移动编排：幂等键、乐观套用、失败恢复与服务端对账。 */
+function useTreeMoveActions(props: {
+  children: ChildrenMap;
+  expanded: ReadonlySet<string>;
+  read: (parentId?: string | null, cursor?: string) => Promise<void>;
+  setChildren: Dispatch<SetStateAction<ChildrenMap>>;
+  setExpanded: Dispatch<SetStateAction<ReadonlySet<string>>>;
+}) {
+  const { children, expanded, read, setChildren, setExpanded } = props;
+  const moveKeyRef = useRef<{ fingerprint: string; key: string } | undefined>(undefined);
+  /** 用于在重试同一移动请求时复用幂等键。 */
+  function idempotencyKeyFor(fingerprint: string): string {
+    if (moveKeyRef.current?.fingerprint === fingerprint) return moveKeyRef.current.key;
+    const key = crypto.randomUUID();
+    moveKeyRef.current = { fingerprint, key };
+    return key;
+  }
+  /** 用于在移动结束后重读受影响的两个父列表（null 表示根列表）。 */
+  async function rereadParents(source: string | null, target: string | null): Promise<void> {
+    const parents = [...new Set([source, target])];
+    await Promise.all(parents.map((id) => read(id)));
+  }
+  /** 用于提交一次移动：乐观套用、失败恢复与服务端对账。 */
+  // ponytail: 移动在途时同节点再次拖拽以服务端串行结果收敛（不排队等待）；升级路径为按节点在途锁。
+  async function move(draggedId: string, placement: MovePlacement): Promise<MoveOutcome> {
+    const dragged = findItem(children, draggedId);
+    if (!dragged) return { ok: true };
+    const sourceParentId = parentMapOf(children).get(draggedId) ?? null;
+    const request = toMoveRequest(placement, dragged.version);
+    const key = idempotencyKeyFor(JSON.stringify([draggedId, request]));
+    const applied = applyMove(children, draggedId, placement);
+    const targetId = placement.targetParentId;
+    const optimisticReveal =
+      placement.intent === 'into' && targetId !== null && !expanded.has(targetId);
+    setChildren(applied.children);
+    if (optimisticReveal) toggleOptimisticExpansion(setExpanded, targetId, true);
+    const result = await moveDocument(draggedId, request, key);
+    if (result.ok) {
+      setChildren((current) => updateItem(current, draggedId, () => toTreeItem(result.data)));
+      await rereadParents(sourceParentId, placement.targetParentId);
+      return { ok: true };
+    }
+    if (result.error.code === 'IDEMPOTENCY_CONFLICT') moveKeyRef.current = undefined;
+    setChildren((current) => revertMove(current, applied.snapshot));
+    if (optimisticReveal) toggleOptimisticExpansion(setExpanded, targetId, false);
+    if (result.error.certainty === 'known')
+      await rereadParents(sourceParentId, placement.targetParentId);
+    return { ok: false, failure: moveFailureOf(result.error) };
+  }
+  return { move };
+}
+
+/** 用于提供展开、重试、分页与本地同步。 */
 function useTreeActions(props: {
   aliveRef: RefObject<boolean>;
   children: ChildrenMap;
@@ -140,6 +207,7 @@ function useTreeActions(props: {
   setExpanded: Dispatch<SetStateAction<ReadonlySet<string>>>;
 }) {
   const { children, expanded, read, setChildren, setExpanded } = props;
+  const moveActions = useTreeMoveActions({ children, expanded, read, setChildren, setExpanded });
   /** 用于展开或折叠节点并按需拉取直接子节点。 */
   // ponytail: 展开在途未去重，快速折叠再展开会重复请求（整页替换无数据损坏）；升级路径为在途时忽略同 key 读取。
   function toggle(item: DocumentTreeItem): void {
@@ -176,13 +244,13 @@ function useTreeActions(props: {
   function applyDetail(detail: DocumentDetail): void {
     setChildren((current) => updateItem(current, detail.id, () => toTreeItem(detail)));
   }
-  return { applyCreated, applyDetail, loadMore, retry, toggle };
+  return { ...moveActions, applyCreated, applyDetail, loadMore, retry, toggle };
 }
 
-/** 用于驱动按需文档树的读取、展开与本地更新。 */
+/** 用于驱动按需文档树的读取、展开、本地更新与移动。 */
 export function useDocumentTree(knowledgeBaseId: string) {
   const [children, setChildren] = useState<ChildrenMap>(() => ({
-    root: { ...EMPTY_CHILD_LIST, loading: true },
+    root: { items: [], loaded: false, loading: true, nextCursor: null },
   }));
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const aliveRef = useRef(true);
@@ -196,5 +264,24 @@ export function useDocumentTree(knowledgeBaseId: string) {
   function isExpanded(id: string): boolean {
     return expanded.has(id);
   }
-  return { ...actions, childList, isExpanded };
+  /** 用于查询节点最后观察的父级。 */
+  function parentIdOf(id: string): string | null {
+    return parentMapOf(children).get(id) ?? null;
+  }
+  /** 用于枚举键盘移动对话框的目标父级。 */
+  function moveOptionsFor(draggedId: string): readonly MoveParentOption[] {
+    return moveParentOptions(children, draggedId);
+  }
+  /** 用于判断移动目标是否为节点自身或已加载后代。 */
+  function invalidMoveTarget(draggedId: string, targetId: string): boolean {
+    return isInvalidMoveTarget(children, draggedId, targetId);
+  }
+  return {
+    ...actions,
+    childList,
+    isExpanded,
+    isInvalidMoveTarget: invalidMoveTarget,
+    moveOptionsFor,
+    parentIdOf,
+  };
 }

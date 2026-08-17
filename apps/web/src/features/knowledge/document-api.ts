@@ -6,6 +6,7 @@ import type {
   DocumentErrorCode,
   DocumentListResponse,
   DocumentTreeItem,
+  MoveDocumentRequest,
   RenameDocumentRequest,
 } from '@everlearn/contracts';
 
@@ -27,6 +28,7 @@ const TREE_ITEM_KEYS = ['childCount', 'id', 'title', 'updatedAt', 'version'] as 
 const DETAIL_KEYS = [...TREE_ITEM_KEYS, 'knowledgeBaseId', 'parentId'] as const;
 const ERROR_CODES: readonly DocumentErrorCode[] = [
   'BAD_REQUEST',
+  'IDEMPOTENCY_CONFLICT',
   'INTERNAL_ERROR',
   'NOT_FOUND',
   'UNSUPPORTED_MEDIA_TYPE',
@@ -191,4 +193,22 @@ export function renameDocument(
     headers: { 'Content-Type': 'application/json' },
     method: 'PATCH',
   });
+}
+
+/** 用于按幂等键提交文档移动并只接受确认详情。 */
+export function moveDocument(
+  id: string,
+  request: MoveDocumentRequest,
+  idempotencyKey: string,
+): Promise<DocumentApiResult<DocumentDetail>> {
+  return requestDocument(
+    `${DOCUMENT_PATH}/${encodeURIComponent(id)}/move`,
+    200,
+    parseDocumentDetail,
+    {
+      body: JSON.stringify(request),
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+      method: 'POST',
+    },
+  );
 }
