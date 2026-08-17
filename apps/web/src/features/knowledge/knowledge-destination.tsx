@@ -1,4 +1,4 @@
-/** @fileoverview 渲染持久化知识库概览和桌面管理流程。 */
+/** @fileoverview 渲染持久化知识库概览、文档树和桌面管理流程。 */
 
 'use client';
 
@@ -16,6 +16,7 @@ import { PageShell } from '../../shared/page-shell';
 import { SectionCards } from '../../shared/section-cards';
 import { useOnline } from '../../shared/use-online';
 import { getKnowledgeBase, type KnowledgeApiFailure } from './knowledge-api';
+import { DocumentTree } from './document-tree';
 
 interface KnowledgeDestinationProps {
   knowledgeBaseId: string;
@@ -148,8 +149,16 @@ function OverviewFailure({ error, retry }: { error: KnowledgeApiFailure; retry: 
   );
 }
 
-/** 用于渲染持久化概览的统计卡与能力边界说明。 */
-function OverviewContent({ data }: { data: KnowledgeBaseSummary }) {
+/** 用于渲染持久化概览的统计卡、系统标识与按需文档树。 */
+function OverviewContent(props: {
+  data: KnowledgeBaseSummary;
+  desktop: boolean;
+  knowledgeBaseId: string;
+  offline: boolean;
+  onDocumentCreated: () => void;
+  onUncertainOutcome: () => void;
+}) {
+  const { data, desktop, knowledgeBaseId, offline, onDocumentCreated, onUncertainOutcome } = props;
   return (
     <div aria-label="知识库内容" className="grid gap-4 pb-8">
       <SectionCards
@@ -168,19 +177,19 @@ function OverviewContent({ data }: { data: KnowledgeBaseSummary }) {
           },
         ]}
       />
-      <section aria-labelledby="knowledge-overview-title" className="grid gap-2 pt-2">
-        <h2 className="m-0 text-title-small text-foreground" id="knowledge-overview-title">
-          知识库概览
-        </h2>
-        <p className="m-0 text-sm text-muted-foreground">
-          文档树、Inbox 与回收站将在对应施工任务中接入；当前版本用于确认知识库元数据。
-        </p>
-        {data.kind !== 'normal' && (
-          <Badge className="w-fit" variant="secondary">
-            系统知识库
-          </Badge>
-        )}
-      </section>
+      {data.kind !== 'normal' && (
+        <Badge className="w-fit" variant="secondary">
+          系统知识库
+        </Badge>
+      )}
+      <DocumentTree
+        desktop={desktop}
+        key={knowledgeBaseId}
+        knowledgeBaseId={knowledgeBaseId}
+        offline={offline}
+        onCreated={onDocumentCreated}
+        onUncertainOutcome={onUncertainOutcome}
+      />
     </div>
   );
 }
@@ -223,6 +232,11 @@ export function KnowledgeDestination({ knowledgeBaseId }: KnowledgeDestinationPr
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const online = useOnline();
   const title = resolveTitle(state);
+  /** 用于在文档创建确认后同步统计卡数量。 */
+  function markDocumentCreated(): void {
+    if (!state.data) return;
+    apply({ ...state.data, documentCount: state.data.documentCount + 1 });
+  }
   return (
     <PageShell
       actions={
@@ -250,7 +264,14 @@ export function KnowledgeDestination({ knowledgeBaseId }: KnowledgeDestinationPr
         ) : state.error ? (
           <OverviewFailure error={state.error} retry={retry} />
         ) : state.data ? (
-          <OverviewContent data={state.data} />
+          <OverviewContent
+            data={state.data}
+            desktop={desktop ?? false}
+            knowledgeBaseId={knowledgeBaseId}
+            offline={!online}
+            onDocumentCreated={markDocumentCreated}
+            onUncertainOutcome={retry}
+          />
         ) : null}
       </main>
     </PageShell>

@@ -36,6 +36,16 @@ function createNavigationMock() {
 
 vi.mock('next/navigation', createNavigationMock);
 
+/** 用于在页面测试中隔离文档树子模块的网络行为。 */
+function createDocumentTreeMock() {
+  return {
+    /** 用于替代真实文档树的渲染。 */
+    DocumentTree: () => null,
+  };
+}
+
+vi.mock('./document-tree', createDocumentTreeMock);
+
 /** 用于构造 API 组件场景使用的严格公开摘要。 */
 function summary(overrides: Partial<KnowledgeBaseSummary> = {}): KnowledgeBaseSummary {
   return {

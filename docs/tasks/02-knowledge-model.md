@@ -218,15 +218,19 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-06W 接入按需文档树与创建
 
-- 状态：未开始。
+- 状态：已完成（2026-08-17，子 agent 实现 + 主 agent 复验与走查）。
 - 依赖：KB-06、KB-05W。
 - 必读：`docs/01-design/pages/knowledge-base.md`、`docs/01-design/layout-and-navigation.md`、`docs/01-design/design-system.md`。
 - 目标：知识库概览按展开加载真实文档树，并支持创建根/子文档与重命名。
-- 实施：树节点使用 Mantine 控件与 Lucide 图标；每个父节点独立加载/重试；创建成功只更新受影响兄弟列表。
+- 实施：树节点使用 shadcn/ui 组件与 Lucide 图标（原 Mantine 表述随 ADR 001 迁移作废）；每个父节点独立加载/重试；创建成功只更新受影响兄弟列表。
 - 非目标：拖拽、移动、正文编辑、最近打开和全局树状态库。
 - 失败恢复：创建/重命名失败保留编辑值；展开失败不折叠已成功区域。
 - 验收：可创建两级文档，刷新后层级不变；键盘可展开和进入；移动端隐藏修改控件。
-- 验证：DocumentTree 组件测试、Web typecheck、ESLint、生产构建和长标题/窄宽走查。
+- 改动：新增文档 API 客户端（严格响应校验，类型全部来自 contracts）、树状态 hook（按需读取/游标分页/本地同步）、创建与重命名对话框（复用 `KnowledgeDialogActions`）、树渲染组件；概览页以真实文档树替换占位说明，创建确认后同步统计卡。
+- 复用与评审：复用 Dialog/DropdownMenu/Field/Input/Skeleton、shared `LoadFailure`/`EmptyState`/`PageShell`/`SectionCards`，无新增依赖；独立 code-reviewer 评审 `REQUEST_CHANGES`（0 CRITICAL/HIGH），两个 MEDIUM 已修复——动态路由切库串库竞态以 `key={knowledgeBaseId}` 重挂载消除、统计卡同步补取证测试且创建结果未知路径接入权威摘要重读；LOW 项处置：RootArea 复用 ChildrenPending、两处 `ponytail:` 天花板注释、键盘测试名如实化。
+- 验证结果：组件测试 4 文件 `29 passed`（含两级创建重挂载保持、重命名冲突保留输入并重存、展开失败隔离、统计卡同步与不确定结果对账、移动端无修改控件）；Web typecheck、聚焦 ESLint、Prettier、注释（159 文件 1078 条）、文件限制与生产构建通过。
+- 真实证据：真实同源 API 完成两级创建（151 字长标题）与观察版本重命名、错误版本 409；Playwright（Chrome headless）确认展开箭头 `aria-expanded` 语义、键盘 Enter 展开子节点、行菜单重命名对话框、390px 无任何修改入口且树可读、系统深色模式渲染正常；浅色/深色/移动截图当次会话人工检查。
+- 风险：`document-tree.tsx` 392/400 行接近上限，KB-07W 增加移动交互前需先拆分；统计卡数量为创建确认后本地 +1，他人并发删除的偏差由后续移动/回收站任务的同步策略收敛；「打开文档」为不可用态，待 ED-05 文档路由。
 
 ### KB-07 实现原子文档树移动 API
 

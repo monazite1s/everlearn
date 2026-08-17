@@ -20,6 +20,25 @@ function createNavigationMock() {
 
 vi.mock('next/navigation', createNavigationMock);
 
+/** 用于在概览测试中隔离文档树并保留统计与不确定结果回调。 */
+function createDocumentTreeMock() {
+  return {
+    /** 用于以显式触发器替代真实文档树的网络行为。 */
+    DocumentTree: (props: { onCreated: () => void; onUncertainOutcome?: () => void }) => (
+      <div>
+        <button onClick={props.onCreated} type="button">
+          模拟文档创建
+        </button>
+        <button onClick={props.onUncertainOutcome} type="button">
+          模拟创建结果未知
+        </button>
+      </div>
+    ),
+  };
+}
+
+vi.mock('./document-tree', createDocumentTreeMock);
+
 /** 用于构造概览场景所需的严格服务端摘要。 */
 function summary(overrides: Partial<KnowledgeBaseSummary> = {}): KnowledgeBaseSummary {
   return {
@@ -342,4 +361,31 @@ test('retries an unknown deletion with the exact request', retriesUnknownDelete)
 test('keeps a version-conflicted deletion visible', keepsDeleteConflictVisible);
 test('renders inaccessible knowledge bases without metadata', rendersInaccessibleState);
 test('isolates actions when the dynamic route ID changes', isolatesDynamicRouteChanges);
+/** 用于验证文档创建确认后统计卡数量同步。 */
+async function syncsStatCardAfterDocumentCreation(): Promise<void> {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(summary())));
+  renderDestination();
+  await screen.findByRole('heading', { level: 1, name: 'Agent 工程' });
+  expect(screen.getByText('3')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '模拟文档创建' }));
+  expect(screen.getByText('4')).toBeVisible();
+}
+
+/** 用于验证创建结果未知时以权威重读对账统计。 */
+async function reconcilesStatsAfterUncertainCreation(): Promise<void> {
+  const fetchMock = vi.fn().mockResolvedValue(jsonResponse(summary()));
+  vi.stubGlobal('fetch', fetchMock);
+  renderDestination();
+  await screen.findByRole('heading', { level: 1, name: 'Agent 工程' });
+  fireEvent.click(screen.getByRole('button', { name: '模拟创建结果未知' }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  expect(await screen.findByRole('heading', { level: 1, name: 'Agent 工程' })).toBeVisible();
+  expect(screen.getByText('3')).toBeVisible();
+}
+
 test('omits desktop management from mobile reading', omitsMobileManagement);
+test('syncs the stat card after a confirmed document creation', syncsStatCardAfterDocumentCreation);
+test(
+  'reconciles stats through an authoritative reload after an uncertain creation',
+  reconcilesStatsAfterUncertainCreation,
+);
