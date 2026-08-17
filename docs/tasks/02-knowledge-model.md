@@ -257,7 +257,7 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-08 实现 Inbox 记录与列表 API
 
-- 状态：未开始。
+- 状态：已完成（2026-08-17，子 agent 实现 + 主 agent 复验）。
 - 依赖：KB-03。
 - 必读：`docs/01-design/pages/knowledge-base.md`、`docs/02-architecture/api-and-events.md`、`docs/02-architecture/data-model.md`。
 - 目标：实现 `POST/GET /inbox-items` 与 `DELETE /inbox-items/:id`。
@@ -265,7 +265,12 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 - 非目标：网页抓取、AI、页面和文档转换。
 - 失败恢复：非法 URL 和混合载荷快速失败；删除失败保留记录。
 - 验收：无需知识库即可记录；其他所有者记录不可探测；已转换记录不在待处理列表。
-- 验证：DTO 测试、PostgreSQL 集成测试、Controller 契约测试。
+- 改动：contracts 新增 inbox-item 契约（摘要严格四键 `content/createdAt/id/kind`、五错误码、上限常量）与编译期键锁定；API 新增 inbox-items 模块（二选一载荷 DTO、不透明游标 DTO、owner-scoped 软删除服务、控制器）；无迁移、无新索引、无新依赖。
+- 设计要点：`text`/`url` 对称 ValidateBy 实现「二选一」——本键有效当且仅当另一键缺失；排序 `created_at DESC, id ASC` 精确命中既有 `inbox_items_owner_status_idx`；游标为微秒拆分整数的 base64url JSON；DELETE 软删除后重复删除与他人/不存在/已转换统一同形 404（单条原子 UPDATE 零行判定）。
+- 复用与评审：复刻 documents/knowledge-bases 模式与全局边界；独立 code-reviewer 评审 `APPROVE`（0 CRITICAL/HIGH；XOR 边界矩阵、游标谓词与微秒编码经直连 PostgreSQL 探针实测），M1 同刻并列分页回归与 LOW 两处一致性已按评审补齐。
+- 验证结果：contracts/api typecheck、聚焦 ESLint、Prettier、注释（153 文件 971+ 条）、文件限制通过；unit `11 passed`；真实 PostgreSQL 集成 `7 passed`（含并列页边界、converted 真实外键夹具、统一 404 行未触碰断言、非法载荷零写入）。
+- 证据：EXPLAIN 确认列表走 `Index Scan using inbox_items_owner_status_idx` 无 Sort 节点；同 `created_at` 并列对被 limit 切开后遍历恰好一次含全部记录；`ftp:`/`javascript:`/裸域名/空主机 URL 与混合载荷均 400 且不写库。
+- 风险：DTO 侧 `CONTENT_MAX_LENGTH` 与契约常量为手工镜像（contracts ESM-only，与 KB-04/06 同先例，contracts 双格式构建时接线）；`requireJsonContentType` 中间件已出现第三份拷贝，下次触碰时提升至 http-boundary 共享。
 
 ### KB-08W 接入 Inbox 列表与记录
 
