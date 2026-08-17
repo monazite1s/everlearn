@@ -64,6 +64,10 @@ const PUBLIC_CONFLICTS: Readonly<Record<ApiConflictCode, Omit<PublicProblem, 'st
     code: 'IDEMPOTENCY_CONFLICT',
     message: '幂等键已用于另一个请求。',
   },
+  KNOWLEDGE_BASE_DELETED: {
+    code: 'KNOWLEDGE_BASE_DELETED',
+    message: '原知识库仍在回收站，请先恢复知识库。',
+  },
   VERSION_CONFLICT: {
     code: 'VERSION_CONFLICT',
     message: '资源已被其他操作更新，请刷新后重试。',

@@ -338,15 +338,16 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-10 实现文档子树删除与恢复 API
 
-- 状态：未开始。
+- 状态：已完成（2026-08-17，子 agent 实现 + 主 agent 复验）。
 - 依赖：KB-07。
 - 必读：`docs/01-design/pages/knowledge-base.md`、`docs/02-architecture/data-model.md`、`docs/02-architecture/api-and-events.md`。
 - 目标：实现 `DELETE /documents/:id`、`POST /documents/:id/restore` 和统一回收站列表。
-- 实施：删除保存原父级和位置；恢复完整子树；原父级缺失时恢复到知识库根部。
-- 非目标：永久清理、附件物理删除和页面。
-- 失败恢复：知识库仍删除时拒绝单独恢复文档；部分恢复失败完整回滚。
-- 验收：列表同时投影已删除知识库/文档；子树完整恢复；重复请求稳定。
-- 验证：时间可控 PostgreSQL 集成测试、状态机测试、Controller 契约测试。
+- 改动：contracts 新增删除/恢复请求、`TrashItem`/`TrashListResponse`、`TRASH_RETENTION_DAYS=30`（API 运行时经动态 import 消费单一事实源）与 `CONFLICT`/`KNOWLEDGE_BASE_DELETED` 错误码；API 新增回收站服务（删除/恢复事务）、幂等件（`document.restore`）、聚合列表服务与 `GET /api/v1/trash`；迁移新增两个回收站部分索引（`owner_id, deleted_at DESC, id DESC`，EXPLAIN 证实列表与清理扫描均走索引）；http-boundary 扩展冲突码与指引文案。
+- 语义决策：删除维持既有 `deleted_parent_id`/`deleted_position` 拷贝列（CHECK 不变量），子树统一标记不区分根/后代，已单独删除的后代不被二次盖戳；恢复整体恢复含先删后代，原父级活跃则原位恢复（KB-06 max+1024 含软删兄弟保证不撞新兄弟），父级缺失落库根末尾并前缀重写后代路径；删除重放按 `version+1` 精确关系（KB 删除后重放统一 404，与 move/rename 一致并补测试锁定）；恢复必须幂等键，重放先于 KB 删除检查；KB 仍删除时恢复文档返回 409 `KNOWLEDGE_BASE_DELETED` 附「先恢复知识库」指引。
+- 复用与评审：锁序与 create/move 同构（KB 行优先，无死锁环）；独立 code-reviewer 评审 `APPROVE`（0 CRITICAL/HIGH；子树语义、版本重放窗口、索引论证经独立 EXPLAIN 复核成立），M1（库先删后仍独立的文档投影夹具）与 M2（KB 删除后删除重放 404）用例、L2（索引 `id DESC` 消除增量排序）已按评审补齐并在 dev 库 down/up 重放迁移。
+- 验证结果：contracts/api typecheck、聚焦 ESLint、Prettier、注释、文件门禁通过；unit `50 passed`；真实 PostgreSQL 集成 documents `43 passed` + schema/knowledge-bases 回归 `13 passed`（含迁移 down→up 往返与三迁移顺序断言）。
+- 证据：三层子树原子删除且原位恢复逐字段相等；孤儿子树落库根 position=2048 且后代路径重写；先删后代随祖先整体恢复；同键并发恢复 verbatim 重放、幂等记录恰 1 条；30 天边界投影 `deleted_at + 30d` 精确到微秒；EXPLAIN 两分支均命中新部分索引。
+- 风险：全量集成套件在默认并行模式偶发 schema 串扰（基线同样复现，共享夹具 env 恢复问题登记为工程修复项）；恢复原位与 move 重排的活跃兄弟可能同 position（无唯一约束、id tie-break 兜底，`ponytail:` 接受）；contracts dist 需随源码重建（`pnpm check` 构建环节覆盖）；`document.deleted/restored` Outbox 事件未做（属后续索引刷新任务）。
 
 ### KB-10W 接入统一回收站
 

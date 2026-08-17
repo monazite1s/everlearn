@@ -12,6 +12,7 @@ const databaseUrl = process.env.DATABASE_URL;
 const schemaName = `knowledge_schema_test_${process.pid}`;
 const schemaMigrationName = '20260812010000_identity_knowledge_schema';
 const seedMigrationName = '20260812010100_local_user_seed';
+const trashIndexesMigrationName = '20260817000000_trash_retention_indexes';
 const otherUserId = '10000000-0000-4000-8000-000000000001';
 const firstKnowledgeBaseId = '20000000-0000-4000-8000-000000000001';
 const secondKnowledgeBaseId = '20000000-0000-4000-8000-000000000002';
@@ -182,7 +183,11 @@ async function expectDocumentConstraintsRejected(): Promise<void> {
 /** 用于运行生产迁移往返并验证数据库不变量。 */
 async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   const firstUp = await runMigrations(database, migrationOptions('up'));
-  expect(firstUp.executedMigrations).toEqual([schemaMigrationName, seedMigrationName]);
+  expect(firstUp.executedMigrations).toEqual([
+    schemaMigrationName,
+    seedMigrationName,
+    trashIndexesMigrationName,
+  ]);
   await expectSchemaAndSeed();
   expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual([]);
 
@@ -194,6 +199,9 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   await database.deleteFrom('knowledge_bases').execute();
   await database.deleteFrom('users').where('id', '=', otherUserId).execute();
   expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
+    trashIndexesMigrationName,
+  ]);
+  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
     seedMigrationName,
   ]);
   expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
@@ -202,6 +210,7 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual([
     schemaMigrationName,
     seedMigrationName,
+    trashIndexesMigrationName,
   ]);
 }
 

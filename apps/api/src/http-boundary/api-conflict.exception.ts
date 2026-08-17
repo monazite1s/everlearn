@@ -2,7 +2,8 @@
 
 import { ConflictException } from '@nestjs/common';
 
-export type ApiConflictCode = 'IDEMPOTENCY_CONFLICT' | 'VERSION_CONFLICT';
+export type ApiConflictCode =
+  'IDEMPOTENCY_CONFLICT' | 'KNOWLEDGE_BASE_DELETED' | 'VERSION_CONFLICT';
 
 /** 用于标记由服务端选择的公开冲突码。 */
 export class ApiConflictException extends ConflictException {

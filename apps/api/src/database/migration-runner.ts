@@ -11,10 +11,12 @@ import type {
 import type { DatabaseSchema } from './database.service';
 import { identityKnowledgeSchemaMigration } from './migrations/20260812010000_identity_knowledge_schema';
 import { localUserSeedMigration } from './migrations/20260812010100_local_user_seed';
+import { trashRetentionIndexesMigration } from './migrations/20260817000000_trash_retention_indexes';
 
 const applicationMigrations = {
   '20260812010000_identity_knowledge_schema': identityKnowledgeSchemaMigration,
   '20260812010100_local_user_seed': localUserSeedMigration,
+  '20260817000000_trash_retention_indexes': trashRetentionIndexesMigration,
 } satisfies Record<string, Migration>;
 
 export type MigrationDirection = 'down' | 'up';
