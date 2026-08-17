@@ -15,6 +15,7 @@ export type {
 } from './document.js';
 
 export type {
+  ConvertInboxItemRequest,
   CreateInboxItemRequest,
   InboxItemErrorCode,
   InboxItemKind,

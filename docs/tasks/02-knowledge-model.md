@@ -306,16 +306,17 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-09 实现 Inbox 幂等转换 API
 
-- 状态：未开始。
+- 状态：已完成（2026-08-17，子 agent 实现 + 主 agent 复验）。
 - 依赖：KB-06、KB-08。
 - 必读：`docs/01-design/pages/knowledge-base.md`、`docs/02-architecture/api-and-events.md`、`docs/02-architecture/data-model.md`。
 - 目标：实现 `POST /inbox-items/:id/convert`，把记录转换为指定知识库中的普通文档。
-- 契约：提交目标父级、标题和 `Idempotency-Key`；重复请求返回同一文档。
-- 实施：单事务创建文档/初始修订/幂等结果并标记 Inbox；URL 只写链接。
-- 非目标：自动分类、摘要、附件和批量转换。
-- 失败恢复：失败保持待处理；响应丢失可凭幂等键恢复结果。
-- 验收：同一键只创建一个文档；不同键不能重复转换同一记录；失败不丢内容。
-- 验证：事务集成测试、唯一约束测试、Controller 契约测试。
+- 契约：提交目标知识库、可选父级、标题和 `Idempotency-Key`；重复请求返回同一文档（响应复用 `DocumentDetail`，201）。
+- 改动：contracts 扩展 `ConvertInboxItemRequest` 与 `IDEMPOTENCY_CONFLICT`；API 新增转换 DTO、幂等存取（operation `inbox-item.convert`）与单事务编排服务；`DocumentsService.createInTransaction` 公开为模块协作面（`DocumentCreationDraft` 可携带初始正文/纯文本）；`requireIdempotencyKey` 达到第三处使用，抽取至 `http-boundary/idempotency-key.ts` 并让 documents/knowledge-bases 控制器改为引用（净删重复）。
+- 设计要点：Inbox 模块经 documents 应用服务协作（不直写 documents 表）；单事务 advisory lock → 幂等重放检查（先于状态检查，已转换记录同键重放原文）→ `FOR UPDATE` 锁本人 pending 记录 → 创建（KB-06 锁序）→ 标记 converted + `converted_document_id` → 存幂等响应；text/url 统一映射为最小合法正文单段落纯文本（URL 只写链接本身，不加 link mark），`plain_text` 与正文同源派生；不同键并发转换同一记录恰一个 201、败者统一 404（不可探测语义优先于引入 409）。
+- 复用与评审：独立 code-reviewer 评审 `APPROVE`（0 CRITICAL/HIGH/MEDIUM；事务边界、锁序无环、幂等矩阵、契约闭包经真实运行逐项确认），LOW 项处置——标题 200 字符边界正向断言已补，唯一约束兜底测试范围与已转换记录软删后重放两个边缘场景登记于风险。
+- 验证结果：contracts/api typecheck（含 turbo 全量 6 任务）、聚焦 ESLint、Prettier、注释（183 文件 1303 条）、文件限制通过；unit `17+22 passed`；真实 PostgreSQL 全量集成 `14 文件 64 passed`（新 12 例 + documents/inbox/move/boundary 回归）。
+- 证据：同键并发恰一份 documents/revisions/idempotency 行；失败场景三表计数为零且 Inbox 保持 pending 内容原样；`replay.text === first.text` 字节级重放（含记录已转换后的重放）；不同键并发 `[201, 404]`。
+- 风险：`readStoredDetail` 存储响应读取器现为 move/convert 两份（每 operation 自持惯例，第三处出现时提升共享件）；`inbox-item-conversion.integration.spec.ts` 387/400 行，新增场景需先拆文件；10,000 字符记录生成单个超长 text 节点的渲染性能未测（ED-05 接入真实编辑器时评估）。
 
 ### KB-09W 接入 Inbox 转换
 

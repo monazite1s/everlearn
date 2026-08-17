@@ -1,7 +1,6 @@
 /** @fileoverview 将单个文档资源的 HTTP 输入映射到应用服务。 */
 
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -20,17 +19,8 @@ import { DocumentMoveService } from './document-move.service';
 import { DocumentsService } from './documents.service';
 import { MoveDocumentDto } from './move-document.dto';
 import { RenameDocumentDto } from './rename-document.dto';
+import { requireIdempotencyKey } from '../http-boundary/idempotency-key';
 import { UuidParamDto } from '../http-boundary/uuid-param.dto';
-
-const IDEMPOTENCY_KEY_PATTERN = /^[\x21-\x7E]{1,200}$/u;
-
-/** 用于接收有长度限制的可见 ASCII 幂等键且不记录或改写。 */
-function requireIdempotencyKey(value: string | undefined): string {
-  if (value === undefined || !IDEMPOTENCY_KEY_PATTERN.test(value)) {
-    throw new BadRequestException();
-  }
-  return value;
-}
 
 /** 用于路由单个文档资源的读取、重命名与移动请求。 */
 @Controller('documents')

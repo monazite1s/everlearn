@@ -10,7 +10,9 @@ import {
 } from '@nestjs/common';
 
 import { DatabaseModule } from '../database/database.module';
+import { DocumentsModule } from '../documents/documents.module';
 import { LocalIdentityContext } from '../identity/local-identity.context';
+import { InboxItemConversionService } from './inbox-item-conversion.service';
 import { InboxItemsController } from './inbox-items.controller';
 import { InboxItemsService } from './inbox-items.service';
 
@@ -25,8 +27,8 @@ function requireJsonContentType(request: Request, _response: Response, next: Nex
 /** 用于持有本切片所需的最小控制器、服务、身份和数据库依赖。 */
 @Module({
   controllers: [InboxItemsController],
-  imports: [DatabaseModule],
-  providers: [InboxItemsService, LocalIdentityContext],
+  imports: [DatabaseModule, DocumentsModule],
+  providers: [InboxItemConversionService, InboxItemsService, LocalIdentityContext],
 })
 export class InboxItemsModule implements NestModule {
   /** 用于向 Inbox 创建路由应用仅 JSON 规则。 */

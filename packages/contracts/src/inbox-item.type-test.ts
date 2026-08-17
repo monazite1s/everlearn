@@ -1,6 +1,7 @@
 /** @fileoverview 在编译期验证 Inbox 记录传输投影。 */
 
 import type {
+  ConvertInboxItemRequest,
   CreateInboxItemRequest,
   InboxItemErrorCode,
   InboxItemListResponse,
@@ -14,6 +15,9 @@ type Equal<Left, Right> =
     ? true
     : false;
 
+type ConvertKeys = Assert<
+  Equal<keyof ConvertInboxItemRequest, 'knowledgeBaseId' | 'parentId' | 'title'>
+>;
 type CreateKeys = Assert<Equal<keyof CreateInboxItemRequest, 'text' | 'url'>>;
 type SummaryKeys = Assert<Equal<keyof InboxItemSummary, 'content' | 'createdAt' | 'id' | 'kind'>>;
 type PageShape = Assert<
@@ -26,11 +30,17 @@ type KindValues = Assert<Equal<InboxItemKind, 'text' | 'url'>>;
 type ErrorCodes = Assert<
   Equal<
     InboxItemErrorCode,
-    'BAD_REQUEST' | 'INTERNAL_ERROR' | 'NOT_FOUND' | 'UNSUPPORTED_MEDIA_TYPE' | 'VALIDATION_FAILED'
+    | 'BAD_REQUEST'
+    | 'IDEMPOTENCY_CONFLICT'
+    | 'INTERNAL_ERROR'
+    | 'NOT_FOUND'
+    | 'UNSUPPORTED_MEDIA_TYPE'
+    | 'VALIDATION_FAILED'
   >
 >;
 
 export type InboxItemContractAssertions = [
+  ConvertKeys,
   CreateKeys,
   SummaryKeys,
   PageShape,

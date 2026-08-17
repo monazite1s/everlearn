@@ -34,6 +34,14 @@ const DEFAULT_PAGE_LIMIT = 20;
 const POSITION_GAP_SQL = '1024';
 const MINIMAL_DOCUMENT_CONTENT: JsonValue = { content: [], type: 'doc' } as const;
 
+/** 用于承载文档创建的树定位、标题与可选初始修订内容。 */
+export interface DocumentCreationDraft {
+  readonly parentId?: string;
+  readonly plainText?: string;
+  readonly revisionContent?: JsonValue;
+  readonly title: string;
+}
+
 /** 用于解析已通过全局 DTO 边界的文档游标。 */
 function resolveCursor(cursor: string | undefined): DocumentCursorPayload | undefined {
   if (cursor === undefined) return;
@@ -60,11 +68,12 @@ export class DocumentsService {
   /** 用于在单事务内校验父级并写入文档、最小正文和初始修订。 */
   async create(knowledgeBaseId: string, input: CreateDocumentDto): Promise<DocumentDetail> {
     const { ownerId } = this.identityContext.getActor();
-    return this.databaseService.client
-      .transaction()
-      .execute((transaction) =>
-        this.createInTransaction(transaction, ownerId, knowledgeBaseId, input),
-      );
+    return this.databaseService.client.transaction().execute((transaction) =>
+      this.createInTransaction(transaction, ownerId, knowledgeBaseId, {
+        ...(input.parentId === undefined ? {} : { parentId: input.parentId }),
+        title: input.title,
+      }),
+    );
   }
 
   /** 用于按服务端稳定顺序列出活跃知识库内的直接子节点。 */
@@ -116,21 +125,23 @@ export class DocumentsService {
       .execute((transaction) => this.renameInTransaction(transaction, ownerId, id, input));
   }
 
-  /** 用于提交前锁定文档行并回写路径、位置与初始修订。 */
-  private async createInTransaction(
+  /** 用于在调用方事务内锁定父级并回写文档路径、位置与初始修订。 */
+  async createInTransaction(
     transaction: Transaction<DatabaseSchema>,
     ownerId: string,
     knowledgeBaseId: string,
-    input: CreateDocumentDto,
+    draft: DocumentCreationDraft,
   ): Promise<DocumentDetail> {
     await this.lockActiveKnowledgeBase(transaction, ownerId, knowledgeBaseId);
-    const parentId = input.parentId ?? null;
+    const parentId = draft.parentId ?? null;
     const parentPath =
       parentId === null
         ? ''
         : await this.lockActiveParentPath(transaction, ownerId, knowledgeBaseId, parentId);
     const documentId = randomUUID();
     const position = await this.readNextPosition(transaction, ownerId, knowledgeBaseId, parentId);
+    const revisionContent = draft.revisionContent ?? MINIMAL_DOCUMENT_CONTENT;
+    const plainText = draft.plainText ?? '';
     await transaction
       .insertInto('documents')
       .values({
@@ -140,7 +151,9 @@ export class DocumentsService {
         parent_id: parentId,
         path: `${parentPath}/${documentId}`,
         position,
-        title: input.title,
+        title: draft.title,
+        content_json: revisionContent,
+        plain_text: plainText,
       })
       .executeTakeFirstOrThrow();
     await transaction
@@ -151,9 +164,9 @@ export class DocumentsService {
         document_id: documentId,
         revision_number: 1,
         source: 'manual',
-        content_json: MINIMAL_DOCUMENT_CONTENT,
+        content_json: revisionContent,
         schema_version: 1,
-        plain_text: '',
+        plain_text: plainText,
         created_by: ownerId,
       })
       .executeTakeFirstOrThrow();

@@ -27,6 +27,7 @@ function requireJsonContentType(request: Request, _response: Response, next: Nex
 /** 用于持有本切片所需的最小控制器、服务、身份和数据库依赖。 */
 @Module({
   controllers: [DocumentsController, KnowledgeBaseDocumentsController],
+  exports: [DocumentsService],
   imports: [DatabaseModule],
   providers: [DocumentsService, DocumentMoveService, LocalIdentityContext],
 })

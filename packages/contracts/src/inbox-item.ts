@@ -12,6 +12,13 @@ export interface CreateInboxItemRequest {
   readonly url?: string;
 }
 
+/** 用于提交转换目标知识库、可选父级与转换后的标题。 */
+export interface ConvertInboxItemRequest {
+  readonly knowledgeBaseId: string;
+  readonly parentId?: string;
+  readonly title: string;
+}
+
 /** 用于投影不含所有权、状态与转换目标的待处理记录。 */
 export interface InboxItemSummary {
   readonly content: string;
@@ -28,4 +35,9 @@ export interface InboxItemListResponse {
 
 /** 用于限定 Inbox 记录 API 切片公开的稳定错误码。 */
 export type InboxItemErrorCode =
-  'BAD_REQUEST' | 'INTERNAL_ERROR' | 'NOT_FOUND' | 'UNSUPPORTED_MEDIA_TYPE' | 'VALIDATION_FAILED';
+  | 'BAD_REQUEST'
+  | 'IDEMPOTENCY_CONFLICT'
+  | 'INTERNAL_ERROR'
+  | 'NOT_FOUND'
+  | 'UNSUPPORTED_MEDIA_TYPE'
+  | 'VALIDATION_FAILED';

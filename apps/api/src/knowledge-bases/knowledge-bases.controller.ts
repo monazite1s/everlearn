@@ -1,7 +1,6 @@
 /** @fileoverview 提供限定所有者的知识库读取和生命周期写入。 */
 
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -18,6 +17,7 @@ import type { KnowledgeBaseListResponse, KnowledgeBaseSummary } from '@everlearn
   'resolution-mode': 'import',
 };
 
+import { requireIdempotencyKey } from '../http-boundary/idempotency-key';
 import { UuidParamDto } from '../http-boundary/uuid-param.dto';
 import { CreateKnowledgeBaseDto } from './create-knowledge-base.dto';
 import { KnowledgeBaseLifecycleService } from './knowledge-base-lifecycle.service';
@@ -25,16 +25,6 @@ import { KnowledgeBaseVersionDto } from './knowledge-base-version.dto';
 import { ListKnowledgeBasesQueryDto } from './list-knowledge-bases-query.dto';
 import { KnowledgeBasesService } from './knowledge-bases.service';
 import { UpdateKnowledgeBaseDto } from './update-knowledge-base.dto';
-
-const IDEMPOTENCY_KEY_PATTERN = /^[\x21-\x7E]{1,200}$/u;
-
-/** 用于接收有长度限制的可见 ASCII 幂等键且不记录或改写。 */
-function requireIdempotencyKey(value: string | undefined): string {
-  if (value === undefined || !IDEMPOTENCY_KEY_PATTERN.test(value)) {
-    throw new BadRequestException();
-  }
-  return value;
-}
 
 /** 用于将已校验 HTTP 输入映射到知识库应用服务。 */
 @Controller('knowledge-bases')
