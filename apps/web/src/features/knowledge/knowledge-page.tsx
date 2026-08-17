@@ -3,7 +3,15 @@
 'use client';
 
 import { KNOWLEDGE_BASE_NAME_MAX_LENGTH, type KnowledgeBaseSummary } from '@everlearn/contracts';
-import { AlertCircleIcon, FileTextIcon, LibraryBigIcon, Loader2Icon, PlusIcon } from 'lucide-react';
+import {
+  AlertCircleIcon,
+  FileTextIcon,
+  InboxIcon,
+  LibraryBigIcon,
+  Loader2Icon,
+  PlusIcon,
+} from 'lucide-react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useId, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
@@ -286,6 +294,34 @@ function KnowledgeCreateAction({
   );
 }
 
+/** 用于渲染知识库页固定的 Inbox 次级入口。 */
+function KnowledgeInboxLink() {
+  return (
+    <Button asChild variant="outline">
+      <Link href="/knowledge/inbox">
+        <InboxIcon aria-hidden="true" />
+        Inbox
+      </Link>
+    </Button>
+  );
+}
+
+/** 用于渲染页头的 Inbox 入口与离线禁用的新建操作。 */
+function KnowledgeHeaderActions({
+  disabled,
+  onCreate,
+}: {
+  disabled: boolean;
+  onCreate: () => void;
+}) {
+  return (
+    <>
+      <KnowledgeInboxLink />
+      <KnowledgeCreateAction disabled={disabled} onCreate={onCreate} />
+    </>
+  );
+}
+
 /** 用于渲染完整真实知识库列表组合。 */
 export function KnowledgePage() {
   const online = useOnline();
@@ -305,7 +341,7 @@ export function KnowledgePage() {
   }
   return (
     <PageShell
-      actions={<KnowledgeCreateAction disabled={!online} onCreate={create.open} />}
+      actions={<KnowledgeHeaderActions disabled={!online} onCreate={create.open} />}
       lead="长期沉淀文档、教程与资讯简报，按最近活动排序。"
       title={
         <h1 data-page-title tabIndex={-1}>

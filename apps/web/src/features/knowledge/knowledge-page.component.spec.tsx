@@ -189,6 +189,15 @@ async function opensDialogFromUrlAndCleansParam(): Promise<void> {
   await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/knowledge'));
 }
 
+/** 用于验证知识库页提供固定的 Inbox 次级入口。 */
+async function linksToInbox(): Promise<void> {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ items: [], nextCursor: null })));
+  renderKnowledge(<KnowledgePage />);
+
+  const link = await screen.findByRole('link', { name: 'Inbox' });
+  expect(link).toHaveAttribute('href', '/knowledge/inbox');
+}
+
 test('creates the first persisted knowledge base', createsFirstKnowledgeBase);
 test('recovers an unknown create result without replaying POST', recoversUnknownCreateResult);
 test('retains prior items after pagination failure', retainsItemsAfterPaginationFailure);
@@ -196,4 +205,5 @@ test(
   'opens the create dialog from URL and cleans the param on close',
   opensDialogFromUrlAndCleansParam,
 );
+test('links to the fixed inbox entry', linksToInbox);
 test('reads the persisted post-create destination on refresh', readsPersistedDestination);

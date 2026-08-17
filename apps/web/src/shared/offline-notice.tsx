@@ -6,8 +6,13 @@ import { WifiOffIcon } from 'lucide-react';
 
 import { Badge } from '@everlearn/ui';
 
+interface OfflineNoticeProps {
+  /** 离线期间的能力说明。 */
+  description?: string;
+}
+
 /** 用于渲染离线提示。 */
-export function OfflineNotice() {
+export function OfflineNotice({ description }: OfflineNoticeProps) {
   return (
     <Badge
       className="mt-6 w-fit gap-2 border-warning/40 bg-muted px-3 py-1 text-xs text-foreground"
@@ -15,7 +20,7 @@ export function OfflineNotice() {
       variant="outline"
     >
       <WifiOffIcon aria-hidden="true" />
-      当前离线：已加载的知识库仍可查看，新建暂不可用。
+      {description ?? '当前离线：已加载的知识库仍可查看，新建暂不可用。'}
     </Badge>
   );
 }

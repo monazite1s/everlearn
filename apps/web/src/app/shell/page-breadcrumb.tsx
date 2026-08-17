@@ -21,6 +21,7 @@ interface Crumb {
 
 const SEGMENT_LABELS: Readonly<Record<string, string>> = {
   '': '首页',
+  inbox: 'Inbox',
   knowledge: '知识库',
   news: '资讯',
   tutorials: '教程',

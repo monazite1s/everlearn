@@ -279,15 +279,19 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-08W 接入 Inbox 列表与记录
 
-- 状态：未开始。
+- 状态：已完成（2026-08-17，子 agent 实现 + 主 agent 复验与走查）。
 - 依赖：KB-08、KB-04W。
 - 必读：`docs/01-design/pages/knowledge-base.md`、`docs/01-design/design-system.md`、`docs/02-architecture/api-and-events.md`。
 - 目标：让 `/knowledge/inbox` 使用真实 API 创建、分页查看和删除待处理记录。
 - 状态：覆盖首次使用、加载、分页、字段错误、提交失败和删除失败；失败保留输入或记录。
 - 非目标：转换、抓取、AI、首页和移动端处理。
 - 失败恢复：重新读取服务端事实；不以乐观删除隐藏失败记录。
-- 验收：文本和 URL 可记录，非法载荷有字段提示；刷新后数据存在；移动端只读。
-- 验证：Inbox 组件测试、Web/API typecheck、生产构建和真实页面走查。
+- 改动：新增 inbox feature（严格校验 API 客户端、列表状态、记录表单、列表行与删除确认、页面组合）与 `/knowledge/inbox` 路由（移动端说明经路由策略机制注入）；知识库列表页头新增固定 Inbox 次级入口；面包屑补 Inbox 标签；OfflineNotice 参数化说明。
+- 设计决策：单一 textarea 自动判别——trim 后单行且以 http/https 开头按 URL（客户端用与服务端同款 `new URL` 预校验），其余按文本；创建用页面内联表单（快速记录最短路径），不用对话框。
+- 复用与评审：复用 PageShell/EmptyState/LoadFailure/format-datetime/use-online 与 shadcn 表单/确认组件，无新增依赖；`useMediaQuery` 为第二处本地副本（`ponytail:` 注记，第三处出现时提升 shared）。独立 code-reviewer 评审 `REQUEST_CHANGES`，三项已处置——尾随换行 URL 误判（改用 trim 后判换行 + 回归测试）、分页失败保留用例补齐、确认按钮删除中禁用视觉态。
+- 验证结果：组件测试 5 文件 `43 passed`（文本/URL/尾随换行 URL 记录、非法载荷字段错误、多行按文本、提交失败保留输入、不确定创建重读、分页与失败保留、确认后删除/失败保留/不确定重读、移动端无控件）；聚焦 ESLint、Prettier、注释（182 文件 1269 条）、文件限制通过；Web typecheck 与生产构建归因干净（错误全部位于并行编辑器任务在途文件，本切片文件零错误），与本波次统一复验。
+- 真实证据：Playwright（Chrome headless，真实 API）6 步通过——文本记录、尾随换行 URL 按链接记录、刷新持久化、删除确认文案如实（无法恢复）且确认后移除、390px 无表单与提交按钮；桌面截图当次会话人工检查。
+- 风险：删除不确定重读回第一页（多页视图重置，服务端真相优先）；URL 记录纯文本展示未做外链打开（任务范围外，后续任务判断）；删除成功后焦点回落 body（与 knowledge-management 同模式缺陷，键盘焦点管理登记为后续统一任务）；创建不确定且实际已持久化时输入未清空，重复提交可能重复记录（与 KB-08H 成功清空行为对齐的候选项）。
 
 ### KB-08H 接入首页快速记录
 
