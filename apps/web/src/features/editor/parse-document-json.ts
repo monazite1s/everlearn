@@ -4,6 +4,7 @@ import {
   DOCUMENT_APPROVED_HEADING_LEVELS,
   DOCUMENT_APPROVED_MARK_TYPES,
   DOCUMENT_APPROVED_NODE_TYPES,
+  DOCUMENT_JSON_MAX_DEPTH,
 } from '@everlearn/contracts';
 
 import { isBlockId } from './block-id';
@@ -65,8 +66,8 @@ function hasApprovedHeadingLevel(value: Record<string, unknown>): boolean {
 
 /** 用于递归校验单个节点对象的结构与已知类型。 */
 function isValidNode(value: unknown, depth: number): boolean {
-  // ponytail: 递归深度上限防御恶意嵌套，正常文档远低于该值。
-  if (depth > 64 || !isPlainObject(value) || typeof value.type !== 'string') {
+  // ponytail: 递归深度上限防御恶意嵌套，上限值以契约单源为准。
+  if (depth > DOCUMENT_JSON_MAX_DEPTH || !isPlainObject(value) || typeof value.type !== 'string') {
     return false;
   }
   if (!DOCUMENT_APPROVED_NODE_TYPES.has(value.type)) {

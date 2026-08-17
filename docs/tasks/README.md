@@ -17,8 +17,8 @@
 | 1    | [设计系统与应用壳](01-design-shell.md)                             | 主题、通用组件、导航和响应式壳。                        | 已完成 |
 | 1A   | [Mantine 迁移与 UI 修正](01a-mantine-migration.md)                 | 组件系统、显式路由和既有 UI 组件化。                    | 已完成 |
 | 1B   | [shadcn/Tailwind 迁移与 UI 重构](01b-shadcn-tailwind-migration.md) | ADR 001/002、默认主题、官方应用壳、页面迁移与最终验收。 | 已完成 |
-| 2    | [知识库模型与 API](02-knowledge-model.md)                          | 多知识库、文档树、Inbox 和回收站。                      | 进行中 |
-| 3    | [编辑器与修订](03-editor.md)                                       | Tiptap、自动保存、修订和附件。                          | 未开始 |
+| 2    | [知识库模型与 API](02-knowledge-model.md)                          | 多知识库、文档树、Inbox 和回收站。                      | 已完成 |
+| 3    | [编辑器与修订](03-editor.md)                                       | Tiptap、自动保存、修订和附件。                          | 已完成 |
 | 4    | [搜索与知识连接](04-search-import.md)                              | 搜索、标签、链接和 Markdown 交换。                      | 未开始 |
 | 5    | [AI 编辑与问答](05-ai-editing.md)                                  | LLM Gateway、差异接受和带引用问答。                     | 未开始 |
 | 6    | [Workflow Runtime](06-workflow-runtime.md)                         | LangGraph、版本、检查点、工具和调度。                   | 未开始 |
@@ -38,7 +38,7 @@
 02..09 → 10 → 11
 ```
 
-里程碑 02 全部任务（KB-00..KB-12）与 UIR-00..06 已完成；当前首个可领取任务是 ED-03。知识库后续采用“契约 → API → 对应真实 UI”的相邻纵向切片，不允许 API 长期等待统一页面任务。07、08、09 在 06 完成后可以独立推进；共享契约变化必须先落到 `packages/contracts`。
+里程碑 02（KB-00..12、UIR-00..06）与里程碑 03（ED-01..05）已全部完成；当前首个可领取任务见 `04-search-import.md`。知识库后续采用“契约 → API → 对应真实 UI”的相邻纵向切片，不允许 API 长期等待统一页面任务。07、08、09 在 06 完成后可以独立推进；共享契约变化必须先落到 `packages/contracts`。
 
 ## 追踪矩阵
 

@@ -104,6 +104,14 @@ test('链接按钮展开行内输入并支持应用与解除', async () => {
   editor.destroy();
 });
 
+test('链接命令拒绝 javascript 协议地址', () => {
+  const editor = createHeadlessEditor();
+  selectFirstWord(editor);
+  editor.chain().focus().setLink({ href: 'javascript:alert(1)' }).run();
+  expect(editor.getAttributes('link').href).not.toBe('javascript:alert(1)');
+  editor.destroy();
+});
+
 test('禁用态全部按钮 aria-disabled 且不执行命令', () => {
   const editor = createHeadlessEditor();
   selectFirstWord(editor);

@@ -77,3 +77,49 @@
 ## 检查点
 
 运行编辑器单元/组件、PostgreSQL/SeaweedFS S3 集成、自动保存与修订 E2E，再执行 `pnpm check`。
+
+- 集成（真实 PostgreSQL + SeaweedFS，串行 `--pool=forks --fileParallelism=false`）：126/126。
+- 单元 66/66；组件 202/202（收口补齐后）；全仓 vitest 72 文件 394/394。
+- 浏览器取证（Playwright 临时脚本，不入库）：ED-05 走查 9 项 + 评审复核 5 项（含桌面/移动 axe zero serious/critical）+ 收口 3 项（编辑→刷新恢复含 blockId 稳定、SlashMenu 定位与键盘选中、移动端 TOC 点击定位与无横向滚动）。
+- 全仓 `pnpm check`：通过（file-size/design-tokens/structure/format/lint/typecheck/test 394/394/build，含真实 PostgreSQL 集成）。
+
+## 里程碑回顾（2026-08-18 收口）
+
+两个独立上下文复核：六维度回顾审计（有条件合入，0 CRITICAL/HIGH、4 MEDIUM、6 LOW）与 PM 产品复核（有条件通过，P1-P7）。审计独立复跑组件 199/unit 64/integration 20+15 全绿并抽验 ED-05 证据 5 项全部与代码相符。全部发现处置如下。
+
+### 立即处置（已修）
+
+| 来源            | 内容                                                                    | 处置                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 审计 F2 / TD-A  | web 解析器深度上限硬编码 64 脱离契约单源                                | 改引 `DOCUMENT_JSON_MAX_DEPTH` + 补深度边界回归（62 过/63 拒，doc 计 0 层含文本叶子）                                                       |
+| 审计 F5（前半） | link `javascript:` 探针未沉淀                                           | 补回归：`setLink({href:'javascript:...'})` 后 mark href 不落原值（锁定 Tiptap attr 层防线）                                                 |
+| 审计 F6 / PM P2 | 移动端 TOC 缺失                                                         | PM 裁决补实现：`readonly-document` 锚点目录（heading 1-4 提取 + `data-block-id` 定位），4 组件测试 + 浏览器取证（渲染/点击定位/无横向滚动） |
+| 审计 F7 / TD-G  | 修订恢复无幂等键与架构条款语义差                                        | api-and-events.md 幂等条款补例外标注（409 乐观并发 + 相邻去重，ED-03 定稿）                                                                 |
+| PM P1 / 审计 F1 | 块拖拽重排静默缺失                                                      | 采纳 PM 裁决修订规格：editor.md 改为「块重排首期经剪切/粘贴完成，拖拽重排与手柄属后续编辑体验任务」；键盘条款同步改为「随其接入实现」       |
+| PM P3           | 冲突重载无丢弃警示                                                      | ConflictAlert 补警示文案「重载将丢弃本地未保存的改动，请先复制需要保留的内容」（仅文案，不加二次确认——冲突低频且本地内容始终可复制）        |
+| PM P5           | 删除态「编辑器转只读」字面偏差                                          | editor.md 状态表改为「显示删除提示并提供回收站入口」                                                                                        |
+| PM P4           | 检查点证据缺口                                                          | 全量 `pnpm check` 收口执行（结果见上）；编辑→刷新恢复、无横向滚动、SlashMenu 定位三项走查断言补齐取证                                       |
+| 收口根因修复    | `pnpm test` 默认并行跑集成导致已知 schema 交叉污染 flake（02 回顾登记） | vitest 配置将 integration 项目固定 `pool: 'forks'` + `fileParallelism: false`，全仓 394/394 稳定                                            |
+
+### 技术债登记（编号续 02 回顾 V/L 系列，前缀 W）
+
+- **W1**（审计 F3）「两侧场景矩阵同一清单」实为 web/api 两份手工同步清单且覆盖不对称——共享非法正文 fixture，与 V1/V3 同批工程清扫；移除触发：首次契约常量变更或清单新增场景时。
+- **W2**（审计 F4）附件引用计数批量 UPDATE 未按 id 排序，存在理论互锁面（单用户单会话下概率≈0，KB 行锁已串行化写路径）——多标签页/多用户前按 id 排序 VALUES。
+- **W3**（审计 F5 后半）服务端不校验 link href 协议，直写 API 可落库 `javascript:` href（渲染层清空 + 探针回归为当前防线）——服务端协议白名单校验随首个非 Tiptap 消费方前落地。
+- **W4**（审计 F10）冲突期服务端版本时间拉取失败静默降级且不可重试——影响小（重载即恢复），随冲突体验增强一并处理。
+- **W5**（离线编辑前置债，合并登记）卸载 fire-and-forget 保存/修订丢 ≤800ms 窗口（sendBeacon/keepalive 评估结论：keepalive 64KB body 上限对 contentJson 非无损，维持 `ponytail:` 标注）；knowledge 客户端请求骨架迁移 `shared/api-request`（接续 02 回顾 V2，ED-05 已收敛 editor 内两份）。
+- PM P7 面包屑父级链 → 随 04 搜索定位任务补。
+
+### 流程决策记录
+
+- 集成测试本地-first：无 `DATABASE_URL` 时 skipIf 静默跳过、CI 只跑 `pnpm check` 属有意决策（审计 F8）；运行需真实 PostgreSQL/S3 环境（`set -a; source .env; set +a`），集成项目已在 vitest 配置固定串行（见处置表根因修复行）。
+- Playwright 走查脚本为临时产物不入库（口径与 02 一致）；视觉回归基线需单独获批，未建立；正式 E2E 随首个 E2E 任务立项。
+
+### 用户六指令执行记录
+
+1. **shadcn 优先**：Tabs/Progress 经 CLI 安装；Sheet/AlertDialog/Badge/Skeleton/Breadcrumb/Tooltip/Command 全复用官方组件；评审确认零自造轮子，反向动作是把第三份请求骨架收敛为共享模块。
+2. **注释精简**：注释门禁 295 文件 2483 条通过；新增注释仅一句话职责/约束，评审仅修正一处理由注释使其与事实相符。
+3. **每阶段回顾**：里程碑 02 回顾（V1-V5/L1-L5）与本节 03 回顾（审计+PM+处置+债登记）均落任务文件。
+4. **架构高内聚低耦合**：会话三层（workbench 替换语义 / session 控制器组合 / 面板纯展示）、`replaceSession` 统一重载与恢复的替换路径、`shared/api-request` 收敛传输骨架；`@designPattern` 标记沿用（BlockId=ProseMirror Plugin）；审计「并发与数据一致性」维度通过（锁序/乐观版本/失能标志逐项核实）。
+5. **组件化与公用拆分**：hooks 五个（save/revision-triggers/document-attachments/revisions/attachment-upload）、守卫与信封单源（api-request）、`attrString`/`isRecord` 收敛；评审 M-5/L-1 处置即本指令落地。
+6. **产品分析→UI/UX→开发**：ED-05 前经 PM 五项裁决（上传上限/schema v1 闭集/孤儿 TTL/@tiptap/html/tabs+progress）与规格定稿；收口再经 PM 独立复核（P1-P7 逐条处置），无跳过分析直接编码的大块业务。

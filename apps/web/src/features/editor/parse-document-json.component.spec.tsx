@@ -93,3 +93,20 @@ test('attrs 中 blockId 为 null 视为缺失并通过', () => {
     parseDocumentJson({ content: [{ attrs: { blockId: null }, type: 'paragraph' }], type: 'doc' }),
   ).toBeDefined();
 });
+
+/** 用于构造指定深度的嵌套 blockquote 正文。 */
+function nestedToDepth(depth: number): Record<string, unknown> {
+  let node: Record<string, unknown> = {
+    content: [{ text: '底', type: 'text' }],
+    type: 'paragraph',
+  };
+  for (let i = 0; i < depth; i += 1) {
+    node = { content: [node], type: 'blockquote' };
+  }
+  return { content: [node], type: 'doc' };
+}
+
+test('深度等于契约上限通过、超限拒绝', () => {
+  expect(parseDocumentJson(nestedToDepth(62))).toBeDefined();
+  expect(parseDocumentJson(nestedToDepth(63))).toBeUndefined();
+});

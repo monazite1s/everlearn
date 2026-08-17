@@ -130,6 +130,7 @@ export function ConflictAlert(props: ConflictAlertProps) {
             : ''}
           ，已停止自动保存；请重载文档或复制本地内容。
         </p>
+        <p className="mt-1 mb-0 text-sm">重载将丢弃本地未保存的改动，请先复制需要保留的内容。</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Button onClick={props.onReload} size="sm" type="button" variant="secondary">
             <RefreshCwIcon aria-hidden="true" />
