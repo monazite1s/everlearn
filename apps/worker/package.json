@@ -12,8 +12,10 @@
     "@nestjs/common": "catalog:",
     "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",
+    "bullmq": "^6.1.1",
     "class-transformer": "catalog:",
     "class-validator": "catalog:",
+    "ioredis": "^6.0.0",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:"
   },

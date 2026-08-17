@@ -28,6 +28,11 @@ function hasSearchConfiguration(environment: RuntimeEnvironment): boolean {
   return [environment.SEARCH_PROVIDER, environment.SEARCH_API_KEY].some(isDefined);
 }
 
+/** 用于判断清理触发密钥是否已提供。 */
+function hasPurgeSecret(environment: RuntimeEnvironment): boolean {
+  return isDefined(environment.PURGE_TRIGGER_SECRET);
+}
+
 /** 用于限定 API 进程配置并避免错误回显密钥。 */
 class RuntimeEnvironment {
   @IsUrl({ protocols: ['postgres', 'postgresql'], require_protocol: true, require_tld: false })
@@ -80,6 +85,11 @@ class RuntimeEnvironment {
   @IsString()
   @IsNotEmpty()
   SEARCH_API_KEY?: string;
+
+  @ValidateIf(hasPurgeSecret)
+  @IsString()
+  @IsNotEmpty()
+  PURGE_TRIGGER_SECRET?: string;
 }
 
 /** 用于只选择受支持字段，隔离无关进程变量。 */
@@ -89,6 +99,7 @@ function selectRuntimeEnvironment(environment: Record<string, unknown>): Record<
     LLM_API_KEY: environment.LLM_API_KEY,
     LLM_BASE_URL: environment.LLM_BASE_URL,
     LLM_MODEL: environment.LLM_MODEL,
+    PURGE_TRIGGER_SECRET: environment.PURGE_TRIGGER_SECRET,
     REDIS_URL: environment.REDIS_URL,
     S3_ACCESS_KEY: environment.S3_ACCESS_KEY,
     S3_BUCKET: environment.S3_BUCKET,

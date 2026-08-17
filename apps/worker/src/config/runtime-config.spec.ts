@@ -8,6 +8,7 @@ import { validateRuntimeEnvironment } from './runtime-config';
 
 const requiredEnvironment = Object.freeze({
   DATABASE_URL: 'postgresql://everlearn:local@127.0.0.1:5432/everlearn',
+  PURGE_TRIGGER_SECRET: 'fixture-purge-secret',
   REDIS_URL: 'redis://127.0.0.1:6379',
   S3_ACCESS_KEY: 'fixture-access-key',
   S3_BUCKET: 'everlearn',
@@ -21,6 +22,9 @@ const requiredEnvironment = Object.freeze({
 function acceptsRequiredInfrastructure(): void {
   const configuration = validateRuntimeEnvironment(requiredEnvironment);
   expect(configuration.S3_BUCKET).toBe('everlearn');
+  expect(configuration.PURGE_CRON).toBe('0 3 * * *');
+  expect(configuration.PURGE_TIMEZONE).toBe('UTC');
+  expect(configuration.API_INTERNAL_URL).toBe('http://127.0.0.1:3001');
   expect(Object.isFrozen(configuration)).toBe(true);
 }
 

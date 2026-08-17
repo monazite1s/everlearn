@@ -380,15 +380,17 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-12 接入 Worker 清理调度
 
-- 状态：未开始。
+- 状态：已完成（2026-08-18，子 agent 研究受阻后主 agent 实现 + 复验）。
 - 依赖：KB-11。
 - 必读：`docs/02-architecture/system.md`、`docs/03-engineering/research-and-dependencies.md`、`docs/03-engineering/development.md`。
 - 目标：Worker 每日触发到期清理并记录结构化结果。
-- 实施：开始前单独批准 BullMQ；使用 Job Scheduler 与固定 key，不使用 repeatable jobs。
-- 非目标：Workflow Runtime、管理 UI 和手动触发 API。
-- 失败恢复：队列重试调用幂等服务；Redis 丢失后可重新注册。
-- 验收：重复注册只有一个调度；失败可重试；业务事实只存 PostgreSQL。
-- 验证：Scheduler 单元测试、Worker 聚焦测试、Worker typecheck。
+- 架构决策：Worker→purge 通道选 API 内部端点（`POST /api/v1/internal/trash-purge` + `x-purge-secret` 共享密钥头，sha256 摘要 `timingSafeEqual` 恒时比较；未配密钥 503、错误密钥 401 走既有错误信封映射；提升服务到共享包被否决——需整体搬迁数据层且为单一调用方预建包命中空壳包红线）。调度用 BullMQ 6 Job Scheduler（`upsertJobScheduler` 固定 key `trash-purge-daily`，非 legacy repeat），Worker 启动注册、Redis 丢失重启重建；`attempts:5` 指数退避 60s、concurrency 1、完成 7 天/失败 30 天保留；`PURGE_CRON` 默认 `0 3 * * *`、`PURGE_TIMEZONE` 默认 `UTC`、`API_INTERNAL_URL` 默认 `http://127.0.0.1:3001`（环境变量化）。
+- 依赖决策：BullMQ 6 把全部 Redis 驱动改为可选 peer 依赖且仓库未装任何驱动（子 agent 以真实探针证实 `new Queue` 直接抛错并按纪律停下）；安装 `ioredis`（BullMQ 默认驱动、v5 时代为其内嵌直接依赖）——属里程碑指令覆盖的既定 BullMQ 技术栈组成部分。
+- 改动：Worker 新增 purge 模块（清理客户端〔原生 fetch、5 分钟超时、闭合统计三键校验〕、调度运行时〔Queue+Worker 生命周期〕）、main.ts 挂载与信号保活、配置扩展；API 新增内部触发控制器（边界校验零逻辑）与可选 `PURGE_TRIGGER_SECRET` 配置；`.env.example` 补本地样例。
+- 失败恢复矩阵：端点失败/非 2xx → 处理器抛错退避重试（purge 幂等保证安全）；Redis 丢失 → 重启 upsert 重建；API 未配密钥 → 503 失败留痕自愈；重试耗尽 → failed 记录 30 天 + 结构化失败日志，无数据损失。业务事实只存 PostgreSQL（调度元数据仅 Redis，统计走单行 JSON 日志，不进队列载荷）。
+- 验证结果：Worker/API typecheck、聚焦 ESLint、Prettier、注释、文件门禁通过；Worker 单元测试 `12 passed`（真实 Redis：双启动注册后调度恰 1 个；处理器成功/失败分派；客户端 2xx/非 2xx/畸形矩阵；配置校验含新字段与默认值）；API 集成 `trash-purge-trigger` 2/2（错误密钥 401、正确密钥清空到期夹具并返回精确统计）；api 全量集成串行 98/98 回归。
+- 端到端证据：真实 API 探针——无密钥 401、正确密钥返回 `{purgedDocuments:0, purgedInboxItems:0, purgedKnowledgeBases:0}`；真实运行时探针（真实 Redis 6380 + dev API）——手动入队作业被处理器消费、完成回调收到闭合统计、调度器恰 1 个。
+- 风险：单调度器假设（KB-11 已声明双实例并发安全但浪费，生产部署单 Worker 实例）；并行模式全量集成偶发 schema 串扰为既有已登记问题（共享夹具 env 恢复，工程修复任务处理）；cron/时区由 BullMQ 内置 cron-parser 启动即校验，坏配置阻止启动（声明）。
 
 ## 局部依赖图与领取顺序
 

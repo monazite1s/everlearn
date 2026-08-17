@@ -58,6 +58,21 @@ class RuntimeEnvironment {
   @IsIn(['true', 'false'])
   S3_FORCE_PATH_STYLE!: string;
 
+  @IsString()
+  @IsNotEmpty()
+  PURGE_TRIGGER_SECRET!: string;
+
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
+  API_INTERNAL_URL!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  PURGE_CRON!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  PURGE_TIMEZONE!: string;
+
   @ValidateIf(hasLlmConfiguration)
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
   LLM_BASE_URL?: string;
@@ -85,8 +100,12 @@ class RuntimeEnvironment {
 /** 用于只选择受支持字段，隔离无关进程变量。 */
 function selectRuntimeEnvironment(environment: Record<string, unknown>): Record<string, unknown> {
   return {
+    API_INTERNAL_URL: environment.API_INTERNAL_URL ?? 'http://127.0.0.1:3001',
     DATABASE_URL: environment.DATABASE_URL,
     LLM_API_KEY: environment.LLM_API_KEY,
+    PURGE_CRON: environment.PURGE_CRON ?? '0 3 * * *',
+    PURGE_TIMEZONE: environment.PURGE_TIMEZONE ?? 'UTC',
+    PURGE_TRIGGER_SECRET: environment.PURGE_TRIGGER_SECRET,
     LLM_BASE_URL: environment.LLM_BASE_URL,
     LLM_MODEL: environment.LLM_MODEL,
     REDIS_URL: environment.REDIS_URL,
