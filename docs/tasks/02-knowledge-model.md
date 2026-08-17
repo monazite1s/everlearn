@@ -200,7 +200,7 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-06 实现文档读取、创建与重命名 API
 
-- 状态：未开始。
+- 状态：已完成（2026-08-17，子 agent 实现 + 主 agent 复验）。
 - 依赖：KB-05。
 - 必读：`docs/02-architecture/data-model.md`、`docs/02-architecture/api-and-events.md`、`docs/01-design/pages/knowledge-base.md`。
 - 目标：实现直接子节点分页、根/子文档创建、详情读取和按版本重命名。
@@ -209,7 +209,12 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 - 非目标：正文编辑、移动、最近打开、标签和链接。
 - 失败恢复：父节点无效或已删除时事务回滚；版本冲突不改标题。
 - 验收：根与子文档顺序稳定；跨知识库父级被拒绝；大树按展开读取。
-- 验证：领域单元测试、PostgreSQL 集成测试、API 契约测试。
+- 改动：contracts 新增文档契约（`DocumentTreeItem`/`DocumentDetail`/游标列表/错误码与标题上限常量）及编译期键锁定测试；API 新增 documents 模块（3 个 DTO、owner-scoped 投影查询、创建/列表/详情/重命名服务与两个控制器）；`tsconfig.spec.json` rootDir 覆盖使 `apps/api/tests/` 共享集成夹具参与 spec 类型检查且不进 nest 构建。
+- 设计要点：position 同父末尾追加（`max+1024`，间隔耗尽属 KB-07 再平衡）；创建事务先 `FOR UPDATE` 锁知识库行再锁父行，串行化同库与同父追加；path 由锁定父行派生；最小正文与初始修订同事务写入；正常查询 join 活跃知识库且排除软删除（延续 KB-05 规则）。
+- 复用与评审：复用 KB-03 全局边界、KB-04/05 错误信封与不可探测 404 模式，无新依赖、无迁移、无 Repository；独立 code-reviewer 评审 `APPROVE`（0 CRITICAL/HIGH，锁序与 childCount 排除软删除均经读 SQL 复核属实），M1 并发创建回归、L2 `updatedAt` 断言、L3 冗余游标校验已按评审补齐。
+- 验证结果：contracts/api/web typecheck、聚焦 ESLint、Prettier、注释门禁（137 文件 815 条）、文件限制通过；unit `14 passed`（含游标编解码 4）；真实 PostgreSQL 集成测试 documents `14 passed` + knowledge-bases 回归 `11 passed`。
+- 证据：并发双创建得到互异 position `0/1024`；21 个乱序子节点按 `position ASC, id ASC` 4 页遍历无重复遗漏；跨库父、他人库、已删库/父统一 404 且行数断言无部分写入；重命名冲突后数据库标题/版本/修订数不变；childCount 排除软删除子节点。
+- 风险：`documents` 无 `(knowledge_base_id, parent_id, position)` 唯一约束，position 不变量依赖 KB 行锁串行化，KB-07 引入移动并发写入时评估 partial unique index；DTO 标题上限硬编码 200（contracts 为 ESM-only，API CommonJS 无法值导入常量，与 KB-04 同先例，contracts 双格式构建时接线）；列表范围校验与主查询跨连接存在固有竞态（其间知识库被软删返回空页而非 404，单用户本地产品可接受）。
 
 ### KB-06W 接入按需文档树与创建
 
