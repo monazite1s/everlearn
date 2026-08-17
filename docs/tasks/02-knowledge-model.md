@@ -344,7 +344,7 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 - 依赖：KB-07。
 - 必读：`docs/01-design/pages/knowledge-base.md`、`docs/02-architecture/data-model.md`、`docs/02-architecture/api-and-events.md`。
 - 目标：实现 `DELETE /documents/:id`、`POST /documents/:id/restore` 和统一回收站列表。
-- 改动：contracts 新增删除/恢复请求、`TrashItem`/`TrashListResponse`、`TRASH_RETENTION_DAYS=30`（API 运行时经动态 import 消费单一事实源）与 `CONFLICT`/`KNOWLEDGE_BASE_DELETED` 错误码；API 新增回收站服务（删除/恢复事务）、幂等件（`document.restore`）、聚合列表服务与 `GET /api/v1/trash`；迁移新增两个回收站部分索引（`owner_id, deleted_at DESC, id DESC`，EXPLAIN 证实列表与清理扫描均走索引）；http-boundary 扩展冲突码与指引文案。
+- 改动：contracts 新增删除/恢复请求、`TrashItem`/`TrashListResponse`、`TRASH_RETENTION_DAYS=30`（API 运行时经动态 import 消费单一事实源）与 `CONFLICT`/`KNOWLEDGE_BASE_DELETED` 错误码；API 新增回收站服务（删除/恢复事务）、幂等件（`document.restore`）、聚合列表服务与 `GET /api/v1/trash`；迁移新增两个回收站部分索引（`owner_id, deleted_at DESC, id DESC`，EXPLAIN 证实回收站列表查询走索引）；http-boundary 扩展冲突码与指引文案。
 - 语义决策：删除维持既有 `deleted_parent_id`/`deleted_position` 拷贝列（CHECK 不变量），子树统一标记不区分根/后代，已单独删除的后代不被二次盖戳；恢复整体恢复含先删后代，原父级活跃则原位恢复（KB-06 max+1024 含软删兄弟保证不撞新兄弟），父级缺失落库根末尾并前缀重写后代路径；删除重放按 `version+1` 精确关系（KB 删除后重放统一 404，与 move/rename 一致并补测试锁定）；恢复必须幂等键，重放先于 KB 删除检查；KB 仍删除时恢复文档返回 409 `KNOWLEDGE_BASE_DELETED` 附「先恢复知识库」指引。
 - 复用与评审：锁序与 create/move 同构（KB 行优先，无死锁环）；独立 code-reviewer 评审 `APPROVE`（0 CRITICAL/HIGH；子树语义、版本重放窗口、索引论证经独立 EXPLAIN 复核成立），M1（库先删后仍独立的文档投影夹具）与 M2（KB 删除后删除重放 404）用例、L2（索引 `id DESC` 消除增量排序）已按评审补齐并在 dev 库 down/up 重放迁移。
 - 验证结果：contracts/api typecheck、聚焦 ESLint、Prettier、注释、文件门禁通过；unit `50 passed`；真实 PostgreSQL 集成 documents `43 passed` + schema/knowledge-bases 回归 `13 passed`（含迁移 down→up 往返与三迁移顺序断言）。
@@ -365,15 +365,17 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-11 实现 30 天到期清理服务
 
-- 状态：未开始。
+- 状态：已完成（2026-08-17，子 agent 实现 + 主 agent 复验）。
 - 依赖：KB-05、KB-10。
 - 必读：`docs/02-architecture/data-model.md`、`docs/02-architecture/system.md`、`docs/03-engineering/quality-gates.md`。
 - 目标：实现可由 Worker 调用的批量永久清理服务，并返回结构化统计。
-- 实施：先清理到期文档子树，再清理无剩余文档的知识库；批次有上限，时间由调用方注入。
-- 非目标：调度、附件对象清理和手动立即永久删除。
-- 失败恢复：每批独立事务；失败从未删除对象重试，不影响未到期对象。
-- 验收：30 天边界准确；重复运行稳定；已恢复对象不受影响。
-- 验证：时间控制集成测试、幂等测试、Worker/API typecheck。
+- 改动：`TrashPurgeService.purgeExpired(now)`（时间注入、每批独立事务、`PURGE_BATCH_SIZE=100` 按 `deleted_at ASC, id ASC` 最旧优先）与闭合统计 `{ purgedDocuments, purgedKnowledgeBases, purgedInboxItems }`；模块导出供 KB-12 Worker 接线；测试支撑新增 `resolveService` 与夹具清理顺序（inbox FK NO ACTION 先于 documents）。
+- 清理口径：到期谓词与 KB-10 `purgeScheduledAt` 投影逐字一致（恰好 30 天即清、+1ms 保留）；清理单元=回收站条目根 + path 前缀完整子树（子树一行不留，级联清 revisions）；隐藏到期后代不提前清，随覆盖父条目到期整树清；知识库到期且无任何文档行（任意状态）才清；引用被清文档的 converted Inbox 行同事务先删（FK NO ACTION）并计数。
+- 并发声明：两阶段 SELECT `FOR UPDATE` 锁根/库行——与恢复事务在根行上串行化（恢复先提交则 EPQ 排除、清理先删则恢复 404），两相独立事务与既有锁序无环。
+- 复用与评审：`TRASH_RETENTION_DAYS` 运行时动态 import 复用 contracts 单一事实源，零 contracts 改动；独立 code-reviewer 评审 `APPROVE`（0 CRITICAL/HIGH；到期谓词、子树谓词尾斜杠防碰撞、锁序无环、批次失败注入方法论均经读 SQL 与实跑复核），M1/M2 文档项已处置（KB-10 证据措辞修正为「列表查询走索引」，KB-11 全局清理扫描为 Seq Scan 设计决策）。
+- 验证结果：聚焦集成 `8 passed`（边界、子树+级联+Inbox、隐藏后代两阶段、KB 条件三态、幂等重跑、101 根跨批、触发器注入批失败后重跑、已恢复对象不受影响）；回归 trash/documents/knowledge-bases/inbox 合计 `81 passed`；API/Worker typecheck、聚焦 ESLint、Prettier、注释（206 文件 1603 条）、文件限制通过。
+- 证据：恰 `now-30d` 即清、`+1ms` 保留；两阶段隐藏后代（首跑 0、+25 天 2）；批 1 提交批 2 回滚后重试从剩余对象补齐；同时间二次运行全零统计。
+- 风险：全局清理扫描为 Seq Scan + Sort（EXPLAIN 实测；owner 前导部分索引不适用于跨 owner 扫描，当前规模夜间一次可忽略）——升级触发条件：documents 行数或批次耗时实测不可接受时评审 `(deleted_at, id)` 部分索引并将谓词改写为 sargable；converted Inbox 行随目标文档硬删（幂等记录仍留转换响应可查），产品要求保留历史时需改 FK 并经批准迁移；并发清理与恢复由行锁串行化但无确定性并发编排测试（生产加固阶段补压测）；KB-12 接线时须写明单调度器假设（双实例并发安全但浪费）。
 
 ### KB-12 接入 Worker 清理调度
 

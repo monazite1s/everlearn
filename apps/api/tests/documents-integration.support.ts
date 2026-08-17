@@ -2,7 +2,7 @@
 import type { Server } from 'node:http';
 
 import { NestFactory } from '@nestjs/core';
-import type { INestApplication } from '@nestjs/common';
+import type { INestApplication, Type } from '@nestjs/common';
 import type { Insertable, Kysely } from 'kysely' with { 'resolution-mode': 'import' };
 import { createDatabaseClient } from '../src/database/database.service';
 import type {
@@ -101,10 +101,17 @@ export class DocumentsTestEnvironment {
 
   /** 用于删除可变夹具并保留生产本地用户种子。 */
   async resetFixtures(): Promise<void> {
+    await this.getDatabase().deleteFrom('inbox_items').execute();
     await this.getDatabase().deleteFrom('idempotency_records').execute();
     await this.getDatabase().deleteFrom('documents').execute();
     await this.getDatabase().deleteFrom('knowledge_bases').execute();
     await this.getDatabase().deleteFrom('users').where('id', '!=', LOCAL_USER_ID).execute();
+  }
+
+  /** 用于直调无 HTTP 入口的模块应用服务（如 Worker 清理服务）。 */
+  resolveService<TService>(serviceType: Type<TService>): TService {
+    if (this.application === undefined) throw new Error('Test application is not initialized');
+    return this.application.get(serviceType);
   }
 
   /** 用于写入验证所有权过滤的其他用户。 */

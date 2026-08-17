@@ -18,6 +18,7 @@ import { DocumentsService } from './documents.service';
 import { KnowledgeBaseDocumentsController } from './knowledge-base-documents.controller';
 import { TrashController } from './trash.controller';
 import { TrashListService } from './trash-list.service';
+import { TrashPurgeService } from './trash-purge.service';
 
 /** 用于在控制器校验前拒绝浏览器表单写入。 */
 function requireJsonContentType(request: Request, _response: Response, next: NextFunction): void {
@@ -30,13 +31,14 @@ function requireJsonContentType(request: Request, _response: Response, next: Nex
 /** 用于持有本切片所需的最小控制器、服务、身份和数据库依赖。 */
 @Module({
   controllers: [DocumentsController, KnowledgeBaseDocumentsController, TrashController],
-  exports: [DocumentsService],
+  exports: [DocumentsService, TrashPurgeService],
   imports: [DatabaseModule],
   providers: [
     DocumentsService,
     DocumentMoveService,
     DocumentTrashService,
     TrashListService,
+    TrashPurgeService,
     LocalIdentityContext,
   ],
 })

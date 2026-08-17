@@ -1,4 +1,4 @@
-/** @fileoverview 为回收站投影与到期清理扫描添加部分索引。 */
+/** @fileoverview 为回收站 owner 级列表查询添加部分索引。 */
 
 import type { Kysely } from 'kysely' with {
   'resolution-mode': 'import',
