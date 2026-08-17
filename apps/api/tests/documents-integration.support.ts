@@ -28,6 +28,7 @@ export interface DocumentFixture {
   readonly id: string;
   readonly knowledgeBaseId: string;
   readonly ownerId?: string;
+  readonly path?: string;
   readonly position: number;
   readonly title?: string;
 }
@@ -100,6 +101,7 @@ export class DocumentsTestEnvironment {
 
   /** 用于删除可变夹具并保留生产本地用户种子。 */
   async resetFixtures(): Promise<void> {
+    await this.getDatabase().deleteFrom('idempotency_records').execute();
     await this.getDatabase().deleteFrom('documents').execute();
     await this.getDatabase().deleteFrom('knowledge_bases').execute();
     await this.getDatabase().deleteFrom('users').where('id', '!=', LOCAL_USER_ID).execute();
@@ -126,14 +128,16 @@ export class DocumentsTestEnvironment {
     await this.getDatabase().insertInto('knowledge_bases').values(rows).execute();
   }
 
-  /** 用于写入根或子文档夹具并保持物化路径约束。 */
+  /** 用于写入根或子文档夹具，深层树可显式提供完整物化路径。 */
   async insertDocuments(fixtures: readonly DocumentFixture[]): Promise<void> {
     const rows: Insertable<DocumentTable>[] = fixtures.map((fixture) => ({
       id: fixture.id,
       owner_id: fixture.ownerId ?? LOCAL_USER_ID,
       knowledge_base_id: fixture.knowledgeBaseId,
       parent_id: fixture.childOf ?? null,
-      path: fixture.childOf === undefined ? `/${fixture.id}` : `/${fixture.childOf}/${fixture.id}`,
+      path:
+        fixture.path ??
+        (fixture.childOf === undefined ? `/${fixture.id}` : `/${fixture.childOf}/${fixture.id}`),
       position: fixture.position,
       title: fixture.title ?? `文档 ${fixture.id}`,
       deleted_at: fixture.deleted === true ? new Date('2026-08-13T00:00:00Z') : null,

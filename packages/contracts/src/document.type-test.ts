@@ -6,6 +6,7 @@ import type {
   DocumentErrorCode,
   DocumentListResponse,
   DocumentTreeItem,
+  MoveDocumentRequest,
   RenameDocumentRequest,
 } from './index';
 
@@ -17,6 +18,9 @@ type Equal<Left, Right> =
 
 type CreateKeys = Assert<Equal<keyof CreateDocumentRequest, 'parentId' | 'title'>>;
 type RenameKeys = Assert<Equal<keyof RenameDocumentRequest, 'title' | 'version'>>;
+type MoveKeys = Assert<
+  Equal<keyof MoveDocumentRequest, 'afterId' | 'beforeId' | 'targetParentId' | 'version'>
+>;
 type TreeItemKeys = Assert<
   Equal<keyof DocumentTreeItem, 'childCount' | 'id' | 'title' | 'updatedAt' | 'version'>
 >;
@@ -39,6 +43,7 @@ type ErrorCodes = Assert<
   Equal<
     DocumentErrorCode,
     | 'BAD_REQUEST'
+    | 'IDEMPOTENCY_CONFLICT'
     | 'INTERNAL_ERROR'
     | 'NOT_FOUND'
     | 'UNSUPPORTED_MEDIA_TYPE'
@@ -50,6 +55,7 @@ type ErrorCodes = Assert<
 export type DocumentContractAssertions = [
   CreateKeys,
   RenameKeys,
+  MoveKeys,
   TreeItemKeys,
   DetailKeys,
   PageShape,

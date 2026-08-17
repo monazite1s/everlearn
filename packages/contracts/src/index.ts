@@ -10,6 +10,7 @@ export type {
   DocumentErrorCode,
   DocumentListResponse,
   DocumentTreeItem,
+  MoveDocumentRequest,
   RenameDocumentRequest,
 } from './document.js';
 

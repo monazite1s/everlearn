@@ -234,16 +234,17 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-07 实现原子文档树移动 API
 
-- 状态：未开始。
+- 状态：已完成（2026-08-17，子 agent 实现 + 主 agent 复验）。
 - 依赖：KB-06。
 - 必读：`docs/02-architecture/data-model.md`、`docs/02-architecture/api-and-events.md`、`docs/03-engineering/quality-gates.md`。
 - 目标：实现 `POST /documents/:id/move`，原子更新父级、位置、版本和全部后代路径。
-- 契约：提交 `targetParentId?`、相邻位置、`version` 和 `Idempotency-Key`。
-- 实施：事务锁定移动节点与受影响兄弟；拒绝跨库、跨所有者、自身和后代目标。
-- 非目标：跨知识库移动、UI 和协作冲突合并。
-- 失败恢复：任一更新失败完整回滚；相同幂等键返回同一结果。
-- 验收：后代 path 正确；版本冲突不部分提交；直接子节点顺序稳定。
-- 验证：树规则单元测试、事务/并发集成测试、API typecheck。
+- 契约：提交 `targetParentId?`、相邻锚点（`beforeId?`/`afterId?` 互斥，缺省末尾）、`version` 和 `Idempotency-Key`；响应复用 `DocumentDetail`。
+- 改动：contracts 扩展移动请求与 `IDEMPOTENCY_CONFLICT`；API 新增移动规则纯函数、幂等存取、事务编排服务与 DTO/路由；共享集成夹具支持显式物化 path。
+- 设计要点：锁序 advisory → 知识库行（`FOR UPDATE OF kb`）→ 移动行 → 目标父行（同库全部树写以 KB 行锁为第一串行化点，无锁序环）；落位取整数间隙中点，末尾 `max+1024` 含软删兄弟，间隔耗尽触发单父重排（`index*1024`，不动兄弟版本）；后代路径单条参数化前缀替换 UPDATE；移动节点 `version+1`，后代/兄弟不传播内容版本；幂等完整复刻 KB-05 restore 范式（同键重放首次响应原文，异键 409）。
+- 复用与评审：独立 code-reviewer 评审 `APPROVE`（0 CRITICAL/HIGH；锁序、环检测边界、前缀替换 SQL、落位算术逐行核对属实），评审 LOW 项已修——目标父锁查询收窄同库消除跨库锁环、自锚点回归测试、重排参数天花板 `ponytail:` 注记。
+- 验证结果：contracts/api typecheck、聚焦 ESLint、Prettier、注释（173 文件 1206 条）、文件限制通过；树规则单元 `13 passed`；真实 PostgreSQL 集成 documents+knowledge-bases `38 passed`（移动 4 + 幂等并发 5 + 校验 4 + 既有回归）。
+- 证据：三层子树换父后子/孙 path 精确前缀替换；重排后兄弟顺序稳定且 version 不变；409/404/400 场景全表树字段快照零写入；同键并发经 advisory lock 串行化为同一首次响应、幂等记录恰 1 条、version 恰 +1；重放先 rename 后仍返回原文。
+- 风险：`kind:'validation'` 跨模块私有标记属无类型字符串约定（当前生产者为白名单常量，无泄露），KB-09 或下次触碰 http-boundary 时以 `ApiValidationException` 类型化工厂替代；`requireIdempotencyKey` 第 2 份拷贝与 KB-08 登记的 `requireJsonContentType` 第 3 份拷贝在下一次工程清扫任务统一提升；KB-06 登记的 `(kb,parent,position)` 唯一索引维持不建（全部写入方在 KB 行锁内串行化，KB-10 恢复落位时再评估）。
 
 ### KB-07W 接入文档树移动交互
 

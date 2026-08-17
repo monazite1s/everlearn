@@ -15,6 +15,14 @@ export interface RenameDocumentRequest {
   readonly version: number;
 }
 
+/** 用于提交移动目标父级、单个相邻定位和乐观更新所依据的版本。 */
+export interface MoveDocumentRequest {
+  readonly afterId?: string;
+  readonly beforeId?: string;
+  readonly targetParentId?: string;
+  readonly version: number;
+}
+
 /** 用于投影不含持久化、所有权与树内部排序字段的树节点。 */
 export interface DocumentTreeItem {
   readonly childCount: number;
@@ -41,9 +49,10 @@ export interface DocumentListResponse {
   readonly nextCursor: string | null;
 }
 
-/** 用于限定文档首个 API 切片公开的稳定错误码。 */
+/** 用于限定文档 API 切片公开的稳定错误码。 */
 export type DocumentErrorCode =
   | 'BAD_REQUEST'
+  | 'IDEMPOTENCY_CONFLICT'
   | 'INTERNAL_ERROR'
   | 'NOT_FOUND'
   | 'UNSUPPORTED_MEDIA_TYPE'

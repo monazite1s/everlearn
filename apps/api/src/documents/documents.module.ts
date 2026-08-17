@@ -1,4 +1,4 @@
-/** @fileoverview 组装限定所有者的文档读取、创建与重命名 HTTP 切片。 */
+/** @fileoverview 组装限定所有者的文档读取、创建、重命名与移动 HTTP 切片。 */
 
 import type { NextFunction, Request, Response } from 'express';
 
@@ -11,6 +11,7 @@ import {
 
 import { DatabaseModule } from '../database/database.module';
 import { LocalIdentityContext } from '../identity/local-identity.context';
+import { DocumentMoveService } from './document-move.service';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 import { KnowledgeBaseDocumentsController } from './knowledge-base-documents.controller';
@@ -27,7 +28,7 @@ function requireJsonContentType(request: Request, _response: Response, next: Nex
 @Module({
   controllers: [DocumentsController, KnowledgeBaseDocumentsController],
   imports: [DatabaseModule],
-  providers: [DocumentsService, LocalIdentityContext],
+  providers: [DocumentsService, DocumentMoveService, LocalIdentityContext],
 })
 export class DocumentsModule implements NestModule {
   /** 用于向所有文档写入路由应用仅 JSON 规则。 */
