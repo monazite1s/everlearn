@@ -415,3 +415,10 @@ KB-05 + KB-10 ─────────→ KB-11 → KB-12
 - 检查数据库与 API 不存在知识库嵌套入口、客户端 `ownerId`、自由文本状态或未批准依赖。
 - 检查生产 Web 不导入测试 fixture，不手写服务端 DTO 副本，不在请求失败时合成成功对象。
 - 每个任务完成后追加真实命令、结果、证据与剩余风险，并单独提交；不得顺手推进下一任务。
+
+## 里程碑回顾（2026-08-18，审计 agent 六维度只读核查）
+
+- 结论：0 CRITICAL/HIGH；shadcn 复用、注释精简、证据完整性、模块边界、hooks 布局、幂等/乐观并发同构性全部通过；独立复跑 79 组件 + 3 单元 + 全部机械门禁与任务声明一致。
+- 立即处置：V4 清理直写 InboxItems 表补 [ADR 003](../decisions/003-purge-cross-module-inbox-delete.md)；V5 回收站「原路径」与 L5「手动永久删除」在页面规格标注里程碑归属（事实源先行）。
+- 登记技术债（下一次工程清扫任务统一处理）：V1 幂等存取三件套三份重复（KB-09 登记的第三处触发条件已到，提升 http-boundary 共享件）；V2 web 传输脚手架 5 份重复（收编信封+错误解析为薄 shared/api-client，投影校验器留各 feature）；V3 游标编解码 4 份重复（骨架参数化并统一终验口径）；L1 `requireJsonContentType` 第 3 份（随 V1 同批）；L2 `DESKTOP_QUERY` 断点常量统一到 shared/use-media-query；L4 概览「最近文档」占位说明（随 ED-05）；L3 三个顶限 spec 新增场景先拆文件。
+- 无需动作：原生 DnD 豁免边界成立、web features 互导方向、@designPattern 无漏标过标、早期任务证据栏格式差异。

@@ -4,6 +4,7 @@
 
 - [001 - shadcn/ui + Tailwind v4 迁移](001-shadcn-tailwind-migration.md)
 - [002 - 删除自定义主题色板并整体重写布局](002-default-theme-and-layout-rewrite.md)
+- [003 - 到期清理直写 InboxItems 表的跨模块豁免](003-purge-cross-module-inbox-delete.md)
 
 ## 命名与格式
 
