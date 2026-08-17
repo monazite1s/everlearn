@@ -1,11 +1,15 @@
 /** @fileoverview 将 Inbox 页面接入同源 API 并校验公开响应。 */
 
 import type {
+  ConvertInboxItemRequest,
   CreateInboxItemRequest,
+  DocumentDetail,
   InboxItemErrorCode,
   InboxItemListResponse,
   InboxItemSummary,
 } from '@everlearn/contracts';
+
+import { parseDocumentDetail } from '../knowledge/document-api';
 
 export interface InboxApiFailure {
   readonly certainty: 'known' | 'unknown';
@@ -21,6 +25,7 @@ const API_PATH = '/api/v1/inbox-items';
 const SUMMARY_KEYS = ['content', 'createdAt', 'id', 'kind'] as const;
 const ERROR_CODES: readonly InboxItemErrorCode[] = [
   'BAD_REQUEST',
+  'IDEMPOTENCY_CONFLICT',
   'INTERNAL_ERROR',
   'NOT_FOUND',
   'UNSUPPORTED_MEDIA_TYPE',
@@ -135,6 +140,19 @@ export function createInboxItem(
   return requestInbox(API_PATH, 201, parseInboxItemSummary, {
     body: JSON.stringify(request),
     headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+  });
+}
+
+/** 用于按幂等键把待处理记录转换为普通文档并校验详情。 */
+export function convertInboxItem(
+  id: string,
+  request: ConvertInboxItemRequest,
+  idempotencyKey: string,
+): Promise<InboxApiResult<DocumentDetail>> {
+  return requestInbox(`${API_PATH}/${encodeURIComponent(id)}/convert`, 201, parseDocumentDetail, {
+    body: JSON.stringify(request),
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
     method: 'POST',
   });
 }

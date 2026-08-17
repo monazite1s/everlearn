@@ -44,11 +44,12 @@ interface ListSectionProps {
   readonly desktop: boolean;
   readonly inputRef: RefObject<HTMLTextAreaElement | null>;
   readonly list: ReturnType<typeof useInboxList>;
+  readonly offline: boolean;
 }
 
 /** 用于渲染待处理记录区块并处理分页与删除恢复。 */
 function InboxListSection(props: ListSectionProps) {
-  const { desktop, inputRef, list } = props;
+  const { desktop, inputRef, list, offline } = props;
   /** 用于重试当前列表状态中的失败分页。 */
   function retry(): void {
     void list.read(list.items.length > 0 ? (list.load.nextCursor ?? undefined) : undefined);
@@ -67,6 +68,7 @@ function InboxListSection(props: ListSectionProps) {
         inputRef={inputRef}
         items={list.items}
         load={list.load}
+        offline={offline}
         onLoadMore={loadMore}
         onRemoved={list.remove}
         onResync={() => list.read()}
@@ -112,7 +114,12 @@ export function InboxPage({ mobileNotice }: InboxPageProps) {
           onUncertainOutcome={resync}
         />
       )}
-      <InboxListSection desktop={desktop ?? false} inputRef={inputRef} list={list} />
+      <InboxListSection
+        desktop={desktop ?? false}
+        inputRef={inputRef}
+        list={list}
+        offline={!online}
+      />
     </PageShell>
   );
 }

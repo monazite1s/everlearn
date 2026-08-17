@@ -3,7 +3,7 @@
 'use client';
 
 import type { InboxItemSummary } from '@everlearn/contracts';
-import { AlertCircleIcon, InboxIcon, Loader2Icon, Trash2Icon } from 'lucide-react';
+import { AlertCircleIcon, FilePlus2Icon, InboxIcon, Loader2Icon, Trash2Icon } from 'lucide-react';
 import { useState } from 'react';
 import type { RefObject } from 'react';
 
@@ -25,6 +25,7 @@ import {
 } from '@everlearn/ui';
 
 import { EmptyState } from '../../shared/empty-state';
+import { InboxConvertDialog } from './inbox-convert-dialog';
 import { formatDateTime } from '../../shared/format-datetime';
 import { LoadFailure } from '../../shared/load-failure';
 import { deleteInboxItem } from './inbox-api';
@@ -52,9 +53,14 @@ function InboxSkeleton() {
   );
 }
 
-/** 用于渲染一条待处理记录及其桌面删除入口。 */
-function InboxItemRow(props: { desktop: boolean; item: InboxItemSummary; onDelete: () => void }) {
-  const { desktop, item, onDelete } = props;
+/** 用于渲染一条待处理记录及其桌面转换与删除入口。 */
+function InboxItemRow(props: {
+  desktop: boolean;
+  item: InboxItemSummary;
+  onConvert: () => void;
+  onDelete: () => void;
+}) {
+  const { desktop, item, onConvert, onDelete } = props;
   const preview = previewContent(item.content);
   return (
     <li className="grid gap-1.5 py-4 first:pt-0 last:pb-0">
@@ -67,15 +73,25 @@ function InboxItemRow(props: { desktop: boolean; item: InboxItemSummary; onDelet
           记录于 {formatDateTime(item.createdAt)}
         </span>
         {desktop && (
-          <Button
-            aria-label={`删除记录“${preview}”`}
-            className="ml-auto text-destructive"
-            onClick={onDelete}
-            size="icon-sm"
-            variant="ghost"
-          >
-            <Trash2Icon aria-hidden="true" />
-          </Button>
+          <div className="ml-auto flex items-center gap-1">
+            <Button
+              aria-label={`转换为文档“${preview}”`}
+              onClick={onConvert}
+              size="icon-sm"
+              variant="ghost"
+            >
+              <FilePlus2Icon aria-hidden="true" />
+            </Button>
+            <Button
+              aria-label={`删除记录“${preview}”`}
+              className="text-destructive"
+              onClick={onDelete}
+              size="icon-sm"
+              variant="ghost"
+            >
+              <Trash2Icon aria-hidden="true" />
+            </Button>
+          </div>
         )}
       </div>
     </li>
@@ -190,6 +206,7 @@ interface InboxListContentProps {
   readonly inputRef: RefObject<HTMLTextAreaElement | null>;
   readonly items: readonly InboxItemSummary[];
   readonly load: InboxLoadState;
+  readonly onConvert: (item: InboxItemSummary) => void;
   readonly onDelete: (item: InboxItemSummary) => void;
   readonly onLoadMore: () => void;
   readonly onRetry: () => void;
@@ -197,7 +214,7 @@ interface InboxListContentProps {
 
 /** 用于渲染列表内容并局部处理分页失败。 */
 function InboxListContent(props: InboxListContentProps) {
-  const { desktop, inputRef, items, load, onDelete, onLoadMore, onRetry } = props;
+  const { desktop, inputRef, items, load, onConvert, onDelete, onLoadMore, onRetry } = props;
   if (load.loading && items.length === 0) return <InboxSkeleton />;
   if (load.error && items.length === 0) {
     return <LoadFailure description={load.error.message} onRetry={onRetry} title="Inbox 未加载" />;
@@ -213,6 +230,7 @@ function InboxListContent(props: InboxListContentProps) {
             desktop={desktop}
             item={item}
             key={item.id}
+            onConvert={() => onConvert(item)}
             onDelete={() => onDelete(item)}
           />
         ))}
@@ -235,15 +253,17 @@ interface InboxItemListProps {
   readonly inputRef: RefObject<HTMLTextAreaElement | null>;
   readonly items: readonly InboxItemSummary[];
   readonly load: InboxLoadState;
+  readonly offline: boolean;
   readonly onLoadMore: () => void;
   readonly onRemoved: (id: string) => void;
   readonly onResync: () => Promise<readonly InboxItemSummary[] | undefined>;
   readonly onRetry: () => void;
 }
 
-/** 用于组合记录列表与删除确认流程。 */
+/** 用于组合记录列表与删除、转换流程。 */
 export function InboxItemList(props: InboxItemListProps) {
   const removal = useInboxRemoval({ onRemoved: props.onRemoved, onResync: props.onResync });
+  const [convertTarget, setConvertTarget] = useState<InboxItemSummary>();
   return (
     <>
       <InboxListContent
@@ -251,6 +271,7 @@ export function InboxItemList(props: InboxItemListProps) {
         inputRef={props.inputRef}
         items={props.items}
         load={props.load}
+        onConvert={setConvertTarget}
         onDelete={removal.setPendingDelete}
         onLoadMore={props.onLoadMore}
         onRetry={props.onRetry}
@@ -262,6 +283,14 @@ export function InboxItemList(props: InboxItemListProps) {
           onClose={() => removal.setPendingDelete(undefined)}
           onConfirm={() => void removal.confirmDelete()}
           {...(removal.deleteFailure ? { failure: removal.deleteFailure } : {})}
+        />
+      )}
+      {convertTarget && (
+        <InboxConvertDialog
+          item={convertTarget}
+          offline={props.offline}
+          onClose={() => setConvertTarget(undefined)}
+          onResync={props.onResync}
         />
       )}
     </>
