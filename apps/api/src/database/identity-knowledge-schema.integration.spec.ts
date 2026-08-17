@@ -13,6 +13,7 @@ const schemaName = `knowledge_schema_test_${process.pid}`;
 const schemaMigrationName = '20260812010000_identity_knowledge_schema';
 const seedMigrationName = '20260812010100_local_user_seed';
 const trashIndexesMigrationName = '20260817000000_trash_retention_indexes';
+const revisionTitleMigrationName = '20260818000000_document_revision_title';
 const otherUserId = '10000000-0000-4000-8000-000000000001';
 const firstKnowledgeBaseId = '20000000-0000-4000-8000-000000000001';
 const secondKnowledgeBaseId = '20000000-0000-4000-8000-000000000002';
@@ -187,6 +188,7 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
     schemaMigrationName,
     seedMigrationName,
     trashIndexesMigrationName,
+    revisionTitleMigrationName,
   ]);
   await expectSchemaAndSeed();
   expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual([]);
@@ -198,6 +200,9 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   await database.deleteFrom('documents').execute();
   await database.deleteFrom('knowledge_bases').execute();
   await database.deleteFrom('users').where('id', '=', otherUserId).execute();
+  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
+    revisionTitleMigrationName,
+  ]);
   expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
     trashIndexesMigrationName,
   ]);
@@ -211,7 +216,53 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
     schemaMigrationName,
     seedMigrationName,
     trashIndexesMigrationName,
+    revisionTitleMigrationName,
   ]);
+}
+
+/** 用于验证修订标题迁移按文档标题回填存量修订行。 */
+async function backfillsRevisionTitlesFromDocuments(): Promise<void> {
+  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
+    revisionTitleMigrationName,
+  ]);
+  const documentId = '30000000-0000-4000-8000-000000000010';
+  await database
+    .insertInto('knowledge_bases')
+    .values({ id: firstKnowledgeBaseId, kind: 'normal', name: '回填库', owner_id: LOCAL_USER_ID })
+    .execute();
+  await database
+    .insertInto('documents')
+    .values(documentValues(documentId, LOCAL_USER_ID, firstKnowledgeBaseId, null))
+    .execute();
+  const legacyRevision = {
+    content_json: { content: [], type: 'doc' },
+    created_by: LOCAL_USER_ID,
+    document_id: documentId,
+    id: '30000000-0000-4000-8000-000000000011',
+    owner_id: LOCAL_USER_ID,
+    plain_text: '',
+    revision_number: 1,
+    schema_version: 1,
+    source: 'manual',
+  };
+  // 该夹具模拟 title 迁移前的存量行，此时列尚不存在，绕过迁移后类型收敛。
+  await database
+    .insertInto('document_revisions')
+    .values(legacyRevision as never)
+    .execute();
+
+  expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual([
+    revisionTitleMigrationName,
+  ]);
+  const revision = await database
+    .selectFrom('document_revisions')
+    .select(['title'])
+    .where('id', '=', '30000000-0000-4000-8000-000000000011')
+    .executeTakeFirstOrThrow();
+  expect(revision.title).toBe('测试文档');
+
+  await database.deleteFrom('documents').execute();
+  await database.deleteFrom('knowledge_bases').execute();
 }
 
 /** 用于仅在配置 PostgreSQL 时注册生产 Schema 场景。 */
@@ -219,6 +270,7 @@ function defineSchemaMigrationTests(): void {
   beforeAll(prepareDatabase);
   afterAll(cleanDatabase);
   test('enforces the initial user-owned knowledge schema', migratesIdentityAndKnowledgeSchema);
+  test('backfills revision titles from documents', backfillsRevisionTitlesFromDocuments);
 }
 
 describe.skipIf(databaseUrl === undefined)(

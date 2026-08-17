@@ -92,6 +92,7 @@ async function insertRevision(id: string, documentId: string): Promise<void> {
       revision_number: 1,
       schema_version: 1,
       source: 'manual',
+      title: `修订 ${documentId}`,
     })
     .execute();
 }
@@ -126,10 +127,9 @@ async function restoreDocumentFixture(id: string): Promise<void> {
     .execute();
 }
 
+type CountableTable = 'document_revisions' | 'documents' | 'inbox_items' | 'knowledge_bases';
 /** 用于断言指定表当前行数。 */
-async function countRows(
-  table: 'document_revisions' | 'documents' | 'inbox_items' | 'knowledge_bases',
-): Promise<number> {
+async function countRows(table: CountableTable): Promise<number> {
   const { sql } = await import('kysely');
   const result = await sql<{ total: string | bigint }>`
     SELECT count(*) AS total FROM ${sql.raw(table)}

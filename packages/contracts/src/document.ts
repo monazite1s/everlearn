@@ -69,8 +69,30 @@ export interface SaveDocumentContentRequest {
   readonly version: number;
 }
 
+/** 修订来源的数据库受控闭集，服务端按写入路径选择来源。 */
+export const DOCUMENT_REVISION_SOURCES = [
+  'ai',
+  'automation',
+  'import',
+  'manual',
+  'restore',
+] as const;
+
 /** 用于提交文档删除所依据的乐观并发版本。 */
 export interface DeleteDocumentRequest {
+  readonly version: number;
+}
+
+/** 用于在显式触发点为当前编辑内容创建不可变修订快照。 */
+export interface CreateDocumentRevisionRequest {
+  readonly contentJson: unknown;
+  readonly schemaVersion: number;
+  readonly title?: string;
+  readonly version: number;
+}
+
+/** 用于提交修订恢复所依据的文档当前乐观版本。 */
+export interface RestoreDocumentRevisionRequest {
   readonly version: number;
 }
 
@@ -120,6 +142,31 @@ export interface DocumentSavedEventPayload {
   readonly documentVersion: number;
   readonly eventSchemaVersion: 1;
   readonly knowledgeBaseId: string;
+}
+
+/** 修订来源类型，与 document_revisions.source 受控值一致。 */
+export type DocumentRevisionSource = (typeof DOCUMENT_REVISION_SOURCES)[number];
+
+/** 用于投影修订列表条目：修订号、来源、标题、纯文本摘要与创建时间。 */
+export interface DocumentRevisionListItem {
+  readonly createdAt: string;
+  readonly revisionNumber: number;
+  readonly snippet: string;
+  readonly source: DocumentRevisionSource;
+  readonly title: string;
+}
+
+/** 用于投影单个修订的完整快照（恢复预览读取全文）。 */
+export interface DocumentRevisionDetail extends DocumentRevisionListItem {
+  readonly contentJson: unknown;
+  readonly plainText: string;
+  readonly schemaVersion: number;
+}
+
+/** 用于返回按修订号倒序排列的修订游标分页结果。 */
+export interface DocumentRevisionListResponse {
+  readonly items: readonly DocumentRevisionListItem[];
+  readonly nextCursor: string | null;
 }
 
 /** 用于返回按服务端稳定顺序排列的直接子节点分页结果。 */

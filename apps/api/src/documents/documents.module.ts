@@ -13,6 +13,8 @@ import { DatabaseModule } from '../database/database.module';
 import { LocalIdentityContext } from '../identity/local-identity.context';
 import { DocumentContentService } from './document-content.service';
 import { DocumentMoveService } from './document-move.service';
+import { DocumentRevisionsController } from './document-revisions.controller';
+import { DocumentRevisionService } from './document-revision.service';
 import { DocumentTrashService } from './document-trash.service';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
@@ -34,6 +36,7 @@ function requireJsonContentType(request: Request, _response: Response, next: Nex
 @Module({
   controllers: [
     DocumentsController,
+    DocumentRevisionsController,
     KnowledgeBaseDocumentsController,
     TrashController,
     TrashPurgeController,
@@ -44,6 +47,7 @@ function requireJsonContentType(request: Request, _response: Response, next: Nex
     DocumentsService,
     DocumentContentService,
     DocumentMoveService,
+    DocumentRevisionService,
     DocumentTrashService,
     TrashListService,
     TrashPurgeService,
@@ -55,6 +59,11 @@ export class DocumentsModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
       .apply(requireJsonContentType)
-      .forRoutes(DocumentsController, KnowledgeBaseDocumentsController, TrashController);
+      .forRoutes(
+        DocumentsController,
+        DocumentRevisionsController,
+        KnowledgeBaseDocumentsController,
+        TrashController,
+      );
   }
 }

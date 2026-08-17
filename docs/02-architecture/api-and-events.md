@@ -40,7 +40,7 @@
 - `/knowledge-bases/:id/documents`：按父节点分页读取和创建。
 - `/documents/:id`：读取、更新、软删除、恢复。
 - `/documents/:id/move`：提交目标父级、相邻位置与版本。
-- `/documents/:id/revisions`、`/documents/:id/restore`：修订列表、预览和恢复。
+- `/documents/:id/revisions`、`/documents/:id/revisions/:revisionNumber/restore`：修订列表、预览和恢复（`/documents/:id/restore` 是回收站软删除恢复，两者不同资源）。
 - `/documents/:id/links`、`/documents/:id/backlinks`：内部链接关系。
 - `/inbox-items`、`/inbox-items/:id/convert`：快速记录与幂等转换。
 - `/search`：`query/scope/knowledgeBaseId/tagIds/updatedAfter/cursor`。

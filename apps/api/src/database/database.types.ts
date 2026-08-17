@@ -54,6 +54,7 @@ export interface DocumentRevisionTable {
   document_id: string;
   revision_number: number;
   source: 'ai' | 'automation' | 'import' | 'manual' | 'restore';
+  title: string;
   content_json: JsonValue;
   schema_version: number;
   plain_text: string;

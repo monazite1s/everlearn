@@ -32,13 +32,19 @@
 
 ## ED-03 实现智能修订与恢复
 
+- 状态：已完成（2026-08-18，子 agent 实现 + 主 agent 复验）。
 - 依赖：ED-02。
 - 必读：`docs/01-design/pages/editor.md`、`docs/02-architecture/data-model.md`。
 - 目标：在离开、持续编辑间隔、AI 接受、导入和恢复事件创建不可变修订。
-- 实施：防抖保存不逐次建修订；恢复先读取预览，再创建 `restore` 来源新修订。
-- 非目标：逐字差异算法和多用户版本合并。
-- 验收：历史修订不可修改；恢复不删除后续历史；同一触发重复提交不产生重复修订。
-- 验证：修订领域/仓储测试、Playwright 预览与恢复。
+- 契约：`POST /documents/:id/revisions`（source 服务端恒为 manual，防伪造；标题缺省取文档当前值）、`GET .../revisions`（游标倒序，条目含服务端截取 200 字符摘要）、`GET .../revisions/:revisionNumber`（全文预览）、`POST .../revisions/:revisionNumber/restore`（单事务：读修订→版本校验→回写文档内容/纯文本/Schema/标题且 version+1→插入 `source='restore'` 修订→返回新当前内容投影；历史从不删除）。错误码复用闭集。
+- 幂等设计：相邻快照去重（文档行锁内与最新修订内容+标题深相等则跳过插入返回既有 201）——否决全局 content_hash 唯一约束（同一内容允许多次合法进入历史是产品语义：恢复→编辑→再恢复）；创建仅拒绝超前版本（滞后续订兼容保存 flush 竞态）；恢复重放旧版本走 409 乐观并发。AI 接受/导入触发经 `DOCUMENT_REVISION_SOURCES` 契约常量与服务层 `insertRevision(source)` 留接入点（不经过本端点）。
+- 迁移：`document_revisions.title` NOT NULL + 1..200 CHECK（与 documents.title 对齐），事务内回填存量后加约束；down 对称；迁移清单断言 spec 同步。
+- 触发器（web）：`use-revision-triggers`——离开（卸载 fire-and-forget，与保存 flush 同语义）+ 持续编辑间隔（`REVISION_INTERVAL_MS=5min` 常量声明，有变更才提交）+ `use-revision-preview`（loading/loaded/failed/retry）。
+- 路径偏离修正：api-and-events.md 的修订恢复路径已更正为嵌套 `/revisions/:revisionNumber/restore`（原 `/documents/:id/restore` 已被回收站恢复占用，事实源先行修正）。
+- 复用与评审：锁序复用模块范式（KB→文档行）；ED-02「防抖保存不建修订」边界经双重锁定（既有 8/8 回归 + 新增专项断言）。独立 code-reviewer 评审结论见下。
+- 验证结果：主 agent 独立复跑——全量集成 109/109（前次单轮 3 失败为已登记并行偶发，复跑全绿）、unit 60/60、editor 组件 57/57、全仓 typecheck；子 agent 交付时全量 lint/format/注释（243 文件 1993 条）/文件/结构门禁通过。
+- 证据：修订矩阵 11 项集成（含恢复后历史 [1,2,3,4] 完整、HTTP 层 PATCH/DELETE 404 且行数不变、并发恢复一胜一 409、重复提交与重复恢复去重、摘要边界截断）；触发器组件 5 项（间隔提交/无变更不重复/卸载 flush/失败重试/确定结论后停）；预览恢复 4 项。
+- 风险：卸载 fire-and-forget 浏览器关闭丢末次修订（`ponytail:` 标注，与保存同天花板，ED-05 评估 sendBeacon）；恢复目标恰为最新非 restore 修订时仍插入内容相同 restore 行（保留动作标记的有意行为，产品语义变更时回改去重条件）；迁移清单硬编码断言随新迁移再次触及（既有测试结构债）；web 生产构建与浏览器走查随 ED-05 页面统一执行。
 
 ## ED-04 实现附件上传与生命周期
 

@@ -1,10 +1,15 @@
-/** @fileoverview 将编辑器正文读取与保存接入同源 API 并校验公开响应。 */
+/** @fileoverview 将编辑器正文读取、保存与修订触发接入同源 API 并校验公开响应。 */
 
 import type {
+  CreateDocumentRevisionRequest,
   DocumentContentDetail,
   DocumentErrorCode,
+  DocumentRevisionDetail,
+  DocumentRevisionSource,
+  RestoreDocumentRevisionRequest,
   SaveDocumentContentRequest,
 } from '@everlearn/contracts';
+import { DOCUMENT_REVISION_SOURCES } from '@everlearn/contracts';
 
 export interface EditorApiFailure {
   readonly certainty: 'known' | 'unknown';
@@ -166,6 +171,99 @@ export function saveDocumentContent(
       body: JSON.stringify(request),
       headers: { 'Content-Type': 'application/json' },
       method: 'PATCH',
+    },
+  );
+}
+
+const REVISION_DETAIL_KEYS = [
+  'contentJson',
+  'createdAt',
+  'plainText',
+  'revisionNumber',
+  'schemaVersion',
+  'snippet',
+  'source',
+  'title',
+] as const;
+
+/** 用于把服务端来源收窄到共享契约受控枚举。 */
+function isRevisionSource(value: unknown): value is DocumentRevisionSource {
+  return (
+    typeof value === 'string' && (DOCUMENT_REVISION_SOURCES as readonly string[]).includes(value)
+  );
+}
+
+/** 用于校验修订详情共享的字符串与正整数字段。 */
+function hasRevisionDetailFields(value: Record<string, unknown>): boolean {
+  return (
+    typeof value.createdAt === 'string' &&
+    Number.isFinite(Date.parse(value.createdAt)) &&
+    isSafeIntegerAtLeast(value.revisionNumber, 1) &&
+    isSafeIntegerAtLeast(value.schemaVersion, 1) &&
+    typeof value.snippet === 'string' &&
+    typeof value.title === 'string'
+  );
+}
+
+/** 用于校验修订全文投影的字段全集与形态。 */
+function isDocumentRevisionDetail(value: unknown): value is DocumentRevisionDetail {
+  if (!isRecord(value) || !hasExactKeys(value, REVISION_DETAIL_KEYS)) return false;
+  return (
+    hasRevisionDetailFields(value) &&
+    isRecord(value.contentJson) &&
+    typeof value.plainText === 'string' &&
+    isRevisionSource(value.source)
+  );
+}
+
+/** 用于把校验通过的修订投影原样返回给调用方。 */
+function parseRevisionDetail(value: unknown): DocumentRevisionDetail | undefined {
+  return isDocumentRevisionDetail(value) ? value : undefined;
+}
+
+/** 用于在显式触发点为当前编辑内容创建不可变修订。 */
+export function createDocumentRevision(
+  id: string,
+  request: CreateDocumentRevisionRequest,
+): Promise<EditorApiResult<DocumentRevisionDetail>> {
+  return requestEditorApi(
+    `${DOCUMENT_PATH}/${encodeURIComponent(id)}/revisions`,
+    201,
+    parseRevisionDetail,
+    {
+      body: JSON.stringify(request),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    },
+  );
+}
+
+/** 用于读取单个修订的全文快照作为恢复预览。 */
+export function getDocumentRevision(
+  id: string,
+  revisionNumber: number,
+): Promise<EditorApiResult<DocumentRevisionDetail>> {
+  return requestEditorApi(
+    `${DOCUMENT_PATH}/${encodeURIComponent(id)}/revisions/${revisionNumber}`,
+    200,
+    parseRevisionDetail,
+  );
+}
+
+/** 用于按当前文档版本把历史修订恢复为新的恢复修订。 */
+export function restoreDocumentRevision(
+  id: string,
+  revisionNumber: number,
+  request: RestoreDocumentRevisionRequest,
+): Promise<EditorApiResult<DocumentContentDetail>> {
+  return requestEditorApi(
+    `${DOCUMENT_PATH}/${encodeURIComponent(id)}/revisions/${revisionNumber}/restore`,
+    200,
+    parseContentDetail,
+    {
+      body: JSON.stringify(request),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
     },
   );
 }

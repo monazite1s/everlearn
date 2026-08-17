@@ -164,6 +164,7 @@ export class DocumentsService {
         document_id: documentId,
         revision_number: 1,
         source: 'manual',
+        title: draft.title,
         content_json: revisionContent,
         schema_version: 1,
         plain_text: plainText,

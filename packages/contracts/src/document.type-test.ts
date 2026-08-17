@@ -2,16 +2,22 @@
 
 import type {
   CreateDocumentRequest,
+  CreateDocumentRevisionRequest,
   DeleteDocumentRequest,
   DocumentContentDetail,
   DocumentDetail,
   DocumentErrorCode,
   DocumentListResponse,
+  DocumentRevisionDetail,
+  DocumentRevisionListItem,
+  DocumentRevisionListResponse,
+  DocumentRevisionSource,
   DocumentSavedEventPayload,
   DocumentTreeItem,
   MoveDocumentRequest,
   RenameDocumentRequest,
   RestoreDocumentRequest,
+  RestoreDocumentRevisionRequest,
   SaveDocumentContentRequest,
   TrashErrorCode,
   TrashItem,
@@ -44,6 +50,10 @@ type DetailKeys = Assert<
 type SaveContentKeys = Assert<
   Equal<keyof SaveDocumentContentRequest, 'contentJson' | 'schemaVersion' | 'title' | 'version'>
 >;
+type CreateRevisionKeys = Assert<
+  Equal<keyof CreateDocumentRevisionRequest, 'contentJson' | 'schemaVersion' | 'title' | 'version'>
+>;
+type RestoreRevisionKeys = Assert<Equal<keyof RestoreDocumentRevisionRequest, 'version'>>;
 type ContentDetailKeys = Assert<
   Equal<
     keyof DocumentContentDetail,
@@ -66,6 +76,36 @@ type SavedEventKeys = Assert<
     | 'documentVersion'
     | 'eventSchemaVersion'
     | 'knowledgeBaseId'
+  >
+>;
+type RevisionSourceValues = Assert<
+  Equal<DocumentRevisionSource, 'ai' | 'automation' | 'import' | 'manual' | 'restore'>
+>;
+type RevisionListItemKeys = Assert<
+  Equal<
+    keyof DocumentRevisionListItem,
+    'createdAt' | 'revisionNumber' | 'snippet' | 'source' | 'title'
+  >
+>;
+type RevisionDetailShape = Assert<
+  Equal<
+    DocumentRevisionDetail,
+    {
+      readonly contentJson: unknown;
+      readonly createdAt: string;
+      readonly plainText: string;
+      readonly revisionNumber: number;
+      readonly schemaVersion: number;
+      readonly snippet: string;
+      readonly source: DocumentRevisionSource;
+      readonly title: string;
+    }
+  >
+>;
+type RevisionPageShape = Assert<
+  Equal<
+    DocumentRevisionListResponse,
+    { readonly items: readonly DocumentRevisionListItem[]; readonly nextCursor: string | null }
   >
 >;
 type PageShape = Assert<
@@ -121,6 +161,8 @@ export type DocumentContractAssertions = [
   CreateKeys,
   RenameKeys,
   SaveContentKeys,
+  CreateRevisionKeys,
+  RestoreRevisionKeys,
   MoveKeys,
   DeleteKeys,
   RestoreKeys,
@@ -128,6 +170,10 @@ export type DocumentContractAssertions = [
   DetailKeys,
   ContentDetailKeys,
   SavedEventKeys,
+  RevisionSourceValues,
+  RevisionListItemKeys,
+  RevisionDetailShape,
+  RevisionPageShape,
   PageShape,
   TrashItemShape,
   TrashPageShape,
