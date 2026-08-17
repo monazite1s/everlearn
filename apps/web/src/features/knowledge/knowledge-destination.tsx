@@ -6,7 +6,7 @@ import type { KnowledgeBaseSummary } from '@everlearn/contracts';
 import { ArrowLeftIcon, CalendarClockIcon, FileTextIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Badge, Button, Skeleton } from '@everlearn/ui';
 
@@ -14,6 +14,7 @@ import { formatDateTime } from '../../shared/format-datetime';
 import { LoadFailure } from '../../shared/load-failure';
 import { PageShell } from '../../shared/page-shell';
 import { SectionCards } from '../../shared/section-cards';
+import { useMediaQuery } from '../../shared/use-media-query';
 import { useOnline } from '../../shared/use-online';
 import { getKnowledgeBase, type KnowledgeApiFailure } from './knowledge-api';
 import { DocumentTree } from './document-tree';
@@ -47,36 +48,6 @@ const KnowledgeManagement = dynamic(
 /** 用于判断失败是否可重试。 */
 function isRetryable(error: KnowledgeApiFailure): boolean {
   return error.code === undefined || !NON_RETRYABLE_CODES.has(error.code);
-}
-
-/** 用于按媒体查询返回挂载后的稳定匹配结果。 */
-function useMediaQuery(query: string): boolean | undefined {
-  const subscribe = useCallback(
-    /** 用于订阅查询结果变化。 */
-    function subscribeMatch(listener: () => void): () => void {
-      const media = window.matchMedia(query);
-      media.addEventListener('change', listener);
-      return function stopSubscribing(): void {
-        media.removeEventListener('change', listener);
-      };
-    },
-    [query],
-  );
-  const getSnapshot = useCallback(
-    /** 用于读取当前查询匹配。 */
-    function readMatch(): boolean {
-      return window.matchMedia(query).matches;
-    },
-    [query],
-  );
-  const getServerSnapshot = useCallback(
-    /** 用于在服务端渲染期间保持未匹配。 */
-    function readServerMatch(): undefined {
-      return undefined;
-    },
-    [],
-  );
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 /** 用于启动和取消详情读取并提供权威刷新操作。 */

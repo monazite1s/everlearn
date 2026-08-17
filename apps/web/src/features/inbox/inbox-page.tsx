@@ -3,48 +3,18 @@
 'use client';
 
 import type { InboxItemSummary } from '@everlearn/contracts';
-import { useCallback, useRef, useSyncExternalStore } from 'react';
+import { useRef } from 'react';
 import type { RefObject } from 'react';
 
 import { OfflineNotice } from '../../shared/offline-notice';
 import { PageShell } from '../../shared/page-shell';
+import { useMediaQuery } from '../../shared/use-media-query';
 import { useOnline } from '../../shared/use-online';
 import { InboxItemList } from './inbox-item-list';
 import { InboxRecordForm } from './inbox-record-form';
 import { useInboxList } from './inbox-list-state';
 
 const DESKTOP_QUERY = '(min-width: 48.0625em)';
-
-// ponytail: 与 knowledge-destination 的视口判别重复，出现第三处时提升到 shared。
-/** 用于按媒体查询返回挂载后的稳定匹配结果。 */
-function useMediaQuery(query: string): boolean | undefined {
-  const subscribe = useCallback(
-    /** 用于订阅查询结果变化。 */
-    function subscribeMatch(listener: () => void): () => void {
-      const media = window.matchMedia(query);
-      media.addEventListener('change', listener);
-      return function stopSubscribing(): void {
-        media.removeEventListener('change', listener);
-      };
-    },
-    [query],
-  );
-  const getSnapshot = useCallback(
-    /** 用于读取当前查询匹配。 */
-    function readMatch(): boolean {
-      return window.matchMedia(query).matches;
-    },
-    [query],
-  );
-  const getServerSnapshot = useCallback(
-    /** 用于在服务端渲染期间保持未匹配。 */
-    function readServerMatch(): undefined {
-      return undefined;
-    },
-    [],
-  );
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-}
 
 interface RecordSectionProps {
   readonly inputRef: RefObject<HTMLTextAreaElement | null>;

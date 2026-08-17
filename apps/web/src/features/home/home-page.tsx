@@ -21,11 +21,13 @@ import { LoadFailure } from '../../shared/load-failure';
 import { OfflineNotice } from '../../shared/offline-notice';
 import { PageShell } from '../../shared/page-shell';
 import { SectionCards } from '../../shared/section-cards';
+import { useMediaQuery } from '../../shared/use-media-query';
 import { useOnline } from '../../shared/use-online';
 import { KnowledgeBaseCard } from '../knowledge/knowledge-base-card';
 import { KnowledgeEmptyState } from '../knowledge/knowledge-empty-state';
 import { useKnowledgeList } from '../knowledge/knowledge-list-state';
 import type { KnowledgeLoadState } from '../knowledge/knowledge-list-state';
+import { QuickCaptureForm } from './quick-capture-form';
 
 /** 用于链接统一创建流程，离线时保留禁用入口。 */
 function CreateKnowledgeBaseAction({
@@ -133,6 +135,21 @@ function KnowledgeContent(props: {
   );
 }
 
+/** 用于在桌面宽度渲染首页单行快速记录条，移动端不渲染输入。 */
+function QuickCaptureSection({ offline }: { readonly offline: boolean }) {
+  const desktop = useMediaQuery('(min-width: 48rem)');
+  if (desktop !== true) return null;
+  return (
+    <section aria-labelledby="quick-capture-title" className="py-6 md:py-8">
+      <h2 className="m-0 text-title-small text-foreground" id="quick-capture-title">
+        快速记录
+      </h2>
+      <p className="mt-1 text-sm text-muted-foreground">一条想法或链接，先进入 Inbox 待整理。</p>
+      <QuickCaptureForm offline={offline} />
+    </section>
+  );
+}
+
 /** 用于渲染“继续学习”区块占位。 */
 function RecentSection() {
   return (
@@ -171,6 +188,7 @@ export function HomePage() {
       }
     >
       {!online && <OfflineNotice />}
+      <QuickCaptureSection offline={!online} />
       <HomeSectionCards items={items} />
       <RecentSection />
       <section aria-labelledby="knowledge-title" className="border-t border-border py-6 md:py-8">

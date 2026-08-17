@@ -33,9 +33,22 @@ function renderHome(): void {
   render(<HomePage />);
 }
 
+/** 用于在测试中模拟桌面或移动视口。 */
+function stubViewport(desktop: boolean): void {
+  window.matchMedia = vi.fn().mockReturnValue({
+    addEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+    matches: desktop,
+    media: '(min-width: 48rem)',
+    onchange: null,
+    removeEventListener: vi.fn(),
+  });
+}
+
 /** 用于在每个场景后恢复 DOM、网络和请求状态。 */
 function resetScenario(): void {
   cleanup();
+  stubViewport(false);
   vi.unstubAllGlobals();
 }
 
@@ -56,7 +69,7 @@ async function rendersRealKnowledge(): Promise<void> {
   expect(screen.getByText('最近一次内容更新时间')).toBeVisible();
   expect(screen.getByText('1')).toBeVisible();
   expect(screen.queryByRole('heading', { name: '进行中' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('textbox', { name: '记录内容' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: '内容' })).not.toBeInTheDocument();
 }
 
 /** 用于验证首次使用入口指向统一创建流程。 */
@@ -83,6 +96,27 @@ async function retriesKnowledgeFailure(): Promise<void> {
   expect(fetchMock).toHaveBeenCalledTimes(2);
 }
 
+/** 用于验证快速记录只在桌面渲染且移动端不渲染输入。 */
+async function rendersQuickCaptureOnDesktopOnly(): Promise<void> {
+  const emptyList = jsonResponse({ items: [], nextCursor: null });
+  stubViewport(true);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(emptyList));
+  renderHome();
+
+  expect(await screen.findByRole('heading', { name: '快速记录' })).toBeVisible();
+  expect(screen.getByRole('textbox', { name: '内容' })).toBeVisible();
+
+  cleanup();
+  stubViewport(false);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(emptyList));
+  renderHome();
+
+  await screen.findByRole('heading', { name: '知识库' });
+  expect(screen.queryByRole('heading', { name: '快速记录' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: '内容' })).not.toBeInTheDocument();
+}
+
 test('renders real knowledge without production fixtures', rendersRealKnowledge);
 test('renders the canonical first-use creation entry', rendersFirstUse);
 test('retries a failed home knowledge read', retriesKnowledgeFailure);
+test('renders quick capture on desktop only', rendersQuickCaptureOnDesktopOnly);

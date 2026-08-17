@@ -295,14 +295,18 @@ KB-04C 建立共享传输边界后，每个后续 API 任务必须先在 `packag
 
 ### KB-08H 接入首页快速记录
 
-- 状态：未开始。
+- 状态：已完成（2026-08-17，子 agent 实现 + 主 agent 复验与走查）。
 - 依赖：KB-08W、KB-04H。
 - 必读：`docs/01-design/pages/home.md`、`docs/01-design/design-system.md`、`docs/02-architecture/api-and-events.md`。
 - 目标：首页快速记录写入真实 Inbox，成功后清空并提供可感知确认。
 - 非目标：展开富文本、自动分类、移动端写入和最近文档。
 - 失败恢复：失败保留原输入；离线或请求中禁用重复提交；恢复后允许重试。
-- 验收：首页提交后可在 `/knowledge/inbox` 看到同一记录；移动端不渲染输入。
-- 验证：首页组件测试、Web typecheck、生产构建和桌面/移动走查。
+- 改动：首页新增桌面条件渲染的快速记录区块（单行输入 + 判别说明 + 提交）；`useMediaQuery` 提升为 shared hook 并迁移 knowledge-destination 与 inbox-page 两处本地副本（第三处使用触发既登记的提升路径）；复用 KB-08W 的 `resolveRecordInput` 判别与 `createInboxItem` 客户端（features 互导经分层门禁确认允许，单向无环）。
+- 状态覆盖：空/非法输入禁提交且字段提示；提交中/离线禁用；成功清空 +「已记录到 Inbox」与核对链接，再次输入时确认消失；已知失败保留输入与原因；结果未知提示「打开 Inbox 核对」（同步创建无幂等键，不盲重试）。
+- 复用与评审：独立 code-reviewer 评审 `APPROVE`（0 MEDIUM/HIGH），LOW 项「成功后再次输入清除确认」补测试锁定；断点刻度 48rem（home，对齐 md:）与 48.0625em（inbox 既有）边缘差异登记。
+- 验证结果：组件测试 5 文件 `54 passed`（含快速记录 9：判别载荷、清空+确认+再次输入清除、失败保留、unknown 核对链接、禁用态、移动端不渲染）；Web typecheck、聚焦 ESLint、Prettier、注释/文件/design-token 门禁与生产构建通过。
+- 真实证据：Playwright（Chrome headless，真实 API）4 步通过——首页提交→确认与清空→`/knowledge/inbox` 显示同一记录→删除清理；390px 首页无快速记录输入；截图当次会话人工检查。
+- 风险：unknown 结果重试可能重复记录（创建端点无幂等键，根治属后续 API 任务）；提交按钮 secondary 变体（页面唯一主操作保持为新建知识库），产品若需更醒目走查后定夺。
 
 ### KB-09 实现 Inbox 幂等转换 API
 
