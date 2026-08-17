@@ -204,3 +204,21 @@ export async function deleteKnowledgeBase(
     };
   }
 }
+
+/** 用于按幂等键从回收站恢复知识库。 */
+export function restoreKnowledgeBase(
+  id: string,
+  request: KnowledgeBaseVersionRequest,
+  idempotencyKey: string,
+): Promise<KnowledgeApiResult<KnowledgeBaseSummary>> {
+  return requestKnowledge(
+    `${API_PATH}/${encodeURIComponent(id)}/restore`,
+    200,
+    parseKnowledgeBaseSummary,
+    {
+      body: JSON.stringify(request),
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+      method: 'POST',
+    },
+  );
+}

@@ -198,6 +198,15 @@ async function linksToInbox(): Promise<void> {
   expect(link).toHaveAttribute('href', '/knowledge/inbox');
 }
 
+/** 用于验证知识库页提供固定的回收站次级入口。 */
+async function linksToTrash(): Promise<void> {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ items: [], nextCursor: null })));
+  renderKnowledge(<KnowledgePage />);
+
+  const link = await screen.findByRole('link', { name: '回收站' });
+  expect(link).toHaveAttribute('href', '/knowledge/trash');
+}
+
 test('creates the first persisted knowledge base', createsFirstKnowledgeBase);
 test('recovers an unknown create result without replaying POST', recoversUnknownCreateResult);
 test('retains prior items after pagination failure', retainsItemsAfterPaginationFailure);
@@ -206,4 +215,5 @@ test(
   opensDialogFromUrlAndCleansParam,
 );
 test('links to the fixed inbox entry', linksToInbox);
+test('links to the fixed trash entry', linksToTrash);
 test('reads the persisted post-create destination on refresh', readsPersistedDestination);

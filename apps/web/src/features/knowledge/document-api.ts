@@ -8,6 +8,7 @@ import type {
   DocumentTreeItem,
   MoveDocumentRequest,
   RenameDocumentRequest,
+  RestoreDocumentRequest,
 } from '@everlearn/contracts';
 
 export interface DocumentApiFailure {
@@ -28,8 +29,10 @@ const TREE_ITEM_KEYS = ['childCount', 'id', 'title', 'updatedAt', 'version'] as 
 const DETAIL_KEYS = [...TREE_ITEM_KEYS, 'knowledgeBaseId', 'parentId'] as const;
 const ERROR_CODES: readonly DocumentErrorCode[] = [
   'BAD_REQUEST',
+  'CONFLICT',
   'IDEMPOTENCY_CONFLICT',
   'INTERNAL_ERROR',
+  'KNOWLEDGE_BASE_DELETED',
   'NOT_FOUND',
   'UNSUPPORTED_MEDIA_TYPE',
   'VALIDATION_FAILED',
@@ -88,7 +91,7 @@ function parseDocumentList(value: unknown): DocumentListResponse | undefined {
 }
 
 /** 用于把校验通过的详情原样返回给调用方。 */
-function parseDocumentDetail(value: unknown): DocumentDetail | undefined {
+export function parseDocumentDetail(value: unknown): DocumentDetail | undefined {
   return isDocumentDetail(value) ? value : undefined;
 }
 
@@ -203,6 +206,24 @@ export function moveDocument(
 ): Promise<DocumentApiResult<DocumentDetail>> {
   return requestDocument(
     `${DOCUMENT_PATH}/${encodeURIComponent(id)}/move`,
+    200,
+    parseDocumentDetail,
+    {
+      body: JSON.stringify(request),
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+      method: 'POST',
+    },
+  );
+}
+
+/** 用于按幂等键从回收站恢复文档完整子树。 */
+export function restoreDocument(
+  id: string,
+  request: RestoreDocumentRequest,
+  idempotencyKey: string,
+): Promise<DocumentApiResult<DocumentDetail>> {
+  return requestDocument(
+    `${DOCUMENT_PATH}/${encodeURIComponent(id)}/restore`,
     200,
     parseDocumentDetail,
     {

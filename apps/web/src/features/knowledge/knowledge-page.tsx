@@ -10,6 +10,7 @@ import {
   LibraryBigIcon,
   Loader2Icon,
   PlusIcon,
+  Trash2Icon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -306,7 +307,19 @@ function KnowledgeInboxLink() {
   );
 }
 
-/** 用于渲染页头的 Inbox 入口与离线禁用的新建操作。 */
+/** 用于渲染知识库页固定的回收站次级入口。 */
+function KnowledgeTrashLink() {
+  return (
+    <Button asChild variant="outline">
+      <Link href="/knowledge/trash">
+        <Trash2Icon aria-hidden="true" />
+        回收站
+      </Link>
+    </Button>
+  );
+}
+
+/** 用于渲染页头的 Inbox 与回收站入口和离线禁用的新建操作。 */
 function KnowledgeHeaderActions({
   disabled,
   onCreate,
@@ -317,6 +330,7 @@ function KnowledgeHeaderActions({
   return (
     <>
       <KnowledgeInboxLink />
+      <KnowledgeTrashLink />
       <KnowledgeCreateAction disabled={disabled} onCreate={onCreate} />
     </>
   );
