@@ -100,6 +100,16 @@
   /* 应用壳 */
   --header-height: calc(var(--spacing) * 12);
 
+  /* 阅读与编辑正文最大宽度（760px，页面规格） */
+  --width-prose: 47.5rem;
+
+  /* 排版间距刻度（prose 样式消费，4px 基数与 --spacing 一致） */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+
   /* 动效 */
   --duration-micro: 150ms;
   --duration-panel: 260ms;
@@ -147,6 +157,9 @@
   --font-sans: var(--font-interface);
   --font-serif: var(--font-reading);
   --font-mono: var(--font-code);
+
+  /* 正文最大宽度映射为官方 container utility（max-w-prose） */
+  --container-prose: var(--width-prose);
 
   /* 字号（含行高伴生） */
   --text-caption: 0.75rem;

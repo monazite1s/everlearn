@@ -13,6 +13,7 @@ import {
   PlusIcon,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 
 import {
   Button,
@@ -126,7 +127,8 @@ export function ChildrenArea(props: {
 
 /** 用于渲染节点行的桌面操作菜单。 */
 function DocumentRowMenu(props: {
-  item: DocumentTreeItem;
+  readonly openHref: string;
+  readonly item: DocumentTreeItem;
   onCreateChild: (parent: DocumentTreeItem) => void;
   onMove: (item: DocumentTreeItem) => void;
   onRename: (item: DocumentTreeItem) => void;
@@ -145,8 +147,9 @@ function DocumentRowMenu(props: {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {/* 打开正文依赖 ED-05 文档页面，本任务保持不可用态。 */}
-        <DropdownMenuItem disabled>打开文档</DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={props.openHref}>打开文档</Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => props.onCreateChild(props.item)}>
           <PlusIcon aria-hidden="true" size={16} />
@@ -230,7 +233,7 @@ function DocumentNodeList(props: {
   );
 }
 
-/** 用于渲染单个树节点行、拖拽反馈与其展开子区域。 */
+/** 用于渲染单个树节点行、当前位置高亮、拖拽反馈与其展开子区域。 */
 function DocumentNodeRow(props: {
   item: DocumentTreeItem;
   parentId: string | null;
@@ -239,11 +242,14 @@ function DocumentNodeRow(props: {
   const { item, tree } = props;
   const expanded = tree.isExpanded(item.id);
   const edge = tree.drag.lineFor(item.id);
+  const active = tree.activeDocumentId === item.id;
+  const openHref = `/knowledge/${tree.knowledgeBaseId}/documents/${item.id}`;
   return (
     <li>
       <div
         className={cn(
           'group/row relative flex min-w-0 items-center gap-1 rounded-md py-1 pr-1 hover:bg-accent',
+          active && 'bg-accent',
           tree.drag.classNameFor(item.id),
         )}
         {...tree.drag.propsFor(item, props.parentId)}
@@ -251,15 +257,21 @@ function DocumentNodeRow(props: {
         {edge ? <DropIndicator edge={edge} /> : null}
         <RowToggleButton expanded={expanded} item={item} onToggle={tree.toggle} />
         <FileTextIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate text-sm text-foreground" title={item.title}>
+        <Link
+          aria-current={active ? 'page' : undefined}
+          className="min-w-0 flex-1 truncate text-sm text-foreground"
+          href={openHref}
+          title={item.title}
+        >
           {item.title}
-        </span>
+        </Link>
         {tree.desktop && (
           <DocumentRowMenu
             item={item}
             onCreateChild={tree.onCreateChild}
             onMove={tree.onMove}
             onRename={tree.onRename}
+            openHref={openHref}
           />
         )}
       </div>

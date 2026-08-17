@@ -21,7 +21,7 @@ export interface RevisionPreviewOptions {
 export interface RevisionPreviewController {
   readonly revision: DocumentRevisionDetail | undefined;
   readonly status: RevisionPreviewStatus;
-  retry(): void;
+  readonly retry: () => void;
 }
 
 /** 预览数据、加载状态与其所属目标的联合快照。 */

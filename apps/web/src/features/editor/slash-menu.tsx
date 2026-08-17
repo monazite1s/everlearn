@@ -1,6 +1,6 @@
 /** @fileoverview 基于 Tiptap suggestion 官方工具与 shadcn Command 的斜杠命令菜单。 */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   Heading1,
@@ -19,13 +19,6 @@ import { Extension } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
 import { Suggestion, exitSuggestion } from '@tiptap/suggestion';
 import type { SuggestionProps } from '@tiptap/suggestion';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from '@everlearn/ui/components/command';
 
 /** 单个斜杠菜单项：值、标签、图标与插入命令。 */
 export interface SlashMenuItem {
@@ -33,6 +26,7 @@ export interface SlashMenuItem {
   label: string;
   icon: LucideIcon;
   keywords: string[];
+  group?: string;
   command: (target: { editor: Editor; range: EditorRange }) => void;
 }
 
@@ -41,6 +35,7 @@ export interface SlashMenuItemView {
   value: string;
   label: string;
   icon: LucideIcon;
+  group: string;
 }
 
 /** 宿主组件实现的菜单生命周期回调。 */
@@ -159,7 +154,11 @@ export function filterSlashMenuItems(
 }
 
 /** 用于构建斜杠菜单扩展，宿主负责弹层渲染与按键处理。 */
-export function createSlashMenuExtension(handlers: SlashMenuHandlers): Extension {
+export function createSlashMenuExtension(
+  handlers: SlashMenuHandlers,
+  extraItems: readonly SlashMenuItem[] = [],
+): Extension {
+  const menuItems = [...SLASH_MENU_ITEMS, ...extraItems];
   return Extension.create({
     name: 'slashMenu',
     /** 注册官方 suggestion 插件并转发渲染回调给宿主。 */
@@ -172,7 +171,7 @@ export function createSlashMenuExtension(handlers: SlashMenuHandlers): Extension
             props.command({ editor, range }),
           editor: this.editor,
           items: /** 用于按输入查询过滤菜单项。 */ ({ query }) =>
-            filterSlashMenuItems(SLASH_MENU_ITEMS, query),
+            filterSlashMenuItems(menuItems, query),
           pluginKey: SLASH_MENU_PLUGIN_KEY,
           render: /** 用于桥接 suggestion 生命周期到宿主处理器。 */ () => ({
             onExit: /** 用于关闭菜单并释放定位容器。 */ () => handlers.onExit(),
@@ -196,7 +195,7 @@ interface SlashMenuSession {
 }
 
 /** 斜杠菜单会话的渲染状态与控制接口。 */
-interface SlashMenuSessionState {
+export interface SlashMenuSessionState {
   container: HTMLElement;
   items: SlashMenuItemView[];
 }
@@ -211,72 +210,22 @@ export interface SlashMenuSessionApi {
 
 /** 用于把 suggestion 项收敛为弹层渲染所需的展示字段。 */
 function toItemViews(items: readonly SlashMenuItem[]): SlashMenuItemView[] {
-  return items.map(({ icon, label, value }) => ({ icon, label, value }));
+  return items.map(({ group, icon, label, value }) => ({
+    group: group ?? '基础块',
+    icon,
+    label,
+    value,
+  }));
 }
 
 /** 用于计算循环移动后的相邻项值。 */
-function neighborValue(items: SlashMenuItemView[], current: string, delta: 1 | -1): string {
+export function neighborValue(items: SlashMenuItemView[], current: string, delta: 1 | -1): string {
   if (items.length === 0) {
     return current;
   }
   const index = items.findIndex((item) => item.value === current);
   const next = items[(Math.max(0, index) + delta + items.length) % items.length];
   return next ? next.value : current;
-}
-
-/** SlashMenuPopup 的 props 契约。 */
-interface SlashMenuPopupProps {
-  items: SlashMenuItemView[];
-  registerApi: (api: SlashMenuPopupApi | null) => void;
-  run: (value: string) => void;
-}
-
-/** 斜杠菜单内容：cmdk 承担列表语义与可访问性，选择状态由编辑器按键驱动。 */
-export function SlashMenuPopup({ items, registerApi, run }: SlashMenuPopupProps) {
-  const [activeValue, setActiveValue] = useState(() => items[0]?.value ?? '');
-  const activeValueRef = useRef(activeValue);
-
-  /** 用于同步提交受控选择，保证键盘路径在同一事件内读到最新值。 */
-  function commitActiveValue(next: string): void {
-    activeValueRef.current = next;
-    setActiveValue(next);
-  }
-
-  useEffect(() => {
-    if (!items.some((item) => item.value === activeValueRef.current)) {
-      commitActiveValue(items[0]?.value ?? '');
-    }
-  }, [items]);
-
-  useEffect(() => {
-    registerApi({
-      moveSelection: /** 用于按键循环移动受控选择。 */ (delta) =>
-        commitActiveValue(neighborValue(items, activeValueRef.current, delta)),
-      runActive: /** 用于执行当前选中项的插入命令。 */ () => {
-        const current = activeValueRef.current;
-        if (items.some((item) => item.value === current)) {
-          run(current);
-        }
-      },
-    });
-    return () => registerApi(null);
-  }, [items, registerApi, run]);
-
-  return (
-    <Command loop shouldFilter={false} value={activeValue} onValueChange={commitActiveValue}>
-      <CommandList>
-        <CommandEmpty>没有匹配的块类型</CommandEmpty>
-        <CommandGroup heading="基础块">
-          {items.map(({ icon: Icon, label, value }) => (
-            <CommandItem key={value} onSelect={() => run(value)} value={value}>
-              <Icon />
-              <span>{label}</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </CommandList>
-    </Command>
-  );
 }
 
 /** 用于卸载定位容器并清空菜单状态。 */
@@ -340,8 +289,18 @@ function updateSlashMenu(
   setMenu({ container: sessionRef.current.container, items: toItemViews(suggestion.items) });
 }
 
+/** useSlashMenuSession 的可选配置。 */
+export interface SlashMenuSessionOptions {
+  /** 宿主注入的额外菜单项，与基础项合并为统一清单。 */
+  readonly extraItems?: readonly SlashMenuItem[] | undefined;
+}
+
 /** 管理斜杠菜单会话生命周期：挂载定位容器、转发按键并渲染受控选择。 */
-export function useSlashMenuSession(): SlashMenuSessionApi {
+export function useSlashMenuSession(options: SlashMenuSessionOptions = {}): SlashMenuSessionApi {
+  const menuItems = useMemo(
+    /** 用于合并基础项与宿主注入项。 */ () => [...SLASH_MENU_ITEMS, ...(options.extraItems ?? [])],
+    [options.extraItems],
+  );
   const [menu, setMenu] = useState<SlashMenuSessionState | null>(null);
   const sessionRef = useRef<SlashMenuSession | null>(null);
   const popupApiRef = useRef<SlashMenuPopupApi | null>(null);
@@ -358,12 +317,15 @@ export function useSlashMenuSession(): SlashMenuSessionApi {
   }, []);
 
   /** 用于执行指定菜单项的插入命令。 */
-  const runCommand = useCallback((value: string) => {
-    const item = SLASH_MENU_ITEMS.find((candidate) => candidate.value === value);
-    if (item && sessionRef.current) {
-      sessionRef.current.props.command(item);
-    }
-  }, []);
+  const runCommand = useCallback(
+    (value: string) => {
+      const item = menuItems.find((candidate) => candidate.value === value);
+      if (item && sessionRef.current) {
+        sessionRef.current.props.command(item);
+      }
+    },
+    [menuItems],
+  );
 
   /** 用于登记弹层暴露的受控选择接口。 */
   const registerPopupApi = useCallback((api: SlashMenuPopupApi | null) => {

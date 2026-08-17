@@ -266,3 +266,29 @@ test(
 );
 test('omits modification controls on mobile reading', omitsMobileModificationControls);
 test('keeps a long title complete for truncation tooltips', keepsLongTitleAccessible);
+
+/** 用于验证行标题与菜单都能进入文档编辑器且当前文档高亮。 */
+async function opensDocumentEditorLinks(): Promise<void> {
+  const server = createDocumentServer([
+    { childCount: 0, id: 'doc-open', parentId: null, title: '可打开文档', version: 1 },
+  ]);
+  vi.stubGlobal('fetch', server.fetchMock);
+  render(
+    <DocumentTree
+      activeDocumentId="doc-open"
+      desktop
+      knowledgeBaseId={KNOWLEDGE_BASE_ID}
+      offline={false}
+      onCreated={onCreated}
+    />,
+  );
+  const rowLink = await screen.findByRole('link', { name: '可打开文档' });
+  expect(rowLink).toHaveAttribute('href', `/knowledge/${KNOWLEDGE_BASE_ID}/documents/doc-open`);
+  expect(rowLink).toHaveAttribute('aria-current', 'page');
+  fireEvent.pointerDown(screen.getByRole('button', { name: '“可打开文档”的文档操作' }));
+  const menuEntry = await screen.findByRole('menuitem', { name: '打开文档' });
+  expect(menuEntry).toHaveAttribute('href', `/knowledge/${KNOWLEDGE_BASE_ID}/documents/doc-open`);
+  expect(menuEntry).not.toHaveAttribute('aria-disabled');
+}
+
+test('opens the editor through row link and menu with active highlight', opensDocumentEditorLinks);

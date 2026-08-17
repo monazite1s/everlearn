@@ -20,12 +20,16 @@ export interface RevisionTriggerOptions {
 
 /** 暴露给编辑器宿主的修订触发控制器。 */
 export interface RevisionTriggerController {
-  stage(content: StagedDocumentContent): void;
+  readonly stage: (content: StagedDocumentContent) => void;
+  /** 用于丢弃已聚合的本地快照，冲突后放弃本地内容时调用。 */
+  readonly reset: () => void;
 }
 
 /** 修订触发的可变引用状态，跨渲染保持单例。 */
 interface RevisionTriggerState {
   baseline: StagedDocumentContent | undefined;
+  /** 会话被显式替换后失能，卸载阶段的末次编辑器事务不再聚合快照。 */
+  discarded: boolean;
   inFlight: boolean;
   local: StagedDocumentContent | undefined;
 }
@@ -54,11 +58,39 @@ async function submitRevision(
   }
 }
 
+/** 用于维护间隔与卸载两个触发点的提交回路。 */
+function useRevisionSubmitLoop(
+  stateRef: { current: RevisionTriggerState },
+  submit: () => Promise<void>,
+): void {
+  const submitRef = useRef(submit);
+  useEffect(() => {
+    submitRef.current = submit;
+  }, [submit]);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      void submitRef.current();
+    }, REVISION_INTERVAL_MS);
+    return () => {
+      clearInterval(timer);
+      // ponytail: 卸载触发为 fire-and-forget，浏览器直接关闭可能丢失该次修订；重复提交由服务端相邻去重兜底。
+      void submitRef.current();
+      stateRef.current = {
+        baseline: undefined,
+        discarded: true,
+        inFlight: false,
+        local: undefined,
+      };
+    };
+  }, [stateRef]);
+}
+
 /** 用于聚合输入并在离开文档或持续编辑间隔时创建修订。 */
 export function useRevisionTriggers(options: RevisionTriggerOptions): RevisionTriggerController {
   const { documentId, initialVersion } = options;
   const stateRef = useRef<RevisionTriggerState>({
     baseline: undefined,
+    discarded: false,
     inFlight: false,
     local: undefined,
   });
@@ -70,30 +102,21 @@ export function useRevisionTriggers(options: RevisionTriggerOptions): RevisionTr
     () => submitRevision(documentId, versionRef.current, stateRef),
     [documentId, stateRef],
   );
-  const submitRef = useRef(submit);
-  useEffect(() => {
-    submitRef.current = submit;
-  }, [submit]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      void submitRef.current();
-    }, REVISION_INTERVAL_MS);
-    return () => {
-      clearInterval(timer);
-      // ponytail: 卸载触发为 fire-and-forget，浏览器直接关闭可能丢失该次修订；重复提交由服务端相邻去重兜底。
-      void submitRef.current();
-      stateRef.current = { baseline: undefined, inFlight: false, local: undefined };
-    };
-  }, [documentId, stateRef]);
+  useRevisionSubmitLoop(stateRef, submit);
 
   /** 用于聚合一次本地变更供触发点读取。 */
   const stage = useCallback(
     (content: StagedDocumentContent) => {
+      if (stateRef.current.discarded) return;
       stateRef.current.local = content;
     },
     [stateRef],
   );
 
-  return { stage };
+  /** 用于清空聚合快照并失能，让间隔与卸载触发点不再提交。 */
+  const reset = useCallback(() => {
+    stateRef.current = { baseline: undefined, discarded: true, inFlight: false, local: undefined };
+  }, []);
+
+  return { reset, stage };
 }

@@ -5,22 +5,24 @@ import type {
   DocumentContentDetail,
   DocumentErrorCode,
   DocumentRevisionDetail,
+  DocumentRevisionListItem,
+  DocumentRevisionListResponse,
   DocumentRevisionSource,
   RestoreDocumentRevisionRequest,
   SaveDocumentContentRequest,
 } from '@everlearn/contracts';
 import { DOCUMENT_REVISION_SOURCES } from '@everlearn/contracts';
 
-export interface EditorApiFailure {
-  readonly certainty: 'known' | 'unknown';
-  readonly code?: DocumentErrorCode;
-  readonly message: string;
-  readonly requestId?: string;
-}
+import {
+  hasExactKeys,
+  isRecord,
+  requestApi,
+  type ApiFailureEnvelope,
+  type ApiResult,
+} from '../../shared/api-request';
 
-export type EditorApiResult<T> =
-  | { readonly data: T; readonly ok: true }
-  | { readonly error: EditorApiFailure; readonly ok: false };
+export type EditorApiFailure = ApiFailureEnvelope<DocumentErrorCode>;
+export type EditorApiResult<T> = ApiResult<T, DocumentErrorCode>;
 
 const DOCUMENT_PATH = '/api/v1/documents';
 const TREE_ITEM_KEYS = ['childCount', 'id', 'title', 'updatedAt', 'version'] as const;
@@ -43,24 +45,6 @@ const ERROR_CODES: readonly DocumentErrorCode[] = [
   'VALIDATION_FAILED',
   'VERSION_CONFLICT',
 ];
-
-export interface EditorApiFailure {
-  readonly certainty: 'known' | 'unknown';
-  readonly code?: DocumentErrorCode;
-  readonly message: string;
-  readonly requestId?: string;
-}
-
-/** 用于将不可信 JSON 收窄为非数组记录。 */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** 用于验证响应对象只包含批准的公开字段。 */
-function hasExactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
-  const actual = Object.keys(value).sort();
-  return actual.length === expected.length && expected.every((key) => actual.includes(key));
-}
 
 /** 用于校验序列化为安全非负整数的数值字段。 */
 function isSafeIntegerAtLeast(value: unknown, minimum: number): value is number {
@@ -91,57 +75,21 @@ function isDocumentContentDetail(value: unknown): value is DocumentContentDetail
   );
 }
 
-/** 用于将服务端错误码收窄到稳定文档契约。 */
-function isDocumentErrorCode(value: unknown): value is DocumentErrorCode {
-  return typeof value === 'string' && ERROR_CODES.includes(value as DocumentErrorCode);
-}
-
-/** 用于只读取服务端错误信封中稳定且用户安全的部分。 */
-function parseFailure(value: unknown, certainty: EditorApiFailure['certainty']): EditorApiFailure {
-  if (!isRecord(value) || typeof value.message !== 'string') {
-    return { certainty, message: '服务返回了无法识别的结果，请稍后重试。' };
-  }
-  const code = isDocumentErrorCode(value.code) ? value.code : undefined;
-  const requestId = typeof value.requestId === 'string' ? value.requestId : undefined;
-  return {
-    certainty,
-    ...(code ? { code } : {}),
-    message: value.message,
-    ...(requestId ? { requestId } : {}),
-  };
-}
-
-/** 用于安全解码 JSON 且不向界面暴露传输或解析错误。 */
-async function readJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return undefined;
-  }
-}
-
-/** 用于执行编辑器请求并校验成功投影。 */
-async function requestEditorApi<T>(
+/** 用于执行文档 API 请求并按闭集校验成功投影。 */
+function requestEditorApi<T>(
   url: string,
   expectedStatus: number,
   parse: (value: unknown) => T | undefined,
   init?: RequestInit,
 ): Promise<EditorApiResult<T>> {
-  try {
-    const response = await fetch(url, { cache: 'no-store', ...init });
-    const body = await readJson(response);
-    if (response.status !== expectedStatus) {
-      return { error: parseFailure(body, 'known'), ok: false };
-    }
-    const data = parse(body);
-    if (data) return { data, ok: true };
-    return { error: parseFailure(body, 'unknown'), ok: false };
-  } catch {
-    return {
-      error: { certainty: 'unknown', message: '无法连接文档服务，请检查网络后重试。' },
-      ok: false,
-    };
-  }
+  return requestApi({
+    codes: ERROR_CODES,
+    expectedStatus,
+    init,
+    networkMessage: '无法连接文档服务，请检查网络后重试。',
+    parse,
+    url,
+  });
 }
 
 /** 用于把校验通过的内容投影原样返回给调用方。 */
@@ -185,6 +133,13 @@ const REVISION_DETAIL_KEYS = [
   'source',
   'title',
 ] as const;
+const REVISION_LIST_ITEM_KEYS = [
+  'createdAt',
+  'revisionNumber',
+  'snippet',
+  'source',
+  'title',
+] as const;
 
 /** 用于把服务端来源收窄到共享契约受控枚举。 */
 function isRevisionSource(value: unknown): value is DocumentRevisionSource {
@@ -219,6 +174,40 @@ function isDocumentRevisionDetail(value: unknown): value is DocumentRevisionDeta
 /** 用于把校验通过的修订投影原样返回给调用方。 */
 function parseRevisionDetail(value: unknown): DocumentRevisionDetail | undefined {
   return isDocumentRevisionDetail(value) ? value : undefined;
+}
+
+/** 用于校验修订列表条目的字段全集与形态。 */
+function isDocumentRevisionListItem(value: unknown): value is DocumentRevisionListItem {
+  if (!isRecord(value) || !hasExactKeys(value, REVISION_LIST_ITEM_KEYS)) return false;
+  return (
+    typeof value.createdAt === 'string' &&
+    Number.isFinite(Date.parse(value.createdAt)) &&
+    isSafeIntegerAtLeast(value.revisionNumber, 1) &&
+    typeof value.snippet === 'string' &&
+    typeof value.title === 'string' &&
+    isRevisionSource(value.source)
+  );
+}
+
+/** 用于校验修订列表分页响应的字段全集与形态。 */
+function parseRevisionList(value: unknown): DocumentRevisionListResponse | undefined {
+  if (!isRecord(value) || !Array.isArray(value.items)) return undefined;
+  if (value.nextCursor !== null && typeof value.nextCursor !== 'string') return undefined;
+  if (!value.items.every((item) => isDocumentRevisionListItem(item))) return undefined;
+  return value as unknown as DocumentRevisionListResponse;
+}
+
+/** 用于按修订号倒序读取修订摘要的游标分页。 */
+export function listDocumentRevisions(
+  id: string,
+  cursor?: string,
+): Promise<EditorApiResult<DocumentRevisionListResponse>> {
+  const query = cursor === undefined ? '' : `?cursor=${encodeURIComponent(cursor)}`;
+  return requestEditorApi(
+    `${DOCUMENT_PATH}/${encodeURIComponent(id)}/revisions${query}`,
+    200,
+    parseRevisionList,
+  );
 }
 
 /** 用于在显式触发点为当前编辑内容创建不可变修订。 */

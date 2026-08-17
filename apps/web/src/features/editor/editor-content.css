@@ -1,0 +1,117 @@
+/* 编辑器正文与只读渲染共享的排版样式：只消费主题语义 token（ADR 002）。 */
+
+/* ponytail: 行高为无单位数值，与主题伴生 token 值同步，命名规则解除依赖时换回 var()。 */
+
+.editor-content {
+  color: var(--foreground);
+  font-size: var(--text-body);
+  line-height: 1.75;
+  overflow-wrap: break-word;
+}
+
+.editor-content > * + *:not([data-node-view-wrapper]) {
+  margin-block-start: var(--space-6);
+}
+
+.editor-content h1,
+.editor-content h2,
+.editor-content h3,
+.editor-content h4 {
+  font-weight: 600;
+  margin-block: var(--space-6) var(--space-2);
+}
+
+.editor-content h1 {
+  font-size: var(--text-title-large);
+  line-height: 1.25;
+}
+
+.editor-content h2 {
+  font-size: var(--text-title-medium);
+  line-height: 1.3;
+}
+
+.editor-content h3 {
+  font-size: var(--text-title-small);
+  line-height: 1.4;
+}
+
+.editor-content h4 {
+  font-size: var(--text-interface);
+  line-height: 1.5;
+}
+
+.editor-content ul,
+.editor-content ol {
+  margin-block: 0;
+  padding-inline-start: var(--space-6);
+}
+
+.editor-content li + li {
+  margin-block-start: var(--space-1);
+}
+
+.editor-content blockquote {
+  border-inline-start: 2px solid var(--border);
+  color: var(--muted-foreground);
+  font-style: italic;
+  margin-inline: 0;
+  padding-inline-start: var(--space-4);
+}
+
+.editor-content pre {
+  background-color: var(--muted);
+  border-radius: var(--radius-md);
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: var(--text-interface);
+  line-height: 1.5;
+  margin-inline: 0;
+  overflow-x: auto;
+  padding: var(--space-3) var(--space-4);
+  white-space: pre;
+}
+
+.editor-content :not(pre) > code {
+  background-color: var(--muted);
+  border-radius: var(--radius-sm);
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  padding: var(--space-1) var(--space-2);
+}
+
+.editor-content a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.editor-content hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin-block: var(--space-6);
+  margin-inline: 0;
+}
+
+.editor-content img {
+  border-radius: var(--radius-md);
+  max-width: 100%;
+}
+
+/* 附件行在只读渲染中以链接块输出，保持与 NodeView 一致的横向布局。 */
+.editor-content [data-attachment-id] {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--foreground);
+  display: flex;
+  font-size: var(--text-interface);
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.editor-content [data-attachment-id] > a {
+  color: var(--foreground);
+  text-decoration: none;
+}

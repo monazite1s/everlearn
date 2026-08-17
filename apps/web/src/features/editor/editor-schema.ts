@@ -4,13 +4,21 @@ import type { Extensions, JSONContent } from '@tiptap/core';
 import { StarterKit } from '@tiptap/starter-kit';
 import { DOCUMENT_APPROVED_HEADING_LEVELS, DOCUMENT_BLOCK_NODE_TYPES } from '@everlearn/contracts';
 
+import { EverlearnAttachment, EverlearnImage } from './attachment-nodes';
 import { BlockId } from './block-id';
 
 /** 正文 JSON 的根文档结构，供序列化与解析共享。 */
 export type EditorDocumentJson = JSONContent;
 
+/** createEditorSchema 的可选配置。 */
+export interface EditorSchemaOptions {
+  /** 宿主提供的附件占位重试回调，按 blockId 定位原文件。 */
+  readonly attachmentRetry?: ((blockId: string) => void) | null;
+}
+
 /** 用于构建 schemaVersion 1 的纯扩展配置，不含任何运行时状态。 */
-export function createEditorSchema(): Extensions {
+export function createEditorSchema(options: EditorSchemaOptions = {}): Extensions {
+  const attachmentRetry = options.attachmentRetry ?? null;
   return [
     StarterKit.configure({
       heading: { levels: [...DOCUMENT_APPROVED_HEADING_LEVELS] },
@@ -18,5 +26,7 @@ export function createEditorSchema(): Extensions {
       trailingNode: false,
     }),
     BlockId.configure({ types: [...DOCUMENT_BLOCK_NODE_TYPES] }),
+    EverlearnImage.configure({ onRetry: attachmentRetry }),
+    EverlearnAttachment.configure({ onRetry: attachmentRetry }),
   ];
 }

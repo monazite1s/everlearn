@@ -174,8 +174,10 @@ function MoveDialogArea(props: {
 
 /** 用于组装传给递归节点的树操作绑定。 */
 function createTreeBindings(props: {
+  activeDocumentId: string | undefined;
   desktop: boolean;
   drag: TreeDragController;
+  knowledgeBaseId: string;
   setCreateTarget: (target: { parent?: DocumentTreeItem } | undefined) => void;
   setMoveTarget: (target: DocumentTreeItem | undefined) => void;
   setRenameTarget: (target: DocumentTreeItem | undefined) => void;
@@ -183,10 +185,12 @@ function createTreeBindings(props: {
 }): TreeBindings {
   const { desktop, drag, setCreateTarget, setMoveTarget, setRenameTarget, tree } = props;
   return {
+    ...(props.activeDocumentId ? { activeDocumentId: props.activeDocumentId } : {}),
     childList: tree.childList,
     desktop,
     drag,
     isExpanded: tree.isExpanded,
+    knowledgeBaseId: props.knowledgeBaseId,
     loadMore: tree.loadMore,
     /** 用于把行菜单的子文档意图交给创建对话框。 */
     onCreateChild: (parent) => setCreateTarget({ parent }),
@@ -198,7 +202,7 @@ function createTreeBindings(props: {
   };
 }
 
-/** 用于渲染树区主体：头部、移动失败提示、根区域与说明。 */
+/** 用于渲染树区主体：头部、移动失败提示与根区域。 */
 function TreeBody(props: {
   desktop: boolean;
   list: DocumentChildList;
@@ -219,7 +223,6 @@ function TreeBody(props: {
         onCreate={props.onCreate}
         tree={props.tree}
       />
-      <p className="m-0 text-caption text-muted-foreground">打开文档正文将在编辑器上线后提供。</p>
     </>
   );
 }
@@ -270,7 +273,12 @@ function TreeDialogLayer(props: {
 }
 
 /** 用于持有树状态、对话框目标与移动交互的组合状态。 */
-function useTreeSection(props: { desktop: boolean; knowledgeBaseId: string; offline: boolean }) {
+function useTreeSection(props: {
+  activeDocumentId: string | undefined;
+  desktop: boolean;
+  knowledgeBaseId: string;
+  offline: boolean;
+}) {
   const tree = useDocumentTree(props.knowledgeBaseId);
   const [createTarget, setCreateTarget] = useState<{ parent?: DocumentTreeItem }>();
   const [renameTarget, setRenameTarget] = useState<DocumentTreeItem>();
@@ -281,8 +289,10 @@ function useTreeSection(props: { desktop: boolean; knowledgeBaseId: string; offl
     move: tree.move,
   });
   const bindings = createTreeBindings({
+    activeDocumentId: props.activeDocumentId,
     desktop: props.desktop,
     drag: moves.drag,
+    knowledgeBaseId: props.knowledgeBaseId,
     setCreateTarget,
     setMoveTarget,
     setRenameTarget,
@@ -312,14 +322,17 @@ function useTreeSection(props: { desktop: boolean; knowledgeBaseId: string; offl
 
 /** 用于渲染按需加载的文档树和创建、重命名、移动流程。 */
 export function DocumentTree(props: {
+  /** 当前打开的文档 id，行高亮与当前位置标识。 */
+  activeDocumentId?: string;
   desktop: boolean;
   knowledgeBaseId: string;
   offline: boolean;
   onCreated: () => void;
   onUncertainOutcome?: () => void;
 }) {
-  const { desktop, knowledgeBaseId, offline, onCreated, onUncertainOutcome } = props;
-  const section = useTreeSection({ desktop, knowledgeBaseId, offline });
+  const { desktop, knowledgeBaseId, offline, onCreated, onUncertainOutcome, activeDocumentId } =
+    props;
+  const section = useTreeSection({ activeDocumentId, desktop, knowledgeBaseId, offline });
   const { tree } = section;
   /** 用于把创建结果并入树并同步页面统计。 */
   function handleCreated(detail: DocumentDetail): void {

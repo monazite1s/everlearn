@@ -61,13 +61,18 @@
 
 ## ED-05 实现编辑器页面与工具栏
 
+- 状态：已完成（2026-08-18，子 agent 实现 + 主 agent 复验 + code-reviewer 二审全部处置）。
 - 依赖：ED-01..04、KB-06W。
 - 必读：`docs/01-design/pages/editor.md`、`docs/01-design/design-system.md`、`docs/01-design/layout-and-navigation.md`。
 - 目标：接入文档树、面包屑、编辑器、保存状态、属性和修订侧栏。
 - 实施：桌面完整编辑；移动只加载只读渲染器；表格和代码局部滚动；键盘覆盖工具栏和 Slash Menu。
 - 非目标：AI 与反向链接面板。
-- 验收：编辑不中断导航；保存/冲突/删除/离线状态符合规格；移动端无编辑实例。
-- 验证：组件、axe、Playwright 桌面/移动与视觉回归。
+- 改动：新路由 `app/knowledge/[knowledgeBaseId]/documents/[docId]/page.tsx`（server component，404→删除态、500→错误态、离线检测）；editor feature 新增 18 文件——`editor-page`（布局分流：≥xl 三栏、lg 双栏+Sheet 面板、移动只读）、`document-session`（会话组合：保存/修订/附件三控制器 + 冲突信息拉取）、`editor-workbench`（重载/恢复 key 递增整体重挂）、`editor-title-bar`（面包屑+标题输入+保存徽标）、`editor-toolbar`（roving tabindex+行内链接输入）、`editor-side-panel`（修订/属性 Tabs 与 Sheet 双形态）、`revisions-panel`（时间轴+预览+恢复确认）、`properties-panel`（属性+附件引用清单）、`readonly-document`（移动端 `generateHTML` 共享 schema 渲染）、`editor-content.css`（prose 排版）、attachment 节点视图/确认对话框/上传 hook 等；knowledge 树最小 diff 接入 `activeDocumentId` 高亮与行链接（可选 prop，7 测试回归）；packages/ui 经 CLI 安装 Tabs/Progress；`@tiptap/html` 获批引入（移动端只读序列化）。
+- 设计要点：会话三层结构 workbench（替换语义）→ session（控制器组合）→ 面板/工具栏（纯展示），重载与恢复统一走 `replaceSession`（丢弃保存/修订本地快照后整体重挂，新版本即新基线）；冲突只读三件套（editor editable=false + toolbar aria-disabled + title readOnly）+ 冲突期间修订触发失能；`omitPendingAttachments` 在 stageSnapshot 统一剔除未确认占位（保存与修订共用）；共享 `createEditorSchema` 单事实源，移动端零 ProseMirror 实例；`--width-prose` 经 `@theme inline --container-prose` 映射为官方 `max-w-prose` utility。
+- 复用与评审：Tabs/Sheet/AlertDialog/Badge/Skeleton/Breadcrumb/Tooltip 全部 shadcn；独立 code-reviewer 二审 `REQUEST_CHANGES`（1 HIGH + 7 MEDIUM + 8 LOW）已全部处置——H-1 工具栏 roving 焦点改为 ref 数组实际 `focus()` 并放行文本输入内方向键（测试升级为 `toHaveFocus` + 新增输入放行断言）；M-1 冲突抑制修订（`triggers.reset()` + stage 守卫，测试锁定间隔与卸载零提交）；M-2/L-5 标题栏对齐正文列并改用官方 container utility；M-3 补 `omitPendingAttachments` 专项 4 测试 + 会话级 PATCH 剔除断言；M-4 删除重复 `EditorApiFailure`；M-5 新建 `shared/api-request.ts` 统一请求/信封/守卫骨架（editor-api、attachment-upload-api、properties-panel 迁移，`attrString` 收敛到 attachment-nodes 导出；knowledge 客户端迁移留 V2 债）；M-6 spinner/skeleton 补 `motion-reduce:animate-none`；M-7 恢复基线回归（发现并修复同族缺陷：卸载阶段编辑器末次事务重 stage 旧内容——`discard`/`reset` 置失能标志，恢复后全部 PATCH 断言 version=5）；L-1 单事实源导入、L-2 属性式 onOpenChange 删除 eslint-disable、L-4 重挂后焦点交还标题输入（autoFocusTitle）、L-6/L-7/L-8 记录于风险栏、块级 react-hooks/refs 豁免理由修正为准确表述。另修测试稳定性：editor-page 树高亮断言改为 waitFor 锚元素（全量并行下偶发）。
+- 验证结果：主 agent 独立复跑——组件 196/196（连续三轮稳定；agent 交付时新增 33 个，评审处置阶段新增 8 个，合计 41）；typecheck、lint（注释 295 文件 2483 条 + eslint + stylelint + structure/design-token/file-size 门禁）、format:check、web 生产构建（`ƒ /knowledge/[knowledgeBaseId]/documents/[docId]`）全部通过；真实浏览器走查 9/9（桌面浅/深三栏+树高亮、输入触发防抖保存、修订时间轴、属性页签、工具栏 roving、1000px Sheet、390px 无编辑实例只读、sticky 工具栏）+ 截图 6 张目视核对（亮/暗/保存中/修订/Sheet/移动）全部通过；评审修复复核 5/5（方向键实际移动焦点、链接输入方向键不劫持、标题栏与正文列对齐、桌面与移动 axe 扫描 zero serious/critical 违规）。
+- 证据：走查脚本对真实 API（含附件端点）驱动：连续输入 800ms 后徽标转「保存中→已保存」且 PATCH body 剔除占位；冲突由旧版本 PUT 触发 409 后三件套只读生效；恢复经 AlertDialog 确认产生新修订且时间轴即时追加；移动端 DOM 无 `[contenteditable]`；axe（wcag2/2.1 a+aa）桌面与移动均无 serious/critical。
+- 风险：移动端只读暂缺目录（TOC）——editor.md L60 要求「正文、目录、内部链接和引用」，正文/链接已满足，TOC 属规格偏差待产品决策（补实现或修订规格），已登记里程碑回顾处置；附件重试为全量重建上传（新 attachment 行），幂等由服务端孤儿清理 24h TTL 兜底；卸载 fire-and-forget（保存与修订）浏览器直接关闭丢末次窗口——sendBeacon 评估结论：`fetch keepalive` 有 64KB body 上限而 contentJson 可超限，非无损方案，维持 `ponytail:` 天花板标注（正式方案随离线编辑任务立项）；请求骨架 knowledge 客户端仍持一份复制（V2 债，跨切片迁移）；视觉回归基线未建立（按 vibe 标准需单独获批）；Playwright 走查脚本为临时产物未入库（E2E 正式化随首个 E2E 任务统一立项）。
 
 ## 检查点
 

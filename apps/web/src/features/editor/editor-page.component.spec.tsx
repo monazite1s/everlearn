@@ -1,0 +1,186 @@
+/** @fileoverview 验证编辑器页面的设备分支、删除态、离线与树高亮行为。 */
+
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { DocumentContentDetail } from '@everlearn/contracts';
+import { afterEach, expect, test, vi } from 'vitest';
+
+import { EditorPage } from './editor-page';
+
+const DOC_ID = '11111111-1111-4111-8111-111111111111';
+const KB_ID = '22222222-2222-4222-8222-222222222222';
+const fetchMock = vi.fn();
+
+/** 用于构造最小内容投影。 */
+function contentDetail(): DocumentContentDetail {
+  return {
+    childCount: 0,
+    contentJson: {
+      content: [{ content: [{ text: '只读正文段落', type: 'text' }], type: 'paragraph' }],
+      type: 'doc',
+    },
+    id: DOC_ID,
+    knowledgeBaseId: KB_ID,
+    parentId: null,
+    schemaVersion: 1,
+    title: '目标文档',
+    updatedAt: '2026-08-17T08:00:00.000Z',
+    version: 1,
+  };
+}
+
+/** 用于把 Fetch 输入收敛为可解析的 URL 对象。 */
+function toUrl(input: RequestInfo | URL): URL {
+  const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  return new URL(raw, 'http://localhost');
+}
+
+/** 用于构造最小响应桩。 */
+/** 用于返回确定响应载荷的桩函数。 */
+const jsonStub =
+  (body: unknown): (() => Promise<unknown>) =>
+  () =>
+    Promise.resolve(body);
+
+/** 用于构造最小响应桩。 */
+function jsonResponse(body: unknown, status = 200): Response {
+  return { json: jsonStub(body), status } as Response;
+}
+
+/** 用于按编辑与三栏两个断点返回确定匹配结果。 */
+function matchViewport(min48: boolean, min80 = false): (query: string) => MediaQueryList {
+  return (query) =>
+    ({
+      addEventListener: vi.fn(),
+      addListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      matches: query.includes('80') ? min80 : min48,
+      media: query,
+      onchange: null,
+      removeEventListener: vi.fn(),
+      removeListener: vi.fn(),
+    }) as MediaQueryList;
+}
+
+/** 用于在指定视口下挂载页面并预置内容响应。 */
+function mountPage(desktop: boolean): ReturnType<typeof render> {
+  vi.stubGlobal('matchMedia', matchViewport(desktop));
+  return render(<EditorPage docId={DOC_ID} knowledgeBaseId={KB_ID} />);
+}
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  fetchMock.mockReset();
+});
+
+test('移动端以只读渲染器展示正文且不创建编辑实例', async () => {
+  fetchMock.mockImplementation((input: RequestInfo | URL) => {
+    const url = toUrl(input);
+    if (url.pathname.endsWith(`/documents/${DOC_ID}/content`)) {
+      return Promise.resolve(jsonResponse(contentDetail()));
+    }
+    return Promise.resolve(jsonResponse({ code: 'INTERNAL_ERROR', message: '不支持' }, 500));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  mountPage(false);
+  expect(await screen.findByText('只读正文段落')).toBeVisible();
+  expect(screen.getByRole('status')).toHaveTextContent('当前设备支持阅读，编辑请使用桌面端。');
+  expect(screen.queryByRole('textbox', { name: '文档正文' })).not.toBeInTheDocument();
+  expect(document.querySelector('.ProseMirror[contenteditable]')).toBeNull();
+  expect(screen.queryByRole('toolbar', { name: '格式化' })).not.toBeInTheDocument();
+});
+
+test('内容 404 时整页转为删除态并提供回收站入口', async () => {
+  fetchMock.mockImplementation(() =>
+    Promise.resolve(
+      jsonResponse({ code: 'NOT_FOUND', message: '文档不存在。', requestId: 'r' }, 404),
+    ),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  mountPage(true);
+  expect(await screen.findByText('文档已删除')).toBeVisible();
+  expect(screen.getByRole('link', { name: '前往回收站' })).toHaveAttribute(
+    'href',
+    '/knowledge/trash',
+  );
+});
+
+test('桌面端渲染编辑器与文档树并高亮当前文档', async () => {
+  fetchMock.mockImplementation((input: RequestInfo | URL) => {
+    const url = toUrl(input);
+    if (url.pathname.endsWith(`/documents/${DOC_ID}/content`)) {
+      return Promise.resolve(jsonResponse(contentDetail()));
+    }
+    if (url.pathname.endsWith('/documents')) {
+      return Promise.resolve(
+        jsonResponse({
+          items: [
+            {
+              childCount: 0,
+              id: DOC_ID,
+              title: '目标文档',
+              updatedAt: '2026-08-17T08:00:00.000000Z',
+              version: 1,
+            },
+            {
+              childCount: 0,
+              id: '99999999-9999-4999-8999-999999999999',
+              title: '另一篇文档',
+              updatedAt: '2026-08-17T08:00:00.000000Z',
+              version: 1,
+            },
+          ],
+          nextCursor: null,
+        }),
+      );
+    }
+    return Promise.resolve(jsonResponse({ code: 'INTERNAL_ERROR', message: '不支持' }, 500));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  mountPage(true);
+  expect(await screen.findByRole('textbox', { name: '文档正文' })).toBeVisible();
+  const treeLink = await waitFor(() => {
+    const anchor = screen
+      .getAllByRole('link', { name: '目标文档' })
+      .find((link) => link.tagName === 'A');
+    expect(anchor).toBeDefined();
+    return anchor!;
+  });
+  expect(treeLink).toHaveAttribute('aria-current', 'page');
+  expect(treeLink).toHaveAttribute('href', `/knowledge/${KB_ID}/documents/${DOC_ID}`);
+  expect(screen.getByRole('link', { name: '另一篇文档' })).not.toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  expect(screen.queryByRole('region', { name: '文档正文（只读）' })).not.toBeInTheDocument();
+});
+
+test('读取失败提供就地重试且重试后恢复', async () => {
+  fetchMock
+    .mockImplementationOnce(() =>
+      Promise.resolve(jsonResponse({ code: 'INTERNAL_ERROR', message: '服务暂不可用' }, 500)),
+    )
+    .mockImplementationOnce(() => Promise.resolve(jsonResponse(contentDetail())));
+  vi.stubGlobal('fetch', fetchMock);
+  mountPage(false);
+  expect(await screen.findByText('文档未加载')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '重新读取' }));
+  await waitFor(() => expect(screen.getByText('只读正文段落')).toBeVisible());
+});
+
+test('离线时桌面端展示离线提示并禁用工具栏', async () => {
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+  window.dispatchEvent(new Event('offline'));
+  fetchMock.mockImplementation((input: RequestInfo | URL) => {
+    const url = toUrl(input);
+    if (url.pathname.endsWith(`/documents/${DOC_ID}/content`)) {
+      return Promise.resolve(jsonResponse(contentDetail()));
+    }
+    return Promise.resolve(jsonResponse({ items: [], nextCursor: null }));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  mountPage(true);
+  expect(await screen.findByText('当前离线：正文转为只读，编辑与上传暂不可用。')).toBeVisible();
+  expect(screen.getByRole('button', { name: '粗体' })).toHaveAttribute('aria-disabled', 'true');
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+});

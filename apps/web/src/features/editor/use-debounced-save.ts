@@ -28,14 +28,19 @@ export interface DebouncedSaveOptions {
 
 /** 暴露给编辑器宿主的保存控制器。 */
 export interface DebouncedSaveController {
+  readonly copyLocalContent: () => string;
+  /** 用于丢弃本地快照并取消待发提交，会话被显式替换时调用。 */
+  readonly discard: () => void;
+  readonly getVersion: () => number;
+  readonly retry: () => void;
+  readonly stage: (content: StagedDocumentContent) => void;
   readonly status: DocumentSaveStatus;
-  copyLocalContent(): string;
-  retry(): void;
-  stage(content: StagedDocumentContent): void;
 }
 
 /** 保存过程的可变引用状态，跨渲染保持单例。 */
 interface SaveState {
+  /** 会话被显式替换后失能，卸载阶段的末次编辑器事务不再触发提交。 */
+  discarded: boolean;
   inFlight: boolean;
   local: StagedDocumentContent | undefined;
   status: DocumentSaveStatus;
@@ -107,6 +112,7 @@ async function runSaveFlush(runtime: SaveRuntime): Promise<void> {
     version: state.version,
   });
   state.inFlight = false;
+  if (state.discarded) return;
   if (result.ok) {
     state.version = result.data.version;
     runtime.applyStatus('saved');
@@ -122,6 +128,7 @@ async function runSaveFlush(runtime: SaveRuntime): Promise<void> {
 function useSaveFlush(documentId: string, initialVersion: number) {
   const [status, setStatus] = useState<DocumentSaveStatus>('idle');
   const stateRef = useRef<SaveState>({
+    discarded: false,
     inFlight: false,
     local: undefined,
     status: 'idle',
@@ -159,6 +166,7 @@ export function useDebouncedSave(options: DebouncedSaveOptions): DebouncedSaveCo
   /** 用于聚合一次本地变更；冲突后仅更新快照供复制，不再提交覆盖。 */
   const stage = useCallback(
     (content: StagedDocumentContent) => {
+      if (stateRef.current.discarded) return;
       stateRef.current.local = content;
       if (stateRef.current.status !== 'conflict' && !stateRef.current.inFlight) {
         scheduleSave(timerRef, flushRef);
@@ -173,6 +181,14 @@ export function useDebouncedSave(options: DebouncedSaveOptions): DebouncedSaveCo
       const snapshot = stateRef.current.local;
       return snapshot === undefined ? '' : localContentText(snapshot);
     },
+    /** 用于丢弃本地快照并取消待发提交，让卸载 flush 不再提交旧内容。 */
+    discard: () => {
+      stateRef.current.local = undefined;
+      stateRef.current.discarded = true;
+      if (timerRef.current !== undefined) clearTimeout(timerRef.current);
+    },
+    /** 用于读取当前已确认的乐观版本基线，供修订恢复等外部写入使用。 */
+    getVersion: () => stateRef.current.version,
     /** 用于失败后手动重提当前本地快照。 */
     retry: () => {
       if (stateRef.current.status === 'failed') {

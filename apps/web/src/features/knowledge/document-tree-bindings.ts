@@ -7,10 +7,13 @@ import type { DocumentChildList } from './document-tree-model';
 
 /** 用于向递归节点传递树读取、操作与拖拽能力。 */
 export interface TreeBindings {
+  /** 当前编辑器页面打开的文档，用于行高亮与当前位置标识。 */
+  readonly activeDocumentId?: string;
   readonly childList: (parentId?: string | null) => DocumentChildList;
   readonly desktop: boolean;
   readonly drag: TreeDragController;
   readonly isExpanded: (id: string) => boolean;
+  readonly knowledgeBaseId: string;
   readonly loadMore: (parentId?: string | null) => void;
   readonly onCreateChild: (parent: DocumentTreeItem) => void;
   readonly onMove: (item: DocumentTreeItem) => void;
