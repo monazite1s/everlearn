@@ -4,13 +4,16 @@
 
 ## ED-01 建立 Tiptap Schema 与 Block ID
 
+- 状态：已完成（2026-08-17，子 agent 实现 + 主 agent 复验）。
 - 依赖：KB-03、UI-02。
 - 必读：`docs/01-design/pages/editor.md`、`docs/02-architecture/data-model.md`、`docs/03-engineering/research-and-dependencies.md`。
 - 目标：配置批准的 Block、Markdown 快捷输入、Slash Menu 和稳定 `blockId` 扩展。
-- 实施：定义 Schema 版本；处理插入、复制、拆分、合并和导入时的 ID 规则；拖拽使用官方能力。
-- 非目标：AI、协作、表格高级计算和自定义数据库 Block。
-- 验收：所有可引用 Block ID 唯一；非法 JSON 拒绝；批准的 Block 可序列化往返。
-- 验证：扩展单元测试、JSON round-trip 测试、编辑器组件测试。
+- 改动：新增 editor feature——`editor-schema.ts`（schemaVersion 1 节点/标记/标题层级常量与 StarterKit 配置）、`block-id.ts`（blockId 扩展：新建分配、复制重分配、拆分保留原块、合并保留幸存块、导入补齐、文档内唯一不变量）、`parse-document-json.ts`（信任边界收窄：非 doc/未知节点/未知标记/非法 blockId/越界标题层级/恶意深度拒绝）、`slash-menu.tsx`（官方 suggestion + shadcn Command，键盘导航与中英文过滤）、`rich-text-editor.tsx`（最小组件，`immediatelyRender: false`）；`packages/ui` 经 shadcn CLI 安装 Command 组件。
+- 依赖：`@tiptap/core|react|starter-kit|pm|suggestion@3.30.1` + `cmdk@1.1.1`（Command 底层；版本与必要性逐包核对，React 19 peer 兼容）。里程碑 03 既定选型，用户完成里程碑 03 的指令即批准。
+- 复用与评审：SlashMenu 用官方 `@tiptap/suggestion`（char `/` + mount 托管定位）+ CLI 安装的 Command 组件，未自研菜单交互；独立 code-reviewer 评审 `REQUEST_CHANGES`，M1（heading level 5 穿透信任边界——Tiptap content check 不校验 attr 值域）已修：`APPROVED_HEADING_LEVELS` 常量共享给 schema 与解析器并补越界/非整数用例；undo/redo 唯一性回归（重复导入、拆分各一轮）与死导出清理随评审补齐；link `javascript:` 穿透经 jsdom 探针排除（Tiptap attr 层清空）。
+- 验证结果：editor 组件测试 3 文件 `44 passed`（parse 拒绝矩阵 19+、blockId 规则表 12 含 undo/redo、编辑器 6）；全量组件 `101+ passed`；Web/UI typecheck、聚焦 ESLint、Prettier、注释/文件/design-token/structure 门禁与生产构建通过。
+- 证据：全部批准节点+标记 JSON→Editor→JSON 深度相等且双实例 ID 逐块稳定；KB 最小正文 `{type:'doc',content:[]}` 兼容加载；重复 ID 导入→undo→redo 全程唯一；level 5 与 1.5 层级被拒绝。
+- 风险：`trailingNode: false`（与 blockId 初始化修复链时序冲突，`ponytail:` 已标注，ED-05 需要时专项启用）；同文档粘贴于源块前 ID 漂移（唯一性不受影响，跨文档重映射属 ED-02）；SlashMenu 视觉定位依赖官方 Floating UI autoUpdate，真实浏览器走查留待 ED-05 接入页面时；`parseDocumentJson` 与 ED-02 服务端校验为人工镜像，需契约测试锁定；Tiptap/cmdk 版本未走 pnpm catalog（第二包引用时迁移）。
 
 ## ED-02 实现正文保存与冲突
 
