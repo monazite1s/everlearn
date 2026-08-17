@@ -70,7 +70,7 @@ test.each([
   ['非 doc 类型', { type: 'paragraph' }],
   ['content 非数组', { content: 'x', type: 'doc' }],
   ['顶层未知节点', { content: [{ type: 'table' }], type: 'doc' }],
-  ['嵌套未知节点', { content: [{ content: [{ type: 'image' }], type: 'paragraph' }], type: 'doc' }],
+  ['嵌套未知节点', { content: [{ content: [{ type: 'video' }], type: 'paragraph' }], type: 'doc' }],
   ['节点缺 type', { content: [{ text: 'x' }], type: 'doc' }],
   ['节点 type 非字符串', { content: [{ type: 3 }], type: 'doc' }],
   ['text 非字符串', { content: [{ text: 1, type: 'text' }], type: 'doc' }],

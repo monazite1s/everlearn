@@ -47,15 +47,25 @@ export const documentDetailKeys = [
   'version',
 ];
 
+/** 用于注入真实对象存储凭据的附件集成测试配置。 */
+export interface S3FixtureEnv {
+  readonly accessKey: string;
+  readonly bucket: string;
+  readonly endpoint: string;
+  readonly region: string;
+  readonly secretKey: string;
+}
+
 /** 用于承载文档集成测试的隔离应用与数据库状态。 */
 export class DocumentsTestEnvironment {
   private application: INestApplication | undefined;
   private database: Kysely<DatabaseSchema> | undefined;
 
-  /** 用于记录隔离 Schema 名与基础连接串。 */
+  /** 用于记录隔离 Schema 名、基础连接串与可选真实 S3 配置。 */
   constructor(
     private readonly schemaName: string,
     private readonly databaseUrl: string,
+    private readonly s3Fixture?: S3FixtureEnv,
   ) {}
 
   /** 用于返回夹具数据库客户端并在未初始化时快速失败。 */
@@ -101,6 +111,7 @@ export class DocumentsTestEnvironment {
 
   /** 用于删除可变夹具并保留生产本地用户种子。 */
   async resetFixtures(): Promise<void> {
+    await this.getDatabase().deleteFrom('attachments').execute();
     await this.getDatabase().deleteFrom('inbox_items').execute();
     await this.getDatabase().deleteFrom('idempotency_records').execute();
     await this.getDatabase().deleteFrom('documents').execute();
@@ -182,13 +193,23 @@ export class DocumentsTestEnvironment {
 
   /** 用于在导入 AppModule 前提供必要的非生产配置。 */
   private applyFixtureEnvironment(scopedDatabaseUrl: string): void {
+    const s3 = this.s3Fixture ?? DEFAULT_S3_FIXTURE;
     process.env.DATABASE_URL = scopedDatabaseUrl;
     process.env.REDIS_URL = 'redis://127.0.0.1:6379';
-    process.env.S3_ACCESS_KEY = 'integration-test-access';
-    process.env.S3_BUCKET = 'integration-test';
-    process.env.S3_ENDPOINT = 'http://127.0.0.1:8333';
+    process.env.S3_ACCESS_KEY = s3.accessKey;
+    process.env.S3_BUCKET = s3.bucket;
+    process.env.S3_ENDPOINT = s3.endpoint;
     process.env.S3_FORCE_PATH_STYLE = 'true';
-    process.env.S3_REGION = 'local';
-    process.env.S3_SECRET_KEY = 'integration-test-secret';
+    process.env.S3_REGION = s3.region;
+    process.env.S3_SECRET_KEY = s3.secretKey;
   }
 }
+
+/** 用于在未注入真实凭据时保持应用可启动的占位 S3 配置。 */
+const DEFAULT_S3_FIXTURE: S3FixtureEnv = {
+  accessKey: 'integration-test-access',
+  bucket: 'integration-test',
+  endpoint: 'http://127.0.0.1:8333',
+  region: 'local',
+  secretKey: 'integration-test-secret',
+};

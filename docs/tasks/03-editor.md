@@ -48,13 +48,16 @@
 
 ## ED-04 实现附件上传与生命周期
 
+- 状态：已完成（2026-08-18 后端与契约切片，子 agent 实现 + 主 agent 复验；编辑器上传 UI 与 E2E 属 ED-05 页面切片）。
 - 依赖：FND-08、ED-01。
 - 必读：`docs/01-design/pages/editor.md`、`docs/02-architecture/system.md`、`docs/02-architecture/api-and-events.md`。
-- 目标：支持图片预览、普通附件下载、受限上传确认和孤儿清理。
-- 实施：校验大小/MIME/哈希；对象先 pending，正文引用后 active；下载经所有权授权。
-- 非目标：PDF/Office 解析、OCR、转码和 AI 检索。
-- 验收：失败上传可重试且不写无效 Block；未授权对象不可下载；孤儿清理幂等。
-- 验证：SeaweedFS S3 集成测试、授权测试、编辑器上传 E2E。
+- 目标：支持图片预览数据源、普通附件下载、受限上传确认和孤儿清理。
+- 改动：`attachments` 表迁移（owner 全局对象、生命周期 CHECK `(pending∧0)∨(active∧>0)`、pending 清扫部分索引）；attachments 模块（预检/确认/下载/内部孤儿端点、SigV4 签名 Provider、引用计数服务）；contracts `attachment.ts`（闭集错误码与白名单常量）与 document 节点扩容（image/attachment 携带 blockId+attachmentId，未加 table/taskList/callout）；ED-02 校验器同步节点属性规则；保存/恢复/永久清理三处引用计数接线；Worker 第二个 Job Scheduler（固定 key，`0 4 * * *` 默认，经内部端点零 S3 依赖）。
+- 设计要点：两段式上传——预检即落 pending 行并返回 Content-Type 约束的签名 PUT（15 分钟）；confirm 服务端 GetObject 流式复核实际大小/MIME/SHA-256，失败立即删对象+行（净效果等同「复核后入库」且免去 DB 外泄漏扫描，报告声明）；下载走 API 代理流式输出（授权单点，nosniff + 防注入 Disposition）；引用计数按文档保存全量重算差量（文档行锁内）；孤儿 TTL 以 updated_at 计（去引用对象自归零再保 24h）。
+- 依赖决策：`@aws-sdk/client-s3`（Get/Delete）；presign 属独立包超出批准范围 → node:crypto 标准SigV4 查询签名（真实 SeaweedFS 探针：正确类型 200、错型 403），`ponytail:` 标注获批后可换官方 presigner。
+- 复用与评审：错误信封扩 `ApiDomainException`（kind:'domain' 携带稳定码）；KB-12 内部端点密钥模式复用；独立 code-reviewer 评审 `REQUEST_CHANGES`（SigV4 签名逐行核验通过、下载注入防护通过、引用计数锁序通过），1 HIGH + 1 MEDIUM 已修——确认失败删除行改为「未确认且零引用」条件删除（消除悬空引用毒化回收站清理的路径，清理递减同步容忍缺失行）、confirm UPDATE 增加 `sha256 IS NULL` 守卫与重放分支（并发异哈希不再破坏已确认状态），并补并发 confirm 竞态与被引用保留两个回归（真实 S3 八连跑稳定）；LOW 处置：MIME 规范化后长度不足显式 TYPE_REJECTED，孤儿清理事务内删除加 `ponytail:` 一致性说明。主 agent 复验：attachments 集成 15/15、串行全量 126/126、unit 66/66、三包 typecheck、聚焦门禁全绿。
+- 证据：预检拒绝矩阵（超限/非白名单/svg）；签名直传往返与错型 403；哈希/大小/类型复核失败删行删对象；确认幂等（同哈希同投影、异哈希 422）；他人对象下载统一 404；引用置 active/降级回 pending/多文档共享计数/未知引用整体 422；回收站保留引用、purge 递减；孤儿 TTL 边界（24h+1ms 删/23h 留/active 不删）与幂等重跑清零；根 tsconfig 单点 skipLibCheck 修复存量 happy-dom 类型冲突（干净树复现确认非本任务引入）。
+- 风险：presign 自研签名（升级路径：批准 @aws-sdk/s3-request-presigner 后替换）；PUT 体积上限靠 confirm 复核兜底（签名无法限制 body 大小，失败路径已删对象）；孤儿 TTL 语义为「自最近生命周期变化」（要求「自创建」需加列，已登记）；S3 删除在行锁事务内（本地可忽略，高延迟对象存储改乐观删除）；DTO 长度字面量镜像契约常量（装饰器限制，既有先例）。
 
 ## ED-05 实现编辑器页面与工具栏
 

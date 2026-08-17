@@ -7,6 +7,7 @@ import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { ApiExceptionFilter, createApiValidationPipe } from './http-boundary/api-exception.filter';
 import { HealthController } from './http-boundary/health.controller';
 import { KnowledgeBasesModule } from './knowledge-bases/knowledge-bases.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 import { DocumentsModule } from './documents/documents.module';
 import { InboxItemsModule } from './inbox-items/inbox-items.module';
 import { RequestCorrelationMiddleware } from './http-boundary/request-correlation.middleware';
@@ -21,6 +22,7 @@ import { validateRuntimeEnvironment } from './config/runtime-config';
       isGlobal: true,
       validate: validateRuntimeEnvironment,
     }),
+    AttachmentsModule,
     DocumentsModule,
     InboxItemsModule,
     KnowledgeBasesModule,

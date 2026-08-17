@@ -73,6 +73,14 @@ class RuntimeEnvironment {
   @IsNotEmpty()
   PURGE_TIMEZONE!: string;
 
+  @IsString()
+  @IsNotEmpty()
+  ATTACHMENT_PURGE_CRON!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  ATTACHMENT_PURGE_TIMEZONE!: string;
+
   @ValidateIf(hasLlmConfiguration)
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
   LLM_BASE_URL?: string;
@@ -101,6 +109,8 @@ class RuntimeEnvironment {
 function selectRuntimeEnvironment(environment: Record<string, unknown>): Record<string, unknown> {
   return {
     API_INTERNAL_URL: environment.API_INTERNAL_URL ?? 'http://127.0.0.1:3001',
+    ATTACHMENT_PURGE_CRON: environment.ATTACHMENT_PURGE_CRON ?? '0 4 * * *',
+    ATTACHMENT_PURGE_TIMEZONE: environment.ATTACHMENT_PURGE_TIMEZONE ?? 'UTC',
     DATABASE_URL: environment.DATABASE_URL,
     LLM_API_KEY: environment.LLM_API_KEY,
     PURGE_CRON: environment.PURGE_CRON ?? '0 3 * * *',

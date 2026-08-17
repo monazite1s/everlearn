@@ -14,6 +14,7 @@ import type { ValidationError } from 'class-validator';
 import type { Request, Response } from 'express';
 
 import { ApiConflictException, type ApiConflictCode } from './api-conflict.exception';
+import { ApiDomainException } from './api-domain.exception';
 import { REQUEST_ID_HEADER, resolveRequestId } from './request-correlation.middleware';
 
 interface ValidationFieldIssue {
@@ -135,6 +136,13 @@ function resolvePublicProblem(error: unknown): PublicProblem {
   }
   if (error instanceof ApiConflictException) {
     return { ...PUBLIC_CONFLICTS[error.conflictCode], status: HttpStatus.CONFLICT };
+  }
+  if (error instanceof ApiDomainException) {
+    return {
+      code: error.problem.code,
+      message: error.problem.message,
+      status: error.problem.status,
+    };
   }
   const validation = readValidationProblem(error);
   if (validation !== undefined) {

@@ -14,6 +14,7 @@ const schemaMigrationName = '20260812010000_identity_knowledge_schema';
 const seedMigrationName = '20260812010100_local_user_seed';
 const trashIndexesMigrationName = '20260817000000_trash_retention_indexes';
 const revisionTitleMigrationName = '20260818000000_document_revision_title';
+const attachmentsMigrationName = '20260819000000_attachments';
 const otherUserId = '10000000-0000-4000-8000-000000000001';
 const firstKnowledgeBaseId = '20000000-0000-4000-8000-000000000001';
 const secondKnowledgeBaseId = '20000000-0000-4000-8000-000000000002';
@@ -118,6 +119,7 @@ async function expectSchemaAndSeed(): Promise<void> {
       'document_revisions',
       'inbox_items',
       'idempotency_records',
+      'attachments',
     ]),
   );
   const seed = await database
@@ -181,6 +183,44 @@ async function expectDocumentConstraintsRejected(): Promise<void> {
   await expect(database.insertInto('documents').values(invalidContent).execute()).rejects.toThrow();
 }
 
+/** 用于验证附件受控类型、大小、哈希格式与生命周期不变量。 */
+async function expectAttachmentConstraintsRejected(): Promise<void> {
+  const { sql } = await import('kysely');
+  const base = {
+    file_name: '图片.png',
+    id: '60000000-0000-4000-8000-000000000001',
+    kind: 'image',
+    mime_type: 'image/png',
+    object_key: 'attachments/60000000-0000-4000-8000-000000000001',
+    owner_id: LOCAL_USER_ID,
+    size_bytes: 1024,
+  };
+  await expect(
+    sql`INSERT INTO attachments (id, owner_id, object_key, file_name, mime_type, kind, size_bytes, status, reference_count)
+        VALUES (${base.id}, ${base.owner_id}, ${base.object_key}, ${base.file_name}, ${base.mime_type}, 'video', ${1024n}, 'pending', 0)`.execute(
+      database,
+    ),
+  ).rejects.toThrow();
+  await expect(
+    sql`INSERT INTO attachments (id, owner_id, object_key, file_name, mime_type, kind, size_bytes, status, reference_count)
+        VALUES (${`60000000-0000-4000-8000-000000000002`}, ${base.owner_id}, ${base.object_key}, ${base.file_name}, ${base.mime_type}, 'image', ${26214401n}, 'pending', 0)`.execute(
+      database,
+    ),
+  ).rejects.toThrow();
+  await expect(
+    sql`INSERT INTO attachments (id, owner_id, object_key, file_name, mime_type, kind, size_bytes, status, reference_count)
+        VALUES (${`60000000-0000-4000-8000-000000000003`}, ${base.owner_id}, ${base.object_key}, ${base.file_name}, ${base.mime_type}, 'image', ${1024n}, 'pending', 1)`.execute(
+      database,
+    ),
+  ).rejects.toThrow();
+  await expect(
+    sql`INSERT INTO attachments (id, owner_id, object_key, file_name, mime_type, kind, size_bytes, sha256, status, reference_count)
+        VALUES (${`60000000-0000-4000-8000-000000000004`}, ${base.owner_id}, ${base.object_key}, ${base.file_name}, ${base.mime_type}, 'image', ${1024n}, ${'not-a-hash'}, 'pending', 0)`.execute(
+      database,
+    ),
+  ).rejects.toThrow();
+}
+
 /** 用于运行生产迁移往返并验证数据库不变量。 */
 async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   const firstUp = await runMigrations(database, migrationOptions('up'));
@@ -189,6 +229,7 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
     seedMigrationName,
     trashIndexesMigrationName,
     revisionTitleMigrationName,
+    attachmentsMigrationName,
   ]);
   await expectSchemaAndSeed();
   expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual([]);
@@ -196,10 +237,14 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   await insertConstraintFixtures();
   await expectControlledValuesRejected();
   await expectDocumentConstraintsRejected();
+  await expectAttachmentConstraintsRejected();
 
   await database.deleteFrom('documents').execute();
   await database.deleteFrom('knowledge_bases').execute();
   await database.deleteFrom('users').where('id', '=', otherUserId).execute();
+  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
+    attachmentsMigrationName,
+  ]);
   expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
     revisionTitleMigrationName,
   ]);
@@ -217,11 +262,15 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
     seedMigrationName,
     trashIndexesMigrationName,
     revisionTitleMigrationName,
+    attachmentsMigrationName,
   ]);
 }
 
 /** 用于验证修订标题迁移按文档标题回填存量修订行。 */
 async function backfillsRevisionTitlesFromDocuments(): Promise<void> {
+  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
+    attachmentsMigrationName,
+  ]);
   expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
     revisionTitleMigrationName,
   ]);
@@ -253,6 +302,7 @@ async function backfillsRevisionTitlesFromDocuments(): Promise<void> {
 
   expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual([
     revisionTitleMigrationName,
+    attachmentsMigrationName,
   ]);
   const revision = await database
     .selectFrom('document_revisions')

@@ -5,8 +5,9 @@ import type { RawBuilder, Sql, Transaction } from 'kysely' with {
   'resolution-mode': 'import',
 };
 
-import type { DatabaseSchema } from '../database/database.types';
+import type { DatabaseSchema, JsonValue } from '../database/database.types';
 import { DatabaseService } from '../database/database.service';
+import { AttachmentReferencesService } from '../attachments/attachment-references.service';
 
 /** 用于限制单批独立事务清理的回收站子树或知识库数量。 */
 export const PURGE_BATCH_SIZE = 100;
@@ -34,8 +35,11 @@ export interface TrashPurgeStats {
 /** 用于按全局保留期永久清理到期文档子树与无剩余文档的知识库。 */
 @Injectable()
 export class TrashPurgeService {
-  /** 用于接收共享数据库客户端。 */
-  constructor(private readonly databaseService: DatabaseService) {}
+  /** 用于接收共享数据库客户端与附件引用递减服务。 */
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly attachmentReferences: AttachmentReferencesService,
+  ) {}
 
   /** 用于以调用方注入的时间循环独立事务批次清理全部到期对象。 */
   async purgeExpired(now: Date): Promise<TrashPurgeStats> {
@@ -67,6 +71,7 @@ export class TrashPurgeService {
     if (roots.length === 0) {
       return { purgedDocuments: 0, purgedInboxItems: 0, purgeRoots: 0 };
     }
+    await this.decrementAttachmentReferences(transaction, roots);
     const purgedInboxItems = await this.deleteInboxReferences(transaction, roots);
     const { sql } = await import('kysely');
     const documents = await sql<{ id: string }>`
@@ -77,6 +82,25 @@ export class TrashPurgeService {
       purgedInboxItems,
       purgeRoots: roots.length,
     };
+  }
+
+  /** 用于在删除子树前按其正文快照递减附件引用计数。 */
+  private async decrementAttachmentReferences(
+    transaction: Transaction<DatabaseSchema>,
+    roots: readonly PurgeRoot[],
+  ): Promise<void> {
+    const { sql } = await import('kysely');
+    const rows = await sql<{ contentJson: unknown; ownerId: string }>`
+      SELECT d.content_json AS "contentJson", d.owner_id AS "ownerId"
+      FROM documents d WHERE ${this.buildSubtreePredicate(sql, roots)}
+    `.execute(transaction);
+    await this.attachmentReferences.decrementForDocuments(
+      transaction,
+      rows.rows.map((row) => ({
+        contentJson: row.contentJson as JsonValue,
+        ownerId: row.ownerId,
+      })),
+    );
   }
 
   /** 用于在单事务内锁定并删除一批到期且已无任何文档行的知识库。 */

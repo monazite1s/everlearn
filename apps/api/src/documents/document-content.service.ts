@@ -10,6 +10,7 @@ import type { Transaction } from 'kysely' with {
 
 import type { DatabaseSchema } from '../database/database.types';
 import { DatabaseService } from '../database/database.service';
+import { AttachmentReferencesService } from '../attachments/attachment-references.service';
 import { ApiConflictException } from '../http-boundary/api-conflict.exception';
 import { LocalIdentityContext } from '../identity/local-identity.context';
 import { loadDocumentContentRules, validateDocumentContent } from './document-content.validator';
@@ -25,10 +26,11 @@ interface LockedDocument {
 /** 用于持有正文读取与保存所需的最小身份和数据库依赖。 */
 @Injectable()
 export class DocumentContentService {
-  /** 用于接收共享数据库客户端和可信本地身份上下文。 */
+  /** 用于接收共享数据库客户端、可信本地身份与引用计数服务。 */
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly identityContext: LocalIdentityContext,
+    private readonly attachmentReferences: AttachmentReferencesService,
   ) {}
 
   /** 用于读取有效文档的详情与正文投影。 */
@@ -97,6 +99,12 @@ export class DocumentContentService {
       throw new UnprocessableEntityException();
     }
     const { sql } = await import('kysely');
+    await this.attachmentReferences.applyDocumentReferences(
+      transaction,
+      ownerId,
+      id,
+      content.contentJson,
+    );
     await transaction
       .updateTable('documents')
       .set({

@@ -24,6 +24,8 @@ function acceptsRequiredInfrastructure(): void {
   expect(configuration.S3_BUCKET).toBe('everlearn');
   expect(configuration.PURGE_CRON).toBe('0 3 * * *');
   expect(configuration.PURGE_TIMEZONE).toBe('UTC');
+  expect(configuration.ATTACHMENT_PURGE_CRON).toBe('0 4 * * *');
+  expect(configuration.ATTACHMENT_PURGE_TIMEZONE).toBe('UTC');
   expect(configuration.API_INTERNAL_URL).toBe('http://127.0.0.1:3001');
   expect(Object.isFrozen(configuration)).toBe(true);
 }

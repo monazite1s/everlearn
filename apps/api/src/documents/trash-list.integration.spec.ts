@@ -261,6 +261,11 @@ async function migratesTrashIndexesReversibly(): Promise<void> {
     return result.rows.map((row) => row.indexname);
   };
   expect((await indexNames()).includes('documents_trash_idx')).toBe(true);
+  const attachmentsDown = await runMigrations(environment.getDatabase(), {
+    ...options,
+    direction: 'down',
+  });
+  expect(attachmentsDown.executedMigrations).toEqual(['20260819000000_attachments']);
   const revisionTitleDown = await runMigrations(environment.getDatabase(), {
     ...options,
     direction: 'down',
@@ -273,6 +278,7 @@ async function migratesTrashIndexesReversibly(): Promise<void> {
   expect(up.executedMigrations).toEqual([
     '20260817000000_trash_retention_indexes',
     '20260818000000_document_revision_title',
+    '20260819000000_attachments',
   ]);
   expect((await indexNames()).includes('knowledge_bases_trash_idx')).toBe(true);
 }

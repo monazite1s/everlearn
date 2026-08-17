@@ -1,14 +1,9 @@
 /** @fileoverview 组装限定所有者的文档读取、创建、重命名与移动 HTTP 切片。 */
 
-import type { NextFunction, Request, Response } from 'express';
+import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 
-import {
-  type MiddlewareConsumer,
-  Module,
-  type NestModule,
-  UnsupportedMediaTypeException,
-} from '@nestjs/common';
-
+import { AttachmentsModule } from '../attachments/attachments.module';
+import { requireJsonContentType } from '../http-boundary/require-json-content-type';
 import { DatabaseModule } from '../database/database.module';
 import { LocalIdentityContext } from '../identity/local-identity.context';
 import { DocumentContentService } from './document-content.service';
@@ -24,14 +19,6 @@ import { TrashListService } from './trash-list.service';
 import { TrashPurgeController } from './trash-purge.controller';
 import { TrashPurgeService } from './trash-purge.service';
 
-/** 用于在控制器校验前拒绝浏览器表单写入。 */
-function requireJsonContentType(request: Request, _response: Response, next: NextFunction): void {
-  if (!['DELETE', 'PATCH', 'POST'].includes(request.method)) return next();
-  const mediaType = request.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase();
-  if (mediaType !== 'application/json') throw new UnsupportedMediaTypeException();
-  next();
-}
-
 /** 用于持有本切片所需的最小控制器、服务、身份和数据库依赖。 */
 @Module({
   controllers: [
@@ -42,7 +29,7 @@ function requireJsonContentType(request: Request, _response: Response, next: Nex
     TrashPurgeController,
   ],
   exports: [DocumentsService, TrashPurgeService],
-  imports: [DatabaseModule],
+  imports: [AttachmentsModule, DatabaseModule],
   providers: [
     DocumentsService,
     DocumentContentService,

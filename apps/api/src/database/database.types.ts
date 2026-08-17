@@ -86,6 +86,21 @@ export interface IdempotencyRecordTable {
   created_at: CreatedTimestamp;
 }
 
+export interface AttachmentTable {
+  id: string;
+  owner_id: string;
+  object_key: string;
+  file_name: string;
+  mime_type: string;
+  kind: 'file' | 'image';
+  size_bytes: BigIntValue;
+  sha256: string | null;
+  status: 'active' | 'pending';
+  reference_count: Defaulted<number>;
+  created_at: CreatedTimestamp;
+  updated_at: UpdatedTimestamp;
+}
+
 export interface DatabaseSchema {
   users: UserTable;
   knowledge_bases: KnowledgeBaseTable;
@@ -93,4 +108,5 @@ export interface DatabaseSchema {
   document_revisions: DocumentRevisionTable;
   inbox_items: InboxItemTable;
   idempotency_records: IdempotencyRecordTable;
+  attachments: AttachmentTable;
 }

@@ -21,7 +21,12 @@ export const DOCUMENT_BLOCK_NODE_TYPES = [
   'orderedList',
   'codeBlock',
   'horizontalRule',
+  'image',
+  'attachment',
 ] as const;
+
+/** 引用附件对象的叶子节点类型，attrs 必须携带合法 attachmentId。 */
+export const DOCUMENT_ATTACHMENT_NODE_TYPES = ['image', 'attachment'] as const;
 
 /** 当前 Schema 版本允许的标题层级。 */
 export const DOCUMENT_APPROVED_HEADING_LEVELS = [1, 2, 3, 4] as const;

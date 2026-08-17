@@ -10,6 +10,10 @@ export interface ValidatedDocumentContent {
 
 /** 服务端逐节点校验所需的共享契约常量集合。 */
 export interface DocumentContentRules {
+  readonly attachmentAltMaxLength: number;
+  readonly attachmentFileNameMaxLength: number;
+  readonly attachmentIdPattern: RegExp;
+  readonly attachmentTypes: ReadonlySet<string>;
   readonly blockIdPattern: RegExp;
   readonly blockTypes: ReadonlySet<string>;
   readonly headingLevels: ReadonlySet<number>;
@@ -23,6 +27,11 @@ export interface DocumentContentRules {
 export async function loadDocumentContentRules(): Promise<DocumentContentRules> {
   const contracts = await import('@everlearn/contracts');
   return {
+    attachmentAltMaxLength: contracts.ATTACHMENT_ALT_MAX_LENGTH,
+    attachmentFileNameMaxLength: contracts.ATTACHMENT_FILE_NAME_MAX_LENGTH,
+    // attachmentId 与 blockId 同为标准 UUID，直接复用既有格式常量。
+    attachmentIdPattern: contracts.DOCUMENT_BLOCK_ID_PATTERN,
+    attachmentTypes: new Set<string>(contracts.DOCUMENT_ATTACHMENT_NODE_TYPES),
     blockIdPattern: contracts.DOCUMENT_BLOCK_ID_PATTERN,
     blockTypes: new Set<string>(contracts.DOCUMENT_BLOCK_NODE_TYPES),
     headingLevels: new Set<number>(contracts.DOCUMENT_APPROVED_HEADING_LEVELS),
@@ -68,7 +77,44 @@ function hasApprovedHeadingLevel(
   return level === undefined || (typeof level === 'number' && rules.headingLevels.has(level));
 }
 
-/** 用于校验节点的 attrs、text 与 marks 字段形态及标题层级。 */
+/** 用于校验附件节点属性：必填合法 attachmentId，alt 与 fileName 可选受限字符串。 */
+function hasValidAttachmentAttrs(
+  node: Record<string, unknown>,
+  rules: DocumentContentRules,
+): boolean {
+  if (!isPlainObject(node.attrs)) {
+    return false;
+  }
+  const attachmentId = node.attrs.attachmentId;
+  if (typeof attachmentId !== 'string' || !rules.attachmentIdPattern.test(attachmentId)) {
+    return false;
+  }
+  const alt = node.attrs.alt;
+  if (alt !== undefined && (typeof alt !== 'string' || alt.length > rules.attachmentAltMaxLength)) {
+    return false;
+  }
+  const fileName = node.attrs.fileName;
+  return (
+    fileName === undefined ||
+    (typeof fileName === 'string' && fileName.length <= rules.attachmentFileNameMaxLength)
+  );
+}
+
+/** 用于校验节点类型专属属性：附件节点必填合法 attachmentId，标题节点限层级。 */
+function passesTypeSpecificRules(
+  node: Record<string, unknown>,
+  rules: DocumentContentRules,
+): boolean {
+  if (typeof node.type === 'string' && rules.attachmentTypes.has(node.type)) {
+    return hasValidAttachmentAttrs(node, rules);
+  }
+  if (node.type !== 'heading') {
+    return true;
+  }
+  return hasApprovedHeadingLevel(node, rules);
+}
+
+/** 用于校验节点的 attrs、text 与 marks 字段形态及类型专属属性。 */
 function isValidNodeShape(node: Record<string, unknown>, rules: DocumentContentRules): boolean {
   if (node.attrs !== undefined && !isPlainObject(node.attrs)) {
     return false;
@@ -79,10 +125,7 @@ function isValidNodeShape(node: Record<string, unknown>, rules: DocumentContentR
   if (node.marks !== undefined && !isValidMarks(node.marks, rules)) {
     return false;
   }
-  if (node.type !== 'heading') {
-    return true;
-  }
-  return hasApprovedHeadingLevel(node, rules);
+  return passesTypeSpecificRules(node, rules);
 }
 
 /** 用于要求块级节点携带文档内唯一的合法 blockId。 */

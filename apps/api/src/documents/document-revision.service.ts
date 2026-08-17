@@ -14,6 +14,7 @@ import type { Transaction } from 'kysely' with { 'resolution-mode': 'import' };
 
 import type { DatabaseSchema, JsonValue } from '../database/database.types';
 import { DatabaseService } from '../database/database.service';
+import { AttachmentReferencesService } from '../attachments/attachment-references.service';
 import { ApiConflictException } from '../http-boundary/api-conflict.exception';
 import { LocalIdentityContext } from '../identity/local-identity.context';
 import type { CreateDocumentRevisionDto } from './create-document-revision.dto';
@@ -52,10 +53,11 @@ interface RevisionDraft {
 /** 用于在所有者边界内只以 INSERT 与 SELECT 维护文档修订历史。 */
 @Injectable()
 export class DocumentRevisionService {
-  /** 用于接收共享数据库客户端和可信本地身份上下文。 */
+  /** 用于接收共享数据库客户端、可信本地身份与引用计数服务。 */
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly identityContext: LocalIdentityContext,
+    private readonly attachmentReferences: AttachmentReferencesService,
   ) {}
 
   /** 用于在显式触发点为当前内容创建修订且跳过相邻重复快照。 */
@@ -224,6 +226,12 @@ export class DocumentRevisionService {
     revision: Pick<DocumentRevisionDetail, 'contentJson' | 'plainText' | 'schemaVersion' | 'title'>,
   ): Promise<void> {
     const { sql } = await import('kysely');
+    await this.attachmentReferences.applyDocumentReferences(
+      transaction,
+      ownerId,
+      id,
+      revision.contentJson as JsonValue,
+    );
     await transaction
       .updateTable('documents')
       .set({

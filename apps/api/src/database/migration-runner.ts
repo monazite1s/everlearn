@@ -13,12 +13,14 @@ import { identityKnowledgeSchemaMigration } from './migrations/20260812010000_id
 import { localUserSeedMigration } from './migrations/20260812010100_local_user_seed';
 import { trashRetentionIndexesMigration } from './migrations/20260817000000_trash_retention_indexes';
 import { documentRevisionTitleMigration } from './migrations/20260818000000_document_revision_title';
+import { attachmentsMigration } from './migrations/20260819000000_attachments';
 
 const applicationMigrations = {
   '20260812010000_identity_knowledge_schema': identityKnowledgeSchemaMigration,
   '20260812010100_local_user_seed': localUserSeedMigration,
   '20260817000000_trash_retention_indexes': trashRetentionIndexesMigration,
   '20260818000000_document_revision_title': documentRevisionTitleMigration,
+  '20260819000000_attachments': attachmentsMigration,
 } satisfies Record<string, Migration>;
 
 export type MigrationDirection = 'down' | 'up';
