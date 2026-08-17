@@ -1,12 +1,10 @@
 /** @fileoverview 为批准的块级节点维护文档内唯一的稳定 blockId 属性。 */
 
+import { DOCUMENT_BLOCK_ID_PATTERN } from '@everlearn/contracts';
 import { Extension } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { Transaction } from '@tiptap/pm/state';
-
-/** blockId 的合法格式为标准 UUID（任意版本，兼容服务端生成策略）。 */
-const BLOCK_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 用于识别本扩展追加的事务，避免重复处理。 */
 const BLOCK_ID_PLUGIN_KEY = new PluginKey('everlearnBlockId');
@@ -21,7 +19,7 @@ interface BlockIdFix {
 
 /** 用于在信任边界判断 blockId 是否为合法 UUID。 */
 export function isBlockId(value: unknown): value is string {
-  return typeof value === 'string' && BLOCK_ID_PATTERN.test(value);
+  return typeof value === 'string' && DOCUMENT_BLOCK_ID_PATTERN.test(value);
 }
 
 /** 用于生成新的块 ID，浏览器与 Node 均提供 crypto.randomUUID。 */

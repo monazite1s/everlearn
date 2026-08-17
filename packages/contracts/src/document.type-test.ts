@@ -3,13 +3,16 @@
 import type {
   CreateDocumentRequest,
   DeleteDocumentRequest,
+  DocumentContentDetail,
   DocumentDetail,
   DocumentErrorCode,
   DocumentListResponse,
+  DocumentSavedEventPayload,
   DocumentTreeItem,
   MoveDocumentRequest,
   RenameDocumentRequest,
   RestoreDocumentRequest,
+  SaveDocumentContentRequest,
   TrashErrorCode,
   TrashItem,
   TrashListResponse,
@@ -36,6 +39,33 @@ type DetailKeys = Assert<
   Equal<
     keyof DocumentDetail,
     'childCount' | 'id' | 'knowledgeBaseId' | 'parentId' | 'title' | 'updatedAt' | 'version'
+  >
+>;
+type SaveContentKeys = Assert<
+  Equal<keyof SaveDocumentContentRequest, 'contentJson' | 'schemaVersion' | 'title' | 'version'>
+>;
+type ContentDetailKeys = Assert<
+  Equal<
+    keyof DocumentContentDetail,
+    | 'childCount'
+    | 'contentJson'
+    | 'id'
+    | 'knowledgeBaseId'
+    | 'parentId'
+    | 'schemaVersion'
+    | 'title'
+    | 'updatedAt'
+    | 'version'
+  >
+>;
+type SavedEventKeys = Assert<
+  Equal<
+    keyof DocumentSavedEventPayload,
+    | 'contentSchemaVersion'
+    | 'documentId'
+    | 'documentVersion'
+    | 'eventSchemaVersion'
+    | 'knowledgeBaseId'
   >
 >;
 type PageShape = Assert<
@@ -77,6 +107,7 @@ type ErrorCodes = Assert<
     | 'INTERNAL_ERROR'
     | 'KNOWLEDGE_BASE_DELETED'
     | 'NOT_FOUND'
+    | 'UNPROCESSABLE_ENTITY'
     | 'UNSUPPORTED_MEDIA_TYPE'
     | 'VALIDATION_FAILED'
     | 'VERSION_CONFLICT'
@@ -89,11 +120,14 @@ type TrashErrorCodes = Assert<
 export type DocumentContractAssertions = [
   CreateKeys,
   RenameKeys,
+  SaveContentKeys,
   MoveKeys,
   DeleteKeys,
   RestoreKeys,
   TreeItemKeys,
   DetailKeys,
+  ContentDetailKeys,
+  SavedEventKeys,
   PageShape,
   TrashItemShape,
   TrashPageShape,

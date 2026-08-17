@@ -11,6 +11,7 @@ import {
 
 import { DatabaseModule } from '../database/database.module';
 import { LocalIdentityContext } from '../identity/local-identity.context';
+import { DocumentContentService } from './document-content.service';
 import { DocumentMoveService } from './document-move.service';
 import { DocumentTrashService } from './document-trash.service';
 import { DocumentsController } from './documents.controller';
@@ -35,6 +36,7 @@ function requireJsonContentType(request: Request, _response: Response, next: Nex
   imports: [DatabaseModule],
   providers: [
     DocumentsService,
+    DocumentContentService,
     DocumentMoveService,
     DocumentTrashService,
     TrashListService,

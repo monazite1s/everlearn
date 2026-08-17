@@ -1,12 +1,12 @@
 /** @fileoverview 验证 blockId 扩展的唯一性不变量与编辑操作下的 ID 规则。 */
 
+import { DOCUMENT_BLOCK_NODE_TYPES } from '@everlearn/contracts';
 import { Editor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { expect, test } from 'vitest';
 
-import { BLOCK_NODE_TYPES } from './editor-schema';
-import { createEditorSchema } from './editor-schema';
 import { isBlockId } from './block-id';
+import { createEditorSchema } from './editor-schema';
 
 /** 用于构造带可选 blockId 的测试节点。 */
 function node(type: string, blockId?: string, text = '文本'): Record<string, unknown> {
@@ -24,7 +24,11 @@ async function createEditor(content: unknown): Promise<Editor> {
 function blockIds(editor: Editor): (string | null)[] {
   const ids: (string | null)[] = [];
   editor.state.doc.descendants((current: ProseMirrorNode) => {
-    if (BLOCK_NODE_TYPES.includes(current.type.name as (typeof BLOCK_NODE_TYPES)[number])) {
+    if (
+      DOCUMENT_BLOCK_NODE_TYPES.includes(
+        current.type.name as (typeof DOCUMENT_BLOCK_NODE_TYPES)[number],
+      )
+    ) {
       const id = current.attrs.blockId as string | null;
       ids.push(id);
     }

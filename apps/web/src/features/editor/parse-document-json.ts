@@ -1,10 +1,15 @@
 /** @fileoverview 在信任边界收窄来自服务端的正文 JSON，仅做结构第一层校验。 */
 
+import {
+  DOCUMENT_APPROVED_HEADING_LEVELS,
+  DOCUMENT_APPROVED_MARK_TYPES,
+  DOCUMENT_APPROVED_NODE_TYPES,
+} from '@everlearn/contracts';
+
 import { isBlockId } from './block-id';
 import type { EditorDocumentJson } from './editor-schema';
-import { APPROVED_HEADING_LEVELS, APPROVED_MARK_TYPES, APPROVED_NODE_TYPES } from './editor-schema';
 
-const HEADING_LEVELS = new Set<number>(APPROVED_HEADING_LEVELS);
+const HEADING_LEVELS = new Set<number>(DOCUMENT_APPROVED_HEADING_LEVELS);
 
 /** 用于区分普通对象与数组、null 等伪对象。 */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -18,13 +23,14 @@ function isValidMarks(value: unknown): boolean {
   }
   return value.every((mark) => {
     if (typeof mark === 'string') {
-      return APPROVED_MARK_TYPES.has(mark);
+      return DOCUMENT_APPROVED_MARK_TYPES.has(mark);
     }
     if (!isPlainObject(mark) || typeof mark.type !== 'string') {
       return false;
     }
     return (
-      APPROVED_MARK_TYPES.has(mark.type) && (mark.attrs === undefined || isPlainObject(mark.attrs))
+      DOCUMENT_APPROVED_MARK_TYPES.has(mark.type) &&
+      (mark.attrs === undefined || isPlainObject(mark.attrs))
     );
   });
 }
@@ -63,7 +69,7 @@ function isValidNode(value: unknown, depth: number): boolean {
   if (depth > 64 || !isPlainObject(value) || typeof value.type !== 'string') {
     return false;
   }
-  if (!APPROVED_NODE_TYPES.has(value.type)) {
+  if (!DOCUMENT_APPROVED_NODE_TYPES.has(value.type)) {
     return false;
   }
   if (value.type === 'heading' && !hasApprovedHeadingLevel(value)) {

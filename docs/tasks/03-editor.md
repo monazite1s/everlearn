@@ -17,13 +17,18 @@
 
 ## ED-02 实现正文保存与冲突
 
+- 状态：已完成（2026-08-18，子 agent 实现 + 主 agent 复验）。
 - 依赖：ED-01、KB-03。
 - 必读：`docs/01-design/pages/editor.md`、`docs/02-architecture/api-and-events.md`、`docs/02-architecture/data-model.md`。
 - 目标：实现标题/正文统一版本的防抖保存和服务端 Schema/Block ID 校验。
-- 实施：保存成功更新版本；409 停止覆盖并保留本地内容；写 Outbox 事件供投影处理。
-- 非目标：自动合并、离线编辑和修订策略。
-- 验收：刷新恢复内容；冲突不覆盖任一版本；保存失败可重试和复制本地内容。
-- 验证：API 集成、并发测试、Playwright 保存/失败恢复。
+- 契约定稿：`GET /documents/:id/content` 返回 `DocumentContentDetail`（分裂投影——树/详情投影不携带正文，既有消费者不变）；`PATCH /documents/:id/content` 请求 `{ contentJson, schemaVersion, title?, version }`，成功 200 返回同投影；版本不符 409 `VERSION_CONFLICT`；内容/版本非法 422 `UNPROCESSABLE_ENTITY`（错误码闭集扩展）。无幂等键——PATCH+version 乐观并发与 rename 同范式（响应未知重放由版本域约束），报告声明。
+- 服务端校验：单次遍历完成校验与 `plain_text` 派生（块间 `\n\n`、hardBreak 折叠 `\n`，不信任客户端）；类型闭集/标题层级/深度 64/blockId 必填且文档内唯一（服务端按 data-model 比客户端读路径严格）。镜像锁定三重：web/api 常量全部 `@everlearn/contracts` 单源（含 `DOCUMENT_BLOCK_ID_PATTERN` UUID 正则）、两侧场景矩阵断言同一清单、双端语义差异由集成测试显式断言。
+- Web：`use-debounced-save`（`SAVE_DEBOUNCE_MS=800`）状态机 idle/saving/saved/conflict/failed——成功推进版本基线；409 停止覆盖提交并保留最新本地内容（`copyLocalContent()` 供复制）；网络失败下次输入或手动重试；提交中输入完成后重调度；卸载 fire-and-forget flush。请求层 `editor-api.ts` 置于 editor feature（knowledge 客户端属相邻切片禁区，请求骨架约 60 行复制已在风险登记）。
+- Outbox 决策：仓库无 outbox 表（与 api-and-events.md 存在文档缺口）——保存事务内接线点已留（`ponytail:` + `DocumentSavedEventPayload` 版本化契约），最小迁移提案已写入交付报告；表创建延后至首个消费方任务（SEARCH 索引/链接投影），避免写入无消费者的投机结构（YAGNI），触发条件与缺口已在风险栏登记。
+- 复用与评审：锁序复用 move 范式（KB 行→文档行，409 锁内比对）；防抖保存不建修订（集成断言修订数不变，ED-03 边界）；中断恢复上下文（预置 contracts 常量经审查全部保留并补 `DOCUMENT_BLOCK_ID_PATTERN` 与 422 错误码两处缺口）。主 agent 复验：typecheck 三包、聚焦 ESLint/Prettier、注释（222 文件 1813 条）、文件限制、内容集成 8/8、editor 组件 48/48、全量组件 147 与单元 55 回归。
+- 验证结果：contracts/api/web typecheck、聚焦 ESLint、Prettier、注释/文件/结构/token 门禁通过；真实 PostgreSQL 集成 `document-content.integration.spec.ts` 8/8（roundtrip 深相等+blockId 保留、冲突胜者完整保留且败者不落库、并发一胜一 409、防抖不建修订、422 拒绝矩阵）；editor 组件测试 48/48（防抖聚合、基线推进、409 停止覆盖、失败重试、复制本地内容、卸载 flush）。
+- 证据：保存→GET roundtrip `contentJson` 深相等；并发 `Promise.all` 一胜一 409；web 生产构建未在本任务执行（并行任务占用 api/worker 面，ED-05 接线时统一跑——组件测试与 typecheck 已覆盖本切片）。
+- 风险：outbox 表延后创建（内容/影响：检索块与链接投影在消费方任务前不刷新；移除触发：SEARCH-01 或首个投影消费任务落地时按提案建表并接线）；卸载 flush 浏览器关闭丢 ≤800ms 窗口（`ponytail:` 已标注，ED-05 评估 sendBeacon）；`plainText` 派生为首期约定（`\n\n`/`\n`），分块任务变更时同步两侧测试；editor-api 请求骨架与 knowledge 客户端重复约 60 行（ED-05 接线时评估上移 shared）。
 
 ## ED-03 实现智能修订与恢复
 
