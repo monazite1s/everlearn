@@ -183,9 +183,10 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
 
-  /* 断点双档制 */
+  /* 断点三档制（2xl 为编辑器常驻右栏档） */
   --breakpoint-md: 48rem;
   --breakpoint-xl: 80rem;
+  --breakpoint-2xl: 96rem;
 }
 
 /* ── 基础层 ───────────────────────────────────────────────────────── */

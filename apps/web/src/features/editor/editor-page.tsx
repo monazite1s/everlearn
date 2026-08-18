@@ -12,14 +12,14 @@ import { Alert, AlertDescription, AlertTitle, Button, Skeleton } from '@everlear
 import { LoadFailure } from '../../shared/load-failure';
 import { useMediaQuery } from '../../shared/use-media-query';
 import { useOnline } from '../../shared/use-online';
-import { DocumentTree } from '../knowledge/document-tree';
+import { getKnowledgeBase } from '../knowledge/knowledge-api';
 import { EditorWorkbench } from './editor-workbench';
 import { getDocumentContent } from './editor-api';
 import { ReadonlyDocument } from './readonly-document';
 
-/** 编辑断点与三栏断点，与主题双档制一致。 */
+/** 编辑断点与三栏断点：按布局规格 769px 起桌面、1537px 起常驻右栏。 */
 const DESKTOP_QUERY = '(min-width: 48.0625em)';
-const WIDE_QUERY = '(min-width: 80.0625em)';
+const WIDE_QUERY = '(min-width: 96.0625em)';
 
 /** 页面加载的稳定状态。 */
 type PageLoad =
@@ -66,14 +66,18 @@ function useDocumentLoad(docId: string): [PageLoad, () => void] {
   return [load, retry];
 }
 
-/** 用于渲染布局稳定的正文加载骨架。 */
+/** 用于渲染与最终结构同形的正文加载骨架。 */
 function EditorSkeleton() {
   return (
-    <div aria-label="正在加载文档" className="grid gap-3 px-6 py-8" role="status">
-      <Skeleton className="h-9 w-2/3" />
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-11/12" />
-      <Skeleton className="h-4 w-4/5" />
+    <div aria-label="正在加载文档" className="mx-auto w-full max-w-prose px-6" role="status">
+      <div className="grid gap-3 pt-3 pb-8">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-9 w-2/3" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-11/12" />
+        <Skeleton className="h-4 w-4/5" />
+      </div>
     </div>
   );
 }
@@ -112,30 +116,20 @@ function MobileReadonlyPage(props: { detail: DocumentContentDetail }) {
   );
 }
 
-/** 用于渲染桌面三栏：文档树、编辑会话与侧栏。 */
+/** 用于渲染编辑会话与宽屏历史/信息面板的双栏网格。 */
 function DesktopEditorLayout(props: {
   readonly detail: DocumentContentDetail;
-  readonly docId: string;
+  readonly kbName?: string | undefined;
   readonly knowledgeBaseId: string;
   readonly offline: boolean;
   readonly wide: boolean;
 }) {
   return (
-    <div className="md:grid md:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(40rem,1fr)_20rem]">
-      <aside
-        aria-label="文档树"
-        className="hidden min-w-0 border-r border-border px-4 py-4 md:block"
-      >
-        <DocumentTree
-          activeDocumentId={props.docId}
-          desktop
-          knowledgeBaseId={props.knowledgeBaseId}
-          offline={props.offline}
-          onCreated={noopCreated}
-        />
-      </aside>
+    // 网格列由 JS 断点驱动，与 wide 渲染分支同源，避免 CSS 断点在边界像素预留空列。
+    <div className={props.wide ? 'grid grid-cols-[minmax(0,1fr)_20rem]' : 'min-w-0'}>
       <EditorWorkbench
         initialDetail={props.detail}
+        kbName={props.kbName}
         knowledgeBaseId={props.knowledgeBaseId}
         offline={props.offline}
         wide={props.wide}
@@ -144,13 +138,29 @@ function DesktopEditorLayout(props: {
   );
 }
 
-/** 用于承接树创建回调：编辑器页没有统计卡，创建结果由树自身吸收。 */
-const noopCreated = (): void => undefined;
+/** 用于按需读取知识库显示名，面包屑首项使用。 */
+function useKnowledgeBaseName(knowledgeBaseId: string): [string | undefined] {
+  const [name, setName] = useState<string>();
+  useEffect(
+    /** 用于读取一次知识库名称并丢弃过期响应。 */ function readName(): () => void {
+      let active = true;
+      void getKnowledgeBase(knowledgeBaseId).then((result) => {
+        if (active && result.ok) setName(result.data.name);
+      });
+      return /** 用于丢弃卸载后的过期响应。 */ function cancel(): void {
+        active = false;
+      };
+    },
+    [knowledgeBaseId],
+  );
+  return [name];
+}
 
 /** 用于按设备与数据状态渲染文档编辑器页面。 */
 export function EditorPage(props: EditorPageProps) {
   const { docId, knowledgeBaseId } = props;
   const [load, retry] = useDocumentLoad(docId);
+  const [kbName] = useKnowledgeBaseName(knowledgeBaseId);
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const wide = useMediaQuery(WIDE_QUERY);
   const online = useOnline();
@@ -169,7 +179,7 @@ export function EditorPage(props: EditorPageProps) {
   return (
     <DesktopEditorLayout
       detail={load.detail}
-      docId={docId}
+      kbName={kbName}
       knowledgeBaseId={knowledgeBaseId}
       offline={!online}
       wide={wide ?? false}

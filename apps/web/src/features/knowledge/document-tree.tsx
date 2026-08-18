@@ -340,7 +340,7 @@ export function DocumentTree(props: {
     onCreated();
   }
   return (
-    <section aria-labelledby="knowledge-documents-title" className="grid gap-2 pt-2">
+    <section aria-labelledby="knowledge-documents-title" className="grid grid-cols-1 gap-2 pt-2">
       <TreeBody
         desktop={desktop}
         list={tree.childList()}

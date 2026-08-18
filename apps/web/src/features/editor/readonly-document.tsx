@@ -2,10 +2,11 @@
 
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { generateHTML } from '@tiptap/html';
+import { ChevronDownIcon } from 'lucide-react';
 
-import { Alert, AlertDescription, cn } from '@everlearn/ui';
+import { cn } from '@everlearn/ui';
 
 import './editor-content.css';
 import { createEditorSchema, type EditorDocumentJson } from './editor-schema';
@@ -74,41 +75,61 @@ function scrollToHeading(blockId: string, container: HTMLElement | null): void {
 /** 目录条目按标题层级使用的缩进类。 */
 const HEADING_INDENTS = ['pl-0', 'pl-3', 'pl-6', 'pl-9'] as const;
 
-/** 用于渲染锚点目录，点击按块 ID 定位到正文标题。 */
+/** 用于渲染默认折叠的锚点目录，展开后点击条目按块 ID 定位。 */
 function DocumentToc(props: {
   readonly bodyRef: { current: HTMLDivElement | null };
   readonly headings: readonly DocumentHeadingRef[];
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <nav aria-label="文档目录" className="mb-4 rounded-lg border border-border bg-card p-3">
-      <p className="m-0 mb-2 text-sm font-medium text-foreground">目录</p>
-      <ul className="m-0 grid list-none gap-1 p-0">
-        {props.headings.map((heading) => (
-          <li key={heading.blockId}>
-            <a
-              className={cn(
-                'block truncate text-sm text-muted-foreground hover:text-foreground',
-                HEADING_INDENTS[heading.level - 1],
-              )}
-              href={`#${heading.blockId}`}
-              onClick={(event) => {
-                event.preventDefault();
-                scrollToHeading(heading.blockId, props.bodyRef.current);
-              }}
-            >
-              {heading.text}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
+    <div className="mb-4 rounded-lg border border-border bg-card">
+      <button
+        aria-controls="readonly-toc"
+        aria-expanded={open}
+        className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-foreground"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        目录
+        <ChevronDownIcon
+          aria-hidden="true"
+          className={cn(
+            'size-4 text-muted-foreground transition-transform motion-reduce:transition-none',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+      {open && (
+        <nav aria-label="文档目录" className="px-3 pb-3" id="readonly-toc">
+          <ul className="m-0 grid list-none gap-1 p-0">
+            {props.headings.map((heading) => (
+              <li key={heading.blockId}>
+                <a
+                  className={cn(
+                    'block truncate text-sm text-muted-foreground hover:text-foreground',
+                    HEADING_INDENTS[heading.level - 1],
+                  )}
+                  href={`#${heading.blockId}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    scrollToHeading(heading.blockId, props.bodyRef.current);
+                  }}
+                >
+                  {heading.text}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+    </div>
   );
 }
 
 /** ReadonlyDocument 的 props 契约。 */
 export interface ReadonlyDocumentProps {
   contentJson: unknown;
-  /** 是否展示移动设备阅读提示条。 */
+  /** 是否展示移动设备阅读提示。 */
   showReadonlyHint?: boolean;
 }
 
@@ -120,9 +141,9 @@ export function ReadonlyDocument(props: ReadonlyDocumentProps) {
   return (
     <div className="mx-auto w-full max-w-prose px-4 md:px-6">
       {props.showReadonlyHint && (
-        <Alert className="mb-4" role="status">
-          <AlertDescription>当前设备支持阅读，编辑请使用桌面端。</AlertDescription>
-        </Alert>
+        <p className="mb-4 mt-0 text-sm text-muted-foreground">
+          移动端暂不支持编辑，当前展示只读版本。
+        </p>
       )}
       {headings.length > 0 && <DocumentToc bodyRef={bodyRef} headings={headings} />}
       {/* HTML 由共享 schema 与信任边界解析器生成，不含用户原始输入。 */}

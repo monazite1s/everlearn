@@ -4,10 +4,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Editor, JSONContent } from '@tiptap/core';
-import { PanelRightIcon } from 'lucide-react';
 
 import { DOCUMENT_TITLE_MAX_LENGTH, type DocumentContentDetail } from '@everlearn/contracts';
-import { Button } from '@everlearn/ui';
 
 import { OfflineNotice } from '../../shared/offline-notice';
 import { parseDocumentJson } from './parse-document-json';
@@ -28,6 +26,8 @@ export interface DocumentEditorSessionProps {
   /** 重挂替换后的会话，挂载时把焦点交还标题输入。 */
   readonly autoFocusTitle?: boolean;
   readonly detail: DocumentContentDetail;
+  /** 当前知识库显示名，面包屑首项使用。 */
+  readonly kbName?: string | undefined;
   readonly knowledgeBaseId: string;
   readonly offline: boolean;
   /** 以新内容整体替换会话，由宿主递增 key 重挂。 */
@@ -240,28 +240,13 @@ function useSessionRuntime(
   };
 }
 
-/** 用于渲染 sticky 工具栏行与中等宽度的面板入口。 */
-function ToolbarBar(props: {
-  readonly onOpenPanel: () => void;
-  readonly runtime: SessionRuntime;
-  readonly wide: boolean;
-}) {
+/** 用于渲染 sticky 格式化工具栏行。 */
+function ToolbarBar(props: { readonly runtime: SessionRuntime }) {
   const readonly = props.runtime.offline || props.runtime.save.status === 'conflict';
   return (
     <div className="sticky top-(--header-height) z-20 border-b bg-background/95 backdrop-blur-sm">
-      <div className="mx-auto flex w-full max-w-prose items-center justify-between px-6">
+      <div className="mx-auto flex w-full max-w-prose items-center px-6">
         <EditorToolbar disabled={readonly} editor={props.runtime.editor} />
-        {!props.wide && (
-          <Button
-            aria-label="打开文档面板"
-            onClick={props.onOpenPanel}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <PanelRightIcon aria-hidden="true" />
-          </Button>
-        )}
       </div>
     </div>
   );
@@ -330,9 +315,10 @@ function AttachmentControls(props: { readonly runtime: SessionRuntime }) {
 
 /** 用于承载一次编辑会话并组合各子组件。 */
 export function DocumentEditorSession(props: DocumentEditorSessionProps) {
-  const { autoFocusTitle, detail, knowledgeBaseId, offline, onReplace, wide } = props;
+  const { autoFocusTitle, detail, kbName, knowledgeBaseId, offline, onReplace, wide } = props;
   const runtime = useSessionRuntime(detail, offline, onReplace);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
   const panelProps = {
     contentDetail: detail,
     contentJson: runtime.contentJson,
@@ -341,27 +327,40 @@ export function DocumentEditorSession(props: DocumentEditorSessionProps) {
     onRestored: /** 用于恢复成功后丢弃本地快照并整体替换会话。 */ (next: DocumentContentDetail) =>
       replaceSession(runtime.save, runtime.triggers, onReplace, next),
   };
+  /** 用于统一右栏开合：宽屏切换常驻栏折叠，中屏打开 Sheet。 */
+  function togglePanel(): void {
+    if (wide) setPanelCollapsed((current) => !current);
+    else setSheetOpen(true);
+  }
   return (
     <>
       <section aria-label="文档编辑区" className="flex min-w-0 flex-col">
-        <TitleBar autoFocus={autoFocusTitle} knowledgeBaseId={knowledgeBaseId} runtime={runtime} />
+        <TitleBar
+          autoFocus={autoFocusTitle}
+          kbName={kbName}
+          knowledgeBaseId={knowledgeBaseId}
+          onTogglePanel={togglePanel}
+          panelOpen={wide ? !panelCollapsed : sheetOpen}
+          runtime={runtime}
+        />{' '}
         {offline && (
           <OfflineNotice
             className="mx-6 mt-2"
             description="当前离线：正文转为只读，编辑与上传暂不可用。"
           />
         )}
-        <ToolbarBar onOpenPanel={() => setPanelOpen(true)} runtime={runtime} wide={wide} />
+        <ToolbarBar runtime={runtime} />
         <EditorBody detail={detail} runtime={runtime} />
         <AttachmentControls runtime={runtime} />
       </section>
-      {wide ? (
-        <aside aria-label="文档面板" className="min-w-0 border-l border-border px-4 py-4">
+      {wide && !panelCollapsed ? (
+        <aside aria-label="文档信息" className="min-w-0 border-l border-border px-4 py-4">
           <EditorPanelTabs {...panelProps} />
         </aside>
-      ) : (
-        <EditorPanelSheet onOpenChange={setPanelOpen} open={panelOpen} {...panelProps} />
-      )}
+      ) : null}
+      {!wide ? (
+        <EditorPanelSheet onOpenChange={setSheetOpen} open={sheetOpen} {...panelProps} />
+      ) : null}
     </>
   );
 }

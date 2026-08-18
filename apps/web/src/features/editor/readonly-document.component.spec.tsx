@@ -62,11 +62,16 @@ test('目录提取只收集带合法块 ID 与文本的标题', () => {
   expect(headings).toEqual([{ blockId: UUID_A, level: 1, text: '标题一' }]);
 });
 
-test('渲染锚点目录并按块 ID 定位到正文标题', () => {
+test('目录默认折叠，展开后按块 ID 定位到正文标题', () => {
   const scrollTo = vi.fn();
   Element.prototype.scrollIntoView = scrollTo;
   render(<ReadonlyDocument contentJson={headingDoc()} />);
+  const toggle = screen.getByRole('button', { name: '目录' });
+  expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.queryByRole('navigation', { name: '文档目录' })).not.toBeInTheDocument();
+  fireEvent.click(toggle);
   const nav = screen.getByRole('navigation', { name: '文档目录' });
+  expect(toggle).toHaveAttribute('aria-expanded', 'true');
   const links = nav.querySelectorAll('a');
   expect(links).toHaveLength(2);
   expect(links[0]).toHaveAttribute('href', `#${UUID_A}`);

@@ -252,7 +252,7 @@ export function RevisionTimelinePanel(props: RevisionsPanelProps) {
     return <p className="py-2 text-sm text-muted-foreground">尚无修订。</p>;
   }
   return (
-    <div className="grid gap-1">
+    <div className="grid grid-cols-1 gap-1">
       <RevisionItems
         expandedNumber={expandedNumber}
         onExpand={setExpandedNumber}
@@ -272,7 +272,10 @@ function RevisionItems(props: {
   const { revisions } = props.panelProps;
   return (
     <>
-      <ol aria-label="修订历史" className="m-0 grid list-none gap-1 border-l border-border pl-2">
+      <ol
+        aria-label="修订历史"
+        className="m-0 grid list-none gap-1 border-l border-border pl-2 grid-cols-[minmax(0,1fr)]"
+      >
         {revisions.items.map((item) => (
           <li key={item.revisionNumber}>
             <RevisionRow

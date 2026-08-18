@@ -30,14 +30,14 @@ export interface EditorPanelTabsProps {
   readonly onRestored: (detail: DocumentContentDetail) => void;
 }
 
-/** 用于渲染修订与属性两个页签及其内容。 */
+/** 用于渲染历史与信息两个页签及其内容。 */
 export function EditorPanelTabs(props: EditorPanelTabsProps) {
   const revisions = useRevisions({ documentId: props.documentId });
   return (
     <Tabs defaultValue="revisions">
       <TabsList className="w-full">
-        <TabsTrigger value="revisions">修订</TabsTrigger>
-        <TabsTrigger value="properties">属性</TabsTrigger>
+        <TabsTrigger value="revisions">历史</TabsTrigger>
+        <TabsTrigger value="properties">信息</TabsTrigger>
       </TabsList>
       <TabsContent value="revisions">
         <RevisionTimelinePanel
@@ -70,8 +70,8 @@ export function EditorPanelSheet(props: EditorPanelSheetProps) {
     <Sheet onOpenChange={onOpenChange} open={open}>
       <SheetContent className="overflow-y-auto" side="right">
         <SheetHeader>
-          <SheetTitle>文档面板</SheetTitle>
-          <SheetDescription>查看修订历史与文档属性。</SheetDescription>
+          <SheetTitle>文档信息</SheetTitle>
+          <SheetDescription>查看文档历史与信息。</SheetDescription>
         </SheetHeader>
         <EditorPanelTabs {...tabs} />
       </SheetContent>

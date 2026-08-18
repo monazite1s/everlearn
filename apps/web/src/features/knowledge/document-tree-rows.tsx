@@ -5,7 +5,6 @@
 import type { DocumentTreeItem } from '@everlearn/contracts';
 import {
   ChevronRightIcon,
-  FileTextIcon,
   FolderInputIcon,
   Loader2Icon,
   MoreHorizontalIcon,
@@ -20,7 +19,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Skeleton,
   cn,
@@ -108,7 +106,7 @@ export function ChildrenArea(props: {
   const { emptyContent, indented, list, parentId, tree } = props;
   return (
     <div
-      className={indented ? 'ml-4 border-l border-border pl-2' : undefined}
+      className={indented ? 'ml-3 border-l border-border' : undefined}
       {...(indented ? nestedDropGuard : {})}
     >
       <ChildrenPending list={list} onRetry={() => tree.retry(parentId)} />
@@ -127,7 +125,6 @@ export function ChildrenArea(props: {
 
 /** 用于渲染节点行的桌面操作菜单。 */
 function DocumentRowMenu(props: {
-  readonly openHref: string;
   readonly item: DocumentTreeItem;
   onCreateChild: (parent: DocumentTreeItem) => void;
   onMove: (item: DocumentTreeItem) => void;
@@ -147,10 +144,6 @@ function DocumentRowMenu(props: {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem asChild>
-          <Link href={props.openHref}>打开文档</Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => props.onCreateChild(props.item)}>
           <PlusIcon aria-hidden="true" size={16} />
           新建子文档
@@ -225,7 +218,7 @@ function DocumentNodeList(props: {
   tree: TreeBindings;
 }) {
   return (
-    <ul className="m-0 grid list-none gap-0.5 p-0">
+    <ul className="m-0 grid list-none gap-0.5 p-0 grid-cols-[minmax(0,1fr)]">
       {props.items.map((item) => (
         <DocumentNodeRow item={item} key={item.id} parentId={props.parentId} tree={props.tree} />
       ))}
@@ -255,11 +248,16 @@ function DocumentNodeRow(props: {
         {...tree.drag.propsFor(item, props.parentId)}
       >
         {edge ? <DropIndicator edge={edge} /> : null}
+        {active ? (
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0.5 left-0 w-0.5 rounded-full bg-primary"
+          />
+        ) : null}
         <RowToggleButton expanded={expanded} item={item} onToggle={tree.toggle} />
-        <FileTextIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         <Link
           aria-current={active ? 'page' : undefined}
-          className="min-w-0 flex-1 truncate text-sm text-foreground"
+          className={cn('min-w-0 flex-1 truncate text-sm text-foreground', active && 'font-medium')}
           href={openHref}
           title={item.title}
         >
@@ -271,7 +269,6 @@ function DocumentNodeRow(props: {
             onCreateChild={tree.onCreateChild}
             onMove={tree.onMove}
             onRename={tree.onRename}
-            openHref={openHref}
           />
         )}
       </div>

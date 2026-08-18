@@ -84,7 +84,7 @@ test('移动端以只读渲染器展示正文且不创建编辑实例', async ()
   vi.stubGlobal('fetch', fetchMock);
   mountPage(false);
   expect(await screen.findByText('只读正文段落')).toBeVisible();
-  expect(screen.getByRole('status')).toHaveTextContent('当前设备支持阅读，编辑请使用桌面端。');
+  expect(screen.getByText('移动端暂不支持编辑，当前展示只读版本。')).toBeVisible();
   expect(screen.queryByRole('textbox', { name: '文档正文' })).not.toBeInTheDocument();
   expect(document.querySelector('.ProseMirror[contenteditable]')).toBeNull();
   expect(screen.queryByRole('toolbar', { name: '格式化' })).not.toBeInTheDocument();
@@ -105,62 +105,37 @@ test('内容 404 时整页转为删除态并提供回收站入口', async () => 
   );
 });
 
-test('桌面端渲染编辑器与文档树并高亮当前文档', async () => {
+test('桌面端渲染编辑器且文档树由共享布局承载', async () => {
   fetchMock.mockImplementation((input: RequestInfo | URL) => {
     const url = toUrl(input);
     if (url.pathname.endsWith(`/documents/${DOC_ID}/content`)) {
       return Promise.resolve(jsonResponse(contentDetail()));
-    }
-    if (url.pathname.endsWith('/documents')) {
-      return Promise.resolve(
-        jsonResponse({
-          items: [
-            {
-              childCount: 0,
-              id: DOC_ID,
-              title: '目标文档',
-              updatedAt: '2026-08-17T08:00:00.000000Z',
-              version: 1,
-            },
-            {
-              childCount: 0,
-              id: '99999999-9999-4999-8999-999999999999',
-              title: '另一篇文档',
-              updatedAt: '2026-08-17T08:00:00.000000Z',
-              version: 1,
-            },
-          ],
-          nextCursor: null,
-        }),
-      );
     }
     return Promise.resolve(jsonResponse({ code: 'INTERNAL_ERROR', message: '不支持' }, 500));
   });
   vi.stubGlobal('fetch', fetchMock);
   mountPage(true);
   expect(await screen.findByRole('textbox', { name: '文档正文' })).toBeVisible();
-  const treeLink = await waitFor(() => {
-    const anchor = screen
-      .getAllByRole('link', { name: '目标文档' })
-      .find((link) => link.tagName === 'A');
-    expect(anchor).toBeDefined();
-    return anchor!;
-  });
-  expect(treeLink).toHaveAttribute('aria-current', 'page');
-  expect(treeLink).toHaveAttribute('href', `/knowledge/${KB_ID}/documents/${DOC_ID}`);
-  expect(screen.getByRole('link', { name: '另一篇文档' })).not.toHaveAttribute(
-    'aria-current',
-    'page',
-  );
+  expect(screen.getByLabelText('文档标题')).toHaveValue('目标文档');
+  expect(screen.queryByRole('complementary', { name: '文档树' })).not.toBeInTheDocument();
   expect(screen.queryByRole('region', { name: '文档正文（只读）' })).not.toBeInTheDocument();
 });
 
 test('读取失败提供就地重试且重试后恢复', async () => {
-  fetchMock
-    .mockImplementationOnce(() =>
-      Promise.resolve(jsonResponse({ code: 'INTERNAL_ERROR', message: '服务暂不可用' }, 500)),
-    )
-    .mockImplementationOnce(() => Promise.resolve(jsonResponse(contentDetail())));
+  let contentAttempts = 0;
+  fetchMock.mockImplementation((input: RequestInfo | URL) => {
+    const url = toUrl(input);
+    if (url.pathname.endsWith(`/documents/${DOC_ID}/content`)) {
+      contentAttempts += 1;
+      if (contentAttempts === 1) {
+        return Promise.resolve(
+          jsonResponse({ code: 'INTERNAL_ERROR', message: '服务暂不可用' }, 500),
+        );
+      }
+      return Promise.resolve(jsonResponse(contentDetail()));
+    }
+    return Promise.resolve(jsonResponse({ code: 'INTERNAL_ERROR', message: '不支持' }, 500));
+  });
   vi.stubGlobal('fetch', fetchMock);
   mountPage(false);
   expect(await screen.findByText('文档未加载')).toBeVisible();
