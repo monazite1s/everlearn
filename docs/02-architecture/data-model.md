@@ -35,19 +35,24 @@
 
 - `contentJson` 必须符合已发布的 Tiptap Schema 版本；Document 记录保存 `schemaVersion`。
 - 可引用节点必须含唯一 `blockId`。服务端拒绝同文档重复 ID，并在导入时重新映射冲突 ID。
-- `plainText` 和搜索块由内容变更事件派生，不接受客户端直接写入。
+- `plainText` 不接受客户端直接写入；Knowledge 在校验 `contentJson` 的同一次服务端遍历中派生，并与正文原子保存，保证修订与同步读取不观察到旧文本。
+- 搜索块由 `document.saved` 事件异步派生；Search 只写自身投影，不回写 Knowledge 拥有的 `Document.plainText`。
 - 防抖保存只更新 Document；达到修订触发条件时额外创建不可变 Revision。
 
 ## Search 与 Generations
 
 | 实体                 | 关键字段与约束                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------------- |
-| `SearchBlock`        | 文档、修订、`blockId`、文本、层级标题、全文向量、内容哈希。                                 |
+| `SearchBlock`        | 文档、文档版本、`blockId`、文本、层级标题、全文向量、内容哈希。                             |
 | `Embedding`          | SearchBlock、Provider、模型、维度、向量、内容哈希；模型变化允许并存重建。                   |
 | `Generation`         | 所有者、用途、目标范围、Provider/模型、状态、输入摘要、输出草稿、token/成本、错误、幂等键。 |
 | `GenerationCitation` | Generation、文档、修订、Block、来源片段；引用必须能定位到生成时修订。                       |
 
 Generation 状态：`queued → running → awaiting_acceptance → succeeded`；任一活动状态可到 `cancelled` 或 `failed`。自动创建新文档的生成不经过 `awaiting_acceptance`，但必须保存 Revision。
+
+`SearchBlock.documentVersion` 表示生成该投影的可变文档版本，不冒充不可变的 `DocumentRevision`。检索候选携带文档版本；候选交给模型前，Generations 只接受该版本仍等于当前 `Document.version` 的块，并在受锁当前正文上创建或复用不可变 Revision。版本不等的候选必须丢弃并等待索引更新或重新检索；`GenerationCitation` 只绑定已锁定的 Revision。
+
+`SearchDocumentProjection.indexedAt` 表示最近一次成功写入或完整核对投影的时间，不表示文档首次进入索引的时间。周期扫描使用稳定文档 ID 游标轮转全部有效文档，并完整核对块集合，从而发现投影头版本未变但块已经漂移的异常。
 
 ## Workflow
 

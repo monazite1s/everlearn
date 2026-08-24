@@ -88,16 +88,16 @@ SSE 信封固定为：
 
 ## 领域事件
 
-领域事件在数据库事务提交后写入 Outbox，由 Worker 幂等消费：
+领域事件与对应业务变更在同一 PostgreSQL 事务内追加到 Outbox；事务提交后由 Worker 至少一次消费：
 
-- `document.saved`：刷新纯文本、链接和检索块。
-- `document.deleted/restored`：更新索引可见性。
+- `document.saved`：刷新链接和检索块；`plainText` 已由 Knowledge 在正文保存事务中同步派生。
+- `document.deleted/restored`：触发搜索投影清理或重建；读取可见性的最终门禁始终是有效 Document 与 KnowledgeBase 联结。
 - `generation.accepted`：关联修订并完成生成。
 - `workflow.published`：刷新默认调度目标版本。
 - `schedule.due`：创建有唯一幂等键的 Workflow Run。
 - `digest.completed`、`tutorial.chapter.completed`：刷新领域状态和页面事件。
 
-事件 Schema 必须版本化；消费者忽略未知可选字段，但不得猜测未知事件类型。
+事件 Schema 必须版本化；消费者忽略未知可选字段，但不得猜测未知事件类型。文档投影以数据库当前状态和单调递增的 `documentVersion` 为准：旧事件只能成功空操作，删除后迟到的保存事件不得重新暴露内容，恢复事件按当前正文重建。搜索读取同时联结有效 Document 与 KnowledgeBase，队列延迟不能让已删除内容进入候选集。
 
 ## 验证与安全
 

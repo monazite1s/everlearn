@@ -8,6 +8,18 @@
 
 ## 研究记录
 
+### 2026-08-24 PostgreSQL 搜索索引、事务 Outbox 与 Kysely 类型生成（ADR 004）
+
+- 决策记录：`docs/decisions/004-transactional-outbox-search-projection.md`；用户于 2026-08-24 批准非破坏性迁移、`pg_trgm` 与 `kysely-codegen`。
+- 仓库复用：沿用 PostgreSQL 17/pgvector 镜像、Kysely Migrator、BullMQ Job Scheduler、Worker → 受密钥保护内部 API、固定调度器重建和真实隔离 Schema 集成夹具；不增加搜索集群或 Worker 数据库客户端。
+- PostgreSQL FTS：采用显式 `pg_catalog.simple` 配置生成 `tsvector`，以 GIN 加速拉丁词项；配置名写入表达式，避免连接级默认配置变化造成索引与查询不一致。PostgreSQL 官方将 GIN 作为首选文本搜索索引类型。
+- 中文边界：本地 PostgreSQL 17 实测连续中文“知识管理系统”在 `simple` 配置下形成单一 lexeme，“知识管理”不能命中。采用官方 trusted extension `pg_trgm` 0 额外服务方案，为原文列建立 `gin_trgm_ops`，中文子串走参数化 `ILIKE`；固定验收“分布式系统中的幂等设计”查询“幂等”命中。拒绝把整句匹配冒充中文搜索，也不引入 zhparser/Elasticsearch。
+- 数据库类型：采用 `kysely-codegen` 0.20.0（MIT、Node >=20、Kysely >=0.27 <1、pg >=8.8 <9，兼容项目 Node 24/Kysely 0.29/pg 8.22），仅在 API 开发期从已迁移真实 Schema 生成类型并以 `--verify` 检查漂移，不进入生产运行依赖。
+- 依赖决策：`pg_trgm` 由 PostgreSQL 镜像提供，迁移只执行 `CREATE EXTENSION IF NOT EXISTS`，down 不删除可能被其他对象共享的扩展；`kysely-codegen` 固定在 API devDependencies。自研余量仅保留确定性 ProseMirror Block 投影与领域事件处理，因为平台能力不理解 Everlearn 的 `blockId`、标题路径和版本语义。
+- 拒绝方案：只用 `simple` FTS（连续中文不可用）；自研 CJK 分词 SQL/TypeScript（规则与索引查询易漂移）；Worker 增加 Kysely/pg 直连（复制数据库边界）；手写新增 Kysely 表类型（违反 PostgreSQL Skill 的生成门禁）。
+- 替换成本：移除 `pg_trgm` 需替换中文查询与索引并实测等价召回；移除 codegen 只影响开发脚本和生成文件；Outbox 替换条件见 ADR 004。
+- 官方证据：[PostgreSQL Tables and Indexes](https://www.postgresql.org/docs/current/textsearch-tables.html)、[Preferred Index Types](https://www.postgresql.org/docs/current/textsearch-indexes.html)、[`pg_trgm`](https://www.postgresql.org/docs/current/pgtrgm.html)、[`SELECT ... SKIP LOCKED`](https://www.postgresql.org/docs/current/sql-select.html)、[kysely-codegen 维护者仓库](https://github.com/RobinBlomberg/kysely-codegen)。查阅日期：2026-08-24。
+
 ### 2026-08-15 默认主题与布局整体重写（ADR 002）
 
 - 决策记录：`docs/decisions/002-default-theme-and-layout-rewrite.md`（用户于 2026-08-15 批准）。
