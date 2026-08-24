@@ -16,6 +16,11 @@ import type {
 } from './purge/attachment-orphan-purge.runtime';
 import { startTrashPurgeRuntime } from './purge/trash-purge.runtime';
 import type { TrashPurgeRuntime, TrashPurgeRuntimeConfig } from './purge/trash-purge.runtime';
+import { startSearchProjectionRuntime } from './search/search-projection.runtime';
+import type {
+  SearchProjectionRuntime,
+  SearchProjectionRuntimeConfig,
+} from './search/search-projection.runtime';
 
 /** 用于提供队列模块接入前的根依赖注入上下文。 */
 @Module({
@@ -93,6 +98,34 @@ async function startAttachmentPurge(
   });
 }
 
+/** 用于从既有内部 API 与 Redis 配置生成搜索投影运行时配置。 */
+function readSearchProjectionConfig(
+  config: ConfigService<Record<string, string>, false>,
+): SearchProjectionRuntimeConfig {
+  return {
+    apiInternalUrl: config.get('API_INTERNAL_URL', 'http://127.0.0.1:3001'),
+    intervalMs: 60_000,
+    redisUrl: config.get('REDIS_URL', ''),
+    secret: config.get('PURGE_TRIGGER_SECRET', ''),
+  };
+}
+
+/** 用于启动搜索投影恢复调度并注册结构化运行结果日志。 */
+async function startSearchProjection(
+  app: INestApplicationContext,
+): Promise<SearchProjectionRuntime> {
+  const config = readSearchProjectionConfig(app.get(ConfigService<Record<string, string>, false>));
+  return startSearchProjectionRuntime(config, {
+    onCompleted:
+      /** 用于记录一次成功事件排空与补偿扫描的统计。 */
+      (stats) => logPurgeOutcome('search.projection.completed', { ...stats }),
+    onFailed:
+      /** 用于记录一次触发失败的原因与队列尝试次数。 */
+      (error, attemptsMade) =>
+        logPurgeOutcome('search.projection.failed', { attemptsMade, reason: error.message }),
+  });
+}
+
 /** 用于在终止信号到达前保持 Worker 存活。 */
 function waitForShutdownSignal(): Promise<void> {
   return new Promise((resolve) => {
@@ -105,18 +138,22 @@ function waitForShutdownSignal(): Promise<void> {
 async function bootstrap(): Promise<void> {
   let purge: TrashPurgeRuntime | undefined;
   let attachmentPurge: AttachmentOrphanPurgeRuntime | undefined;
+  let searchProjection: SearchProjectionRuntime | undefined;
   try {
     const app = await NestFactory.createApplicationContext(WorkerModule, { logger: systemLogger });
     purge = await startPurge(app);
     attachmentPurge = await startAttachmentPurge(app);
+    searchProjection = await startSearchProjection(app);
     bootstrapLogger.log(createWorkerLogEntry({ event: 'worker.lifecycle.ready' }));
     await waitForShutdownSignal();
+    await searchProjection.close();
     await attachmentPurge.close();
     await purge.close();
     await app.close();
   } catch (error: unknown) {
     const trace = error instanceof Error ? error.stack : undefined;
     bootstrapLogger.error('Worker startup failed', trace);
+    await searchProjection?.close();
     await attachmentPurge?.close();
     await purge?.close();
     process.exitCode = 1;

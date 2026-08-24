@@ -41,7 +41,7 @@ export default defineConfig({
           environment: 'node',
           // 集成测试共享真实 PostgreSQL，Kysely 内省在并行 schema 间相互污染，固定串行。
           fileParallelism: false,
-          include: ['apps/api/src/**/*.integration.spec.ts'],
+          include: ['apps/{api,worker}/src/**/*.integration.spec.ts'],
           name: 'integration',
           pool: 'forks',
         },

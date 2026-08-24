@@ -11,6 +11,7 @@ import { AttachmentsModule } from './attachments/attachments.module';
 import { DocumentsModule } from './documents/documents.module';
 import { InboxItemsModule } from './inbox-items/inbox-items.module';
 import { RequestCorrelationMiddleware } from './http-boundary/request-correlation.middleware';
+import { SearchModule } from './search/search.module';
 import { validateRuntimeEnvironment } from './config/runtime-config';
 
 /** 用于持有领域模块依赖的 API 基础设施。 */
@@ -26,6 +27,7 @@ import { validateRuntimeEnvironment } from './config/runtime-config';
     DocumentsModule,
     InboxItemsModule,
     KnowledgeBasesModule,
+    SearchModule,
   ],
   providers: [
     { provide: APP_PIPE, useFactory: createApiValidationPipe },
