@@ -83,6 +83,13 @@ export const DOCUMENT_REVISION_SOURCES = [
   'restore',
 ] as const;
 
+/** Search 投影当前消费的文档领域事件闭集。 */
+export const DOCUMENT_SEARCH_EVENT_TYPES = [
+  'document.deleted',
+  'document.restored',
+  'document.saved',
+] as const;
+
 /** 用于提交文档删除所依据的乐观并发版本。 */
 export interface DeleteDocumentRequest {
   readonly version: number;
@@ -143,6 +150,17 @@ export interface DocumentContentDetail extends DocumentDetail {
 /** 用于描述 document.saved 领域事件载荷的版本化内部契约。 */
 export interface DocumentSavedEventPayload {
   readonly contentSchemaVersion: number;
+  readonly documentId: string;
+  readonly documentVersion: number;
+  readonly eventSchemaVersion: 1;
+  readonly knowledgeBaseId: string;
+}
+
+/** Search 投影消费的文档事件类型。 */
+export type DocumentSearchEventType = (typeof DOCUMENT_SEARCH_EVENT_TYPES)[number];
+
+/** 用于描述文档删除或恢复事件的版本化内部契约。 */
+export interface DocumentLifecycleEventPayload {
   readonly documentId: string;
   readonly documentVersion: number;
   readonly eventSchemaVersion: 1;

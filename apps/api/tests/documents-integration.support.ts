@@ -47,6 +47,19 @@ export const documentDetailKeys = [
   'version',
 ];
 
+/** 用于断言服务端生成的单段初始正文带有稳定可引用块标识。 */
+export function expectInitialParagraphContent(value: unknown, expectedText: string): void {
+  const document = value as {
+    content?: [{ attrs?: { blockId?: string }; content?: unknown[]; type?: string }];
+    type?: string;
+  };
+  expect(document.content?.[0]?.attrs?.blockId).toMatch(/^[0-9a-f-]{36}$/);
+  expect(document).toMatchObject({
+    content: [{ content: [{ text: expectedText, type: 'text' }], type: 'paragraph' }],
+    type: 'doc',
+  });
+}
+
 /** 用于注入真实对象存储凭据的附件集成测试配置。 */
 export interface S3FixtureEnv {
   readonly accessKey: string;
@@ -80,6 +93,16 @@ export class DocumentsTestEnvironment {
     return this.application.getHttpServer() as Server;
   }
 
+  /** 用于让真实 Worker 经临时回环端口访问当前隔离 API。 */
+  async listenForInternalWorker(): Promise<string> {
+    if (this.application === undefined) throw new Error('Test application is not initialized');
+    await this.application.listen(0, '127.0.0.1');
+    const address = this.getHttpServer().address();
+    if (address === null || typeof address === 'string')
+      throw new Error('Test API port unavailable');
+    return `http://127.0.0.1:${address.port}`;
+  }
+
   /** 用于创建已迁移隔离 Schema 并启动生产 Nest 应用。 */
   async prepareApplication(): Promise<void> {
     const adminDatabase = await createDatabaseClient(this.databaseUrl);
@@ -111,6 +134,7 @@ export class DocumentsTestEnvironment {
 
   /** 用于删除可变夹具并保留生产本地用户种子。 */
   async resetFixtures(): Promise<void> {
+    await this.getDatabase().deleteFrom('outbox_events').execute();
     await this.getDatabase().deleteFrom('attachments').execute();
     await this.getDatabase().deleteFrom('inbox_items').execute();
     await this.getDatabase().deleteFrom('idempotency_records').execute();

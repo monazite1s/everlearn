@@ -6,6 +6,7 @@
     "build": "nest build",
     "db:migrate": "nest build && node dist/database/migrate.js up",
     "db:migrate:down": "nest build && node dist/database/migrate.js down",
+    "db:typegen": "kysely-codegen --config-file kysely-codegen.config.cjs && prettier --write src/database/database.types.ts",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit && tsc --project tsconfig.spec.json"
@@ -30,6 +31,7 @@
     "@types/node": "catalog:",
     "@types/pg": "8.20.0",
     "@types/supertest": "catalog:",
+    "kysely-codegen": "0.20.0",
     "supertest": "catalog:",
     "typescript": "catalog:"
   }

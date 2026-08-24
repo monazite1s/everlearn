@@ -10,6 +10,7 @@ import type { DocumentDetail } from '@everlearn/contracts' with {
 import {
   DocumentsTestEnvironment,
   documentDetailKeys,
+  expectInitialParagraphContent,
   otherUserId,
 } from '../../tests/documents-integration.support';
 import { LOCAL_USER_ID } from '../identity/local-identity.constants';
@@ -116,10 +117,7 @@ async function expectConvertedDocumentState(
     ])
     .where('id', '=', detail.id)
     .executeTakeFirstOrThrow();
-  const paragraph = {
-    content: [{ content: [{ text: expected.content, type: 'text' }], type: 'paragraph' }],
-    type: 'doc',
-  };
+  expectInitialParagraphContent(documentRow.content_json, expected.content);
   expect(documentRow).toMatchObject({
     id: detail.id,
     knowledge_base_id: detail.knowledgeBaseId,
@@ -129,7 +127,6 @@ async function expectConvertedDocumentState(
     position: expected.position,
     plain_text: expected.content,
   });
-  expect(documentRow.content_json).toEqual(paragraph);
   const revision = await environment
     .getDatabase()
     .selectFrom('document_revisions')
@@ -142,7 +139,7 @@ async function expectConvertedDocumentState(
     source: 'manual',
     plain_text: expected.content,
   });
-  expect(revision.content_json).toEqual(paragraph);
+  expect(revision.content_json).toEqual(documentRow.content_json);
 }
 
 /** 用于验证文本记录被单事务转换为根文档并离开待处理列表。 */

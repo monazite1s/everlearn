@@ -14,6 +14,7 @@ import type { DatabaseSchema, JsonValue } from '../database/database.types';
 import { DatabaseService } from '../database/database.service';
 import { ApiConflictException } from '../http-boundary/api-conflict.exception';
 import { LocalIdentityContext } from '../identity/local-identity.context';
+import { appendDocumentSearchEvent } from '../outbox/outbox-event.writer';
 import type { CreateDocumentDto } from './create-document.dto';
 import {
   childCountSubquery,
@@ -54,6 +55,22 @@ function resolveCursor(cursor: string | undefined): DocumentCursorPayload | unde
 async function parentFilter(parentId: string | null): Promise<RawBuilder<unknown>> {
   const { sql } = await import('kysely');
   return parentId === null ? sql`IS NULL` : sql`= ${parentId}::uuid`;
+}
+
+/** 用于为带初始正文的新文档原子追加首个保存事件。 */
+async function appendInitialSavedEvent(
+  transaction: Transaction<DatabaseSchema>,
+  ownerId: string,
+  knowledgeBaseId: string,
+  documentId: string,
+): Promise<void> {
+  await appendDocumentSearchEvent(transaction, ownerId, 'document.saved', {
+    contentSchemaVersion: 1,
+    documentId,
+    documentVersion: 1,
+    eventSchemaVersion: 1,
+    knowledgeBaseId,
+  });
 }
 
 /** 用于在服务端所有者边界内读写文档树。 */
@@ -171,6 +188,9 @@ export class DocumentsService {
         created_by: ownerId,
       })
       .executeTakeFirstOrThrow();
+    if (draft.revisionContent !== undefined) {
+      await appendInitialSavedEvent(transaction, ownerId, knowledgeBaseId, documentId);
+    }
     return readActiveDocumentDetail(transaction, documentId, ownerId);
   }
 

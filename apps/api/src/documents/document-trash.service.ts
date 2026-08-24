@@ -12,6 +12,7 @@ import type { DatabaseSchema } from '../database/database.types';
 import { DatabaseService } from '../database/database.service';
 import { ApiConflictException } from '../http-boundary/api-conflict.exception';
 import { LocalIdentityContext } from '../identity/local-identity.context';
+import { appendDocumentSearchEvent } from '../outbox/outbox-event.writer';
 import {
   createRestoreHash,
   lockRestoreIdempotencyKey,
@@ -42,6 +43,29 @@ interface RestoreTarget {
   readonly newPath?: string;
   readonly position?: string;
   readonly toRoot: boolean;
+}
+
+interface ChangedDocument {
+  readonly id: string;
+  readonly knowledgeBaseId: string;
+  readonly version: number;
+}
+
+/** 用于为本次实际改变的每个子树节点原子追加生命周期事件。 */
+async function appendLifecycleEvents(
+  transaction: Transaction<DatabaseSchema>,
+  ownerId: string,
+  eventType: 'document.deleted' | 'document.restored',
+  documents: readonly ChangedDocument[],
+): Promise<void> {
+  for (const document of documents) {
+    await appendDocumentSearchEvent(transaction, ownerId, eventType, {
+      documentId: document.id,
+      documentVersion: document.version,
+      eventSchemaVersion: 1,
+      knowledgeBaseId: document.knowledgeBaseId,
+    });
+  }
 }
 
 /** 用于在所有者边界内原子执行文档子树删除与恢复。 */
@@ -94,7 +118,8 @@ export class DocumentTrashService {
       return this.acceptDeleteReplay(document.version, requestedVersion);
     }
     this.requireVersion(document.version, requestedVersion);
-    await this.markSubtreeDeleted(transaction, ownerId, document);
+    const changed = await this.markSubtreeDeleted(transaction, ownerId, document);
+    await appendLifecycleEvents(transaction, ownerId, 'document.deleted', changed);
   }
 
   /** 用于在单事务内完成重放检查、落位和子树恢复响应保存。 */
@@ -157,9 +182,9 @@ export class DocumentTrashService {
     transaction: Transaction<DatabaseSchema>,
     ownerId: string,
     root: LockedDocument,
-  ): Promise<void> {
+  ): Promise<readonly ChangedDocument[]> {
     const { sql } = await import('kysely');
-    await sql`
+    const result = await sql<ChangedDocument>`
       UPDATE documents d
       SET deleted_at = transaction_timestamp(),
         deleted_parent_id = d.parent_id,
@@ -170,7 +195,9 @@ export class DocumentTrashService {
         AND d.knowledge_base_id = ${root.knowledge_base_id}::uuid
         AND (d.id = ${root.id}::uuid OR d.path LIKE ${`${root.path}/%`})
         AND d.deleted_at IS NULL
+      RETURNING d.id, d.knowledge_base_id AS "knowledgeBaseId", d.version
     `.execute(transaction);
+    return result.rows;
   }
 
   /** 用于清空删除标记并在原父级缺失时把子树恢复到知识库根部。 */
@@ -181,7 +208,7 @@ export class DocumentTrashService {
   ): Promise<DocumentDetail> {
     const { sql } = await import('kysely');
     const target = await this.resolveRestoreTarget(transaction, ownerId, root);
-    await transaction
+    const restoredRoot = await transaction
       .updateTable('documents')
       .set({
         deleted_at: null,
@@ -195,8 +222,17 @@ export class DocumentTrashService {
       })
       .where('id', '=', root.id)
       .where('owner_id', '=', ownerId)
+      .returning(['id', 'knowledge_base_id', 'version'])
       .executeTakeFirstOrThrow();
-    await this.clearDeletedDescendants(transaction, ownerId, root, target);
+    const descendants = await this.clearDeletedDescendants(transaction, ownerId, root, target);
+    await appendLifecycleEvents(transaction, ownerId, 'document.restored', [
+      {
+        id: restoredRoot.id,
+        knowledgeBaseId: restoredRoot.knowledge_base_id,
+        version: restoredRoot.version,
+      },
+      ...descendants,
+    ]);
     return readActiveDocumentDetail(transaction, root.id, ownerId);
   }
 
@@ -247,14 +283,14 @@ export class DocumentTrashService {
     ownerId: string,
     root: LockedDocument,
     target: RestoreTarget,
-  ): Promise<void> {
+  ): Promise<readonly ChangedDocument[]> {
     const { sql } = await import('kysely');
     const pathSet =
       target.toRoot && target.newPath !== undefined
         ? sql`path = ${target.newPath}::text
             || substring(d.path from char_length(${root.path}::text) + 1),`
         : sql``;
-    await sql`
+    const result = await sql<ChangedDocument>`
       UPDATE documents d
       SET ${pathSet} deleted_at = NULL, deleted_parent_id = NULL, deleted_position = NULL,
         updated_at = transaction_timestamp(), version = d.version + 1
@@ -262,7 +298,9 @@ export class DocumentTrashService {
         AND d.knowledge_base_id = ${root.knowledge_base_id}::uuid
         AND d.path LIKE ${`${root.path}/%`}
         AND d.deleted_at IS NOT NULL
+      RETURNING d.id, d.knowledge_base_id AS "knowledgeBaseId", d.version
     `.execute(transaction);
+    return result.rows;
   }
 
   /** 用于只接受成功删除产生的精确重放关系。 */

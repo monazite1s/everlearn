@@ -81,6 +81,18 @@ async function revisionRows(id: string) {
     .execute();
 }
 
+/** 用于读取指定文档按版本追加的 Search 保存事件。 */
+async function savedEventVersions(id: string): Promise<number[]> {
+  const { sql } = await import('kysely');
+  const result = await sql<{ aggregateVersion: number }>`
+    SELECT aggregate_version AS "aggregateVersion"
+    FROM outbox_events
+    WHERE aggregate_id = ${id}::uuid AND event_type = 'document.saved'
+    ORDER BY aggregate_version
+  `.execute(environment.getDatabase());
+  return result.rows.map(({ aggregateVersion }) => aggregateVersion);
+}
+
 /** 用于构造三份修订历史（初始、快照 A、快照 B）供恢复矩阵复用。 */
 async function seedRestoreHistory(): Promise<{ id: string; version: number }> {
   const created = await createDocument('原始标题');
@@ -136,6 +148,7 @@ async function restoresRevisionKeepingHistory(): Promise<void> {
     title: '原始标题',
     version: seeded.version + 1,
   });
+  expect(await savedEventVersions(seeded.id)).toEqual([2, 3, seeded.version + 1]);
 }
 
 /** 用于验证重复恢复同一快照不再堆叠重复修订。 */

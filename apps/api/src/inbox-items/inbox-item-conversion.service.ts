@@ -1,5 +1,7 @@
 /** @fileoverview 实现限定所有者的 Inbox 记录单事务幂等转换。 */
 
+import { randomUUID } from 'node:crypto';
+
 import type { DocumentDetail } from '@everlearn/contracts' with {
   'resolution-mode': 'import',
 };
@@ -30,7 +32,13 @@ interface LockedPendingItem {
 function buildParagraphContent(content: string): { contentJson: JsonValue; plainText: string } {
   return {
     contentJson: {
-      content: [{ content: [{ text: content, type: 'text' }], type: 'paragraph' }],
+      content: [
+        {
+          attrs: { blockId: randomUUID() },
+          content: [{ text: content, type: 'text' }],
+          type: 'paragraph',
+        },
+      ],
       type: 'doc',
     },
     plainText: content,

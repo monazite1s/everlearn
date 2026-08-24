@@ -15,6 +15,7 @@ const seedMigrationName = '20260812010100_local_user_seed';
 const trashIndexesMigrationName = '20260817000000_trash_retention_indexes';
 const revisionTitleMigrationName = '20260818000000_document_revision_title';
 const attachmentsMigrationName = '20260819000000_attachments';
+const searchProjectionMigrationName = '20260824000000_search_projection';
 const otherUserId = '10000000-0000-4000-8000-000000000001';
 const firstKnowledgeBaseId = '20000000-0000-4000-8000-000000000001';
 const secondKnowledgeBaseId = '20000000-0000-4000-8000-000000000002';
@@ -53,6 +54,12 @@ function migrationOptions(direction: 'down' | 'up') {
     migrationTableName: 'migration_history',
     migrationTableSchema: schemaName,
   } as const;
+}
+
+/** 用于断言一次迁移命令只执行指定迁移。 */
+async function expectSingleMigration(direction: 'down' | 'up', name: string): Promise<void> {
+  const result = await runMigrations(database, migrationOptions(direction));
+  expect(result.executedMigrations).toEqual([name]);
 }
 
 /** 用于构造带可选父级和知识库的有效文档行。 */
@@ -230,6 +237,7 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
     trashIndexesMigrationName,
     revisionTitleMigrationName,
     attachmentsMigrationName,
+    searchProjectionMigrationName,
   ]);
   await expectSchemaAndSeed();
   expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual([]);
@@ -242,6 +250,9 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   await database.deleteFrom('documents').execute();
   await database.deleteFrom('knowledge_bases').execute();
   await database.deleteFrom('users').where('id', '=', otherUserId).execute();
+  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
+    searchProjectionMigrationName,
+  ]);
   expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
     attachmentsMigrationName,
   ]);
@@ -263,14 +274,14 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
     trashIndexesMigrationName,
     revisionTitleMigrationName,
     attachmentsMigrationName,
+    searchProjectionMigrationName,
   ]);
 }
 
 /** 用于验证修订标题迁移按文档标题回填存量修订行。 */
 async function backfillsRevisionTitlesFromDocuments(): Promise<void> {
-  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
-    attachmentsMigrationName,
-  ]);
+  await expectSingleMigration('down', searchProjectionMigrationName);
+  await expectSingleMigration('down', attachmentsMigrationName);
   expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
     revisionTitleMigrationName,
   ]);
@@ -303,6 +314,7 @@ async function backfillsRevisionTitlesFromDocuments(): Promise<void> {
   expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual([
     revisionTitleMigrationName,
     attachmentsMigrationName,
+    searchProjectionMigrationName,
   ]);
   const revision = await database
     .selectFrom('document_revisions')

@@ -13,6 +13,7 @@ import { DatabaseService } from '../database/database.service';
 import { AttachmentReferencesService } from '../attachments/attachment-references.service';
 import { ApiConflictException } from '../http-boundary/api-conflict.exception';
 import { LocalIdentityContext } from '../identity/local-identity.context';
+import { appendDocumentSearchEvent } from '../outbox/outbox-event.writer';
 import { loadDocumentContentRules, validateDocumentContent } from './document-content.validator';
 import { readActiveDocumentContent } from './document-projection.query';
 import type { SaveDocumentContentDto } from './save-document-content.dto';
@@ -118,7 +119,14 @@ export class DocumentContentService {
       .where('id', '=', id)
       .where('owner_id', '=', ownerId)
       .executeTakeFirstOrThrow();
-    // ponytail: outbox 表落地后在此事务内写 document.saved 事件（载荷 DocumentSavedEventPayload），供 Worker 投影纯文本与检索块。
-    return readActiveDocumentContent(transaction, id, ownerId);
+    const detail = await readActiveDocumentContent(transaction, id, ownerId);
+    await appendDocumentSearchEvent(transaction, ownerId, 'document.saved', {
+      contentSchemaVersion: input.schemaVersion,
+      documentId: detail.id,
+      documentVersion: detail.version,
+      eventSchemaVersion: 1,
+      knowledgeBaseId: detail.knowledgeBaseId,
+    });
+    return detail;
   }
 }

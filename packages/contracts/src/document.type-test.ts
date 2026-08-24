@@ -8,11 +8,13 @@ import type {
   DocumentDetail,
   DocumentErrorCode,
   DocumentListResponse,
+  DocumentLifecycleEventPayload,
   DocumentRevisionDetail,
   DocumentRevisionListItem,
   DocumentRevisionListResponse,
   DocumentRevisionSource,
   DocumentSavedEventPayload,
+  DocumentSearchEventType,
   DocumentTreeItem,
   MoveDocumentRequest,
   RenameDocumentRequest,
@@ -77,6 +79,15 @@ type SavedEventKeys = Assert<
     | 'eventSchemaVersion'
     | 'knowledgeBaseId'
   >
+>;
+type LifecycleEventKeys = Assert<
+  Equal<
+    keyof DocumentLifecycleEventPayload,
+    'documentId' | 'documentVersion' | 'eventSchemaVersion' | 'knowledgeBaseId'
+  >
+>;
+type SearchEventValues = Assert<
+  Equal<DocumentSearchEventType, 'document.deleted' | 'document.restored' | 'document.saved'>
 >;
 type RevisionSourceValues = Assert<
   Equal<DocumentRevisionSource, 'ai' | 'automation' | 'import' | 'manual' | 'restore'>
@@ -170,6 +181,8 @@ export type DocumentContractAssertions = [
   DetailKeys,
   ContentDetailKeys,
   SavedEventKeys,
+  LifecycleEventKeys,
+  SearchEventValues,
   RevisionSourceValues,
   RevisionListItemKeys,
   RevisionDetailShape,

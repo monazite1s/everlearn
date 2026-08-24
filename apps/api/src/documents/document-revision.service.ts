@@ -17,6 +17,7 @@ import { DatabaseService } from '../database/database.service';
 import { AttachmentReferencesService } from '../attachments/attachment-references.service';
 import { ApiConflictException } from '../http-boundary/api-conflict.exception';
 import { LocalIdentityContext } from '../identity/local-identity.context';
+import { appendDocumentSearchEvent } from '../outbox/outbox-event.writer';
 import type { CreateDocumentRevisionDto } from './create-document-revision.dto';
 import { loadDocumentContentRules, validateDocumentContent } from './document-content.validator';
 import {
@@ -215,7 +216,15 @@ export class DocumentRevisionService {
         title: revision.title,
       });
     }
-    return readActiveDocumentContent(transaction, target.id, ownerId);
+    const detail = await readActiveDocumentContent(transaction, target.id, ownerId);
+    await appendDocumentSearchEvent(transaction, ownerId, 'document.saved', {
+      contentSchemaVersion: detail.schemaVersion,
+      documentId: detail.id,
+      documentVersion: detail.version,
+      eventSchemaVersion: 1,
+      knowledgeBaseId: detail.knowledgeBaseId,
+    });
+    return detail;
   }
 
   /** 用于以恢复快照覆盖文档当前内容、纯文本、Schema 与标题并递增版本。 */

@@ -243,6 +243,9 @@ importers:
       '@types/supertest':
         specifier: 'catalog:'
         version: 7.2.1
+      kysely-codegen:
+        specifier: 0.20.0
+        version: 0.20.0(kysely@0.29.2)(pg@8.22.0)(typescript@5.9.3)
       supertest:
         specifier: 'catalog:'
         version: 7.2.2(supports-color@10.2.2)
@@ -3524,6 +3527,10 @@ packages:
   dezalgo@1.0.4:
     resolution: {integrity: sha512-rXSP0bf+5n0Qonsb+SVVfNfIsimO4HEtmnIpPHY8Q1UCzKlQrDMfdobr8nJOOsRgWCyMRqeSBQzmWUMq7zvVig==}
 
+  diff@8.0.4:
+    resolution: {integrity: sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw==}
+    engines: {node: '>=0.3.1'}
+
   doctrine@2.1.0:
     resolution: {integrity: sha512-35mSku4ZXK0vfCuHEDAwt55dg2jNajHZ1odvF+8SSr82EsZY4QmXfuWso8oEd8zRhVObSN18aM0CjSdoBX7zIw==}
     engines: {node: '>=0.10.0'}
@@ -4391,6 +4398,41 @@ packages:
 
   known-css-properties@0.37.0:
     resolution: {integrity: sha512-JCDrsP4Z1Sb9JwG0aJ8Eo2r7k4Ou5MwmThS/6lcIe1ICyb7UBJKGRIUUdqc2ASdE/42lgz6zFUnzAIhtXnBVrQ==}
+
+  kysely-codegen@0.20.0:
+    resolution: {integrity: sha512-LSi2KBG7uDmNCZ+XurLSA9LH7XFyyoQ6xb5DLJSInPTSYLVApjOP2KwO8mSaREWTtoX+C2AG2GTlYR0DLjTbcA==}
+    engines: {node: '>=20.0.0'}
+    hasBin: true
+    peerDependencies:
+      '@libsql/kysely-libsql': '>=0.3.0 <0.5.0'
+      '@tediousjs/connection-string': ^1.0.0
+      better-sqlite3: '>=7.6.2 <13.0.0'
+      kysely: '>=0.27.0 <1.0.0'
+      kysely-bun-sqlite: '>=0.3.2 <1.0.0'
+      kysely-bun-worker: '>=1.2.0 <2.0.0'
+      mysql2: '>=2.3.3 <4.0.0'
+      pg: '>=8.8.0 <9.0.0'
+      tarn: '>=3.0.0 <4.0.0'
+      tedious: '>=18.0.0 <20.0.0'
+    peerDependenciesMeta:
+      '@libsql/kysely-libsql':
+        optional: true
+      '@tediousjs/connection-string':
+        optional: true
+      better-sqlite3:
+        optional: true
+      kysely-bun-sqlite:
+        optional: true
+      kysely-bun-worker:
+        optional: true
+      mysql2:
+        optional: true
+      pg:
+        optional: true
+      tarn:
+        optional: true
+      tedious:
+        optional: true
 
   kysely@0.29.2:
     resolution: {integrity: sha512-s6WVJyEZrbm6jhBpiKHsGHyePMrVQKJ85wZCFCr9W4QHv6WTjWIrdvTmO9hDEA3bNK0xkrE2DqrHsXMLWuZpQg==}
@@ -9181,7 +9223,7 @@ snapshots:
 
   cosmiconfig@8.2.0:
     dependencies:
-      import-fresh: 3.2.1
+      import-fresh: 3.3.0
       js-yaml: 4.3.1
       parse-json: 5.2.0
       path-type: 4.0.0
@@ -9293,6 +9335,8 @@ snapshots:
     dependencies:
       asap: 2.0.6
       wrappy: 1.0.2
+
+  diff@8.0.4: {}
 
   doctrine@2.1.0:
     dependencies:
@@ -10358,6 +10402,23 @@ snapshots:
   known-css-properties@0.37.0:
     optional: true
 
+  kysely-codegen@0.20.0(kysely@0.29.2)(pg@8.22.0)(typescript@5.9.3):
+    dependencies:
+      chalk: 4.1.2
+      cosmiconfig: 9.0.2(typescript@5.9.3)
+      diff: 8.0.4
+      dotenv: 17.4.1
+      dotenv-expand: 12.0.3
+      kysely: 0.29.2
+      micromatch: 4.0.8
+      minimist: 1.2.8
+      pluralize: 8.0.0
+      zod: 4.4.3
+    optionalDependencies:
+      pg: 8.22.0
+    transitivePeerDependencies:
+      - typescript
+
   kysely@0.29.2: {}
 
   levn@0.4.1:
@@ -10485,7 +10546,7 @@ snapshots:
 
   log-symbols@4.1.0:
     dependencies:
-      chalk: 4.1.0
+      chalk: 4.1.2
       is-unicode-supported: 0.1.0
 
   loose-envify@1.4.0:
@@ -12136,7 +12197,7 @@ snapshots:
 
   wrap-ansi@6.2.0:
     dependencies:
-      ansi-styles: 4.0.0
+      ansi-styles: 4.1.0
       string-width: 4.1.0
       strip-ansi: 6.0.0
 
