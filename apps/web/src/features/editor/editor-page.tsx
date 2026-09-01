@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangleIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 import type { DocumentContentDetail } from '@everlearn/contracts';
 import { Alert, AlertDescription, AlertTitle, Button, Skeleton } from '@everlearn/ui';
@@ -16,6 +17,7 @@ import { getKnowledgeBase } from '../knowledge/knowledge-api';
 import { EditorWorkbench } from './editor-workbench';
 import { getDocumentContent } from './editor-api';
 import { ReadonlyDocument } from './readonly-document';
+import { parseSearchBlockTarget, type SearchBlockTargetQuery } from './search-block-target';
 
 /** 编辑断点与三栏断点：按布局规格 769px 起桌面、1537px 起常驻右栏。 */
 const DESKTOP_QUERY = '(min-width: 48.0625em)';
@@ -101,7 +103,10 @@ function DeletedNotice() {
 }
 
 /** 用于渲染移动端只读正文与返回入口。 */
-function MobileReadonlyPage(props: { detail: DocumentContentDetail }) {
+function MobileReadonlyPage(props: {
+  detail: DocumentContentDetail;
+  searchTarget: SearchBlockTargetQuery | null;
+}) {
   return (
     <div className="py-4">
       <h1
@@ -111,7 +116,12 @@ function MobileReadonlyPage(props: { detail: DocumentContentDetail }) {
       >
         {props.detail.title || '无标题'}
       </h1>
-      <ReadonlyDocument contentJson={props.detail.contentJson} showReadonlyHint />
+      <ReadonlyDocument
+        contentJson={props.detail.contentJson}
+        documentVersion={props.detail.version}
+        searchTarget={props.searchTarget}
+        showReadonlyHint
+      />
     </div>
   );
 }
@@ -122,6 +132,7 @@ function DesktopEditorLayout(props: {
   readonly kbName?: string | undefined;
   readonly knowledgeBaseId: string;
   readonly offline: boolean;
+  readonly searchTarget: SearchBlockTargetQuery | null;
   readonly wide: boolean;
 }) {
   return (
@@ -132,6 +143,7 @@ function DesktopEditorLayout(props: {
         kbName={props.kbName}
         knowledgeBaseId={props.knowledgeBaseId}
         offline={props.offline}
+        searchTarget={props.searchTarget}
         wide={props.wide}
       />
     </div>
@@ -164,6 +176,7 @@ export function EditorPage(props: EditorPageProps) {
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const wide = useMediaQuery(WIDE_QUERY);
   const online = useOnline();
+  const searchTarget = parseSearchBlockTarget(useSearchParams());
 
   if (load.status === 'loading') return <EditorSkeleton />;
   if (load.status === 'deleted') return <DeletedNotice />;
@@ -175,13 +188,14 @@ export function EditorPage(props: EditorPageProps) {
     );
   }
   if (desktop === undefined) return <EditorSkeleton />;
-  if (!desktop) return <MobileReadonlyPage detail={load.detail} />;
+  if (!desktop) return <MobileReadonlyPage detail={load.detail} searchTarget={searchTarget} />;
   return (
     <DesktopEditorLayout
       detail={load.detail}
       kbName={kbName}
       knowledgeBaseId={knowledgeBaseId}
       offline={!online}
+      searchTarget={searchTarget}
       wide={wide ?? false}
     />
   );

@@ -16,6 +16,7 @@ import { EditorToolbar } from './editor-toolbar';
 import { getDocumentContent } from './editor-api';
 import { RichTextEditor } from './rich-text-editor';
 import { ConflictAlert } from './save-status';
+import { SearchBlockTarget, type SearchBlockTargetQuery } from './search-block-target';
 import { omitPendingAttachments, useDocumentAttachments } from './use-document-attachments';
 import { useAttachmentUpload } from './use-attachment-upload';
 import { useDebouncedSave } from './use-debounced-save';
@@ -32,6 +33,7 @@ export interface DocumentEditorSessionProps {
   readonly offline: boolean;
   /** 以新内容整体替换会话，由宿主递增 key 重挂。 */
   readonly onReplace: (detail: DocumentContentDetail) => void;
+  readonly searchTarget?: SearchBlockTargetQuery | null | undefined;
   readonly wide: boolean;
 }
 
@@ -240,27 +242,23 @@ function useSessionRuntime(
   };
 }
 
-/** 用于渲染 sticky 格式化工具栏行。 */
-function ToolbarBar(props: { readonly runtime: SessionRuntime }) {
-  const readonly = props.runtime.offline || props.runtime.save.status === 'conflict';
-  return (
-    <div className="sticky top-(--header-height) z-20 border-b bg-background/95 backdrop-blur-sm">
-      <div className="mx-auto flex w-full max-w-prose items-center px-6">
-        <EditorToolbar disabled={readonly} editor={props.runtime.editor} />
-      </div>
-    </div>
-  );
-}
-
 /** 用于渲染正文编辑器、冲突提示与重载反馈。 */
 function EditorBody(props: {
   readonly detail: DocumentContentDetail;
   readonly runtime: SessionRuntime;
+  readonly searchTarget?: SearchBlockTargetQuery | null | undefined;
 }) {
   const { runtime } = props;
   const readonly = runtime.offline || runtime.save.status === 'conflict';
+  const rootRef = useRef<HTMLDivElement | null>(null);
   return (
-    <div className="mx-auto w-full max-w-prose px-6 pt-4 pb-16">
+    <div className="mx-auto w-full max-w-prose px-6 pt-4 pb-16" ref={rootRef}>
+      <SearchBlockTarget
+        currentDocumentVersion={props.detail.version}
+        ready={runtime.editor !== null}
+        rootRef={rootRef}
+        target={props.searchTarget ?? null}
+      />
       <RichTextEditor
         attachmentRetry={runtime.attachments.retryUpload}
         editable={!readonly}
@@ -313,10 +311,51 @@ function AttachmentControls(props: { readonly runtime: SessionRuntime }) {
 }
 // eslint-enable react-hooks/refs -- 恢复渲染期引用检查
 
+/** 用于组合编辑区标题、状态、工具栏、正文与附件入口。 */
+function EditorSessionMain(props: {
+  readonly autoFocusTitle?: boolean | undefined;
+  readonly detail: DocumentContentDetail;
+  readonly knowledgeBaseId: string;
+  readonly kbName?: string | undefined;
+  readonly onTogglePanel: () => void;
+  readonly panelOpen: boolean;
+  readonly runtime: SessionRuntime;
+  readonly searchTarget?: SearchBlockTargetQuery | null | undefined;
+}) {
+  return (
+    <section aria-label="文档编辑区" className="flex min-w-0 flex-col">
+      <TitleBar
+        autoFocus={props.autoFocusTitle}
+        kbName={props.kbName}
+        knowledgeBaseId={props.knowledgeBaseId}
+        onTogglePanel={props.onTogglePanel}
+        panelOpen={props.panelOpen}
+        runtime={props.runtime}
+      />{' '}
+      {props.runtime.offline && (
+        <OfflineNotice
+          className="mx-6 mt-2"
+          description="当前离线：正文转为只读，编辑与上传暂不可用。"
+        />
+      )}
+      <div className="sticky top-(--header-height) z-20 border-b bg-background/95 backdrop-blur-sm">
+        <div className="mx-auto flex w-full max-w-prose items-center px-6">
+          <EditorToolbar
+            disabled={props.runtime.offline || props.runtime.save.status === 'conflict'}
+            editor={props.runtime.editor}
+          />
+        </div>
+      </div>
+      <EditorBody detail={props.detail} runtime={props.runtime} searchTarget={props.searchTarget} />
+      <AttachmentControls runtime={props.runtime} />
+    </section>
+  );
+}
+
 /** 用于承载一次编辑会话并组合各子组件。 */
 export function DocumentEditorSession(props: DocumentEditorSessionProps) {
-  const { autoFocusTitle, detail, kbName, knowledgeBaseId, offline, onReplace, wide } = props;
-  const runtime = useSessionRuntime(detail, offline, onReplace);
+  const { detail, wide } = props;
+  const runtime = useSessionRuntime(detail, props.offline, props.onReplace);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const panelProps = {
@@ -325,7 +364,7 @@ export function DocumentEditorSession(props: DocumentEditorSessionProps) {
     documentId: detail.id,
     getVersion: /** 用于读取当前保存基线版本。 */ () => runtime.save.getVersion(),
     onRestored: /** 用于恢复成功后丢弃本地快照并整体替换会话。 */ (next: DocumentContentDetail) =>
-      replaceSession(runtime.save, runtime.triggers, onReplace, next),
+      replaceSession(runtime.save, runtime.triggers, props.onReplace, next),
   };
   /** 用于统一右栏开合：宽屏切换常驻栏折叠，中屏打开 Sheet。 */
   function togglePanel(): void {
@@ -334,25 +373,16 @@ export function DocumentEditorSession(props: DocumentEditorSessionProps) {
   }
   return (
     <>
-      <section aria-label="文档编辑区" className="flex min-w-0 flex-col">
-        <TitleBar
-          autoFocus={autoFocusTitle}
-          kbName={kbName}
-          knowledgeBaseId={knowledgeBaseId}
-          onTogglePanel={togglePanel}
-          panelOpen={wide ? !panelCollapsed : sheetOpen}
-          runtime={runtime}
-        />{' '}
-        {offline && (
-          <OfflineNotice
-            className="mx-6 mt-2"
-            description="当前离线：正文转为只读，编辑与上传暂不可用。"
-          />
-        )}
-        <ToolbarBar runtime={runtime} />
-        <EditorBody detail={detail} runtime={runtime} />
-        <AttachmentControls runtime={runtime} />
-      </section>
+      <EditorSessionMain
+        autoFocusTitle={props.autoFocusTitle}
+        detail={detail}
+        kbName={props.kbName}
+        knowledgeBaseId={props.knowledgeBaseId}
+        onTogglePanel={togglePanel}
+        panelOpen={wide ? !panelCollapsed : sheetOpen}
+        runtime={runtime}
+        searchTarget={props.searchTarget}
+      />
       {wide && !panelCollapsed ? (
         <aside aria-label="文档信息" className="min-w-0 border-l border-border px-4 py-4">
           <EditorPanelTabs {...panelProps} />

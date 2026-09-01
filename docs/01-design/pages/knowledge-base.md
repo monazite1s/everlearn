@@ -3,7 +3,7 @@
 ## 目的与路由
 
 - `/knowledge`：知识库列表、Inbox、回收站和全局搜索入口。
-- `/knowledge/:knowledgeBaseId`：知识库概览与文档树。
+- `/knowledge/:knowledgeBaseId`：知识库概览、文档树与当前库搜索入口。
 - `/knowledge/inbox`：未归档快速记录。
 - `/knowledge/trash`：已删除知识库和文档。
 - 进入文档后使用 `/knowledge/:knowledgeBaseId/documents/:documentId`。
@@ -27,6 +27,7 @@
 
 - 左栏显示可展开的文档树；每个节点都是文档，可同时包含正文和子文档。
 - 中央显示知识库说明、最近文档、根文档和新建文档操作。
+- 当前库搜索入口进入 `/search` 并携带 `scope=knowledgeBase` 与当前知识库 ID；不在概览页复制搜索结果列表。
 - 新建子文档默认位于当前选中节点下；未选中时创建根文档。
 - 拖拽移动显示目标父级和顺序，拒绝移动到自身或后代。
 - 文档数量很大时按展开节点延迟加载，不一次返回完整树。

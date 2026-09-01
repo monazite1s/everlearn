@@ -16,6 +16,7 @@ const trashIndexesMigrationName = '20260817000000_trash_retention_indexes';
 const revisionTitleMigrationName = '20260818000000_document_revision_title';
 const attachmentsMigrationName = '20260819000000_attachments';
 const searchProjectionMigrationName = '20260824000000_search_projection';
+const searchQueryIndexesMigrationName = '20260825000000_search_query_indexes';
 const otherUserId = '10000000-0000-4000-8000-000000000001';
 const firstKnowledgeBaseId = '20000000-0000-4000-8000-000000000001';
 const secondKnowledgeBaseId = '20000000-0000-4000-8000-000000000002';
@@ -238,6 +239,7 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
     revisionTitleMigrationName,
     attachmentsMigrationName,
     searchProjectionMigrationName,
+    searchQueryIndexesMigrationName,
   ]);
   await expectSchemaAndSeed();
   expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual([]);
@@ -250,24 +252,13 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   await database.deleteFrom('documents').execute();
   await database.deleteFrom('knowledge_bases').execute();
   await database.deleteFrom('users').where('id', '=', otherUserId).execute();
-  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
-    searchProjectionMigrationName,
-  ]);
-  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
-    attachmentsMigrationName,
-  ]);
-  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
-    revisionTitleMigrationName,
-  ]);
-  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
-    trashIndexesMigrationName,
-  ]);
-  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
-    seedMigrationName,
-  ]);
-  expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
-    schemaMigrationName,
-  ]);
+  await expectSingleMigration('down', searchQueryIndexesMigrationName);
+  await expectSingleMigration('down', searchProjectionMigrationName);
+  await expectSingleMigration('down', attachmentsMigrationName);
+  await expectSingleMigration('down', revisionTitleMigrationName);
+  await expectSingleMigration('down', trashIndexesMigrationName);
+  await expectSingleMigration('down', seedMigrationName);
+  await expectSingleMigration('down', schemaMigrationName);
   expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual([
     schemaMigrationName,
     seedMigrationName,
@@ -275,11 +266,13 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
     revisionTitleMigrationName,
     attachmentsMigrationName,
     searchProjectionMigrationName,
+    searchQueryIndexesMigrationName,
   ]);
 }
 
 /** 用于验证修订标题迁移按文档标题回填存量修订行。 */
 async function backfillsRevisionTitlesFromDocuments(): Promise<void> {
+  await expectSingleMigration('down', searchQueryIndexesMigrationName);
   await expectSingleMigration('down', searchProjectionMigrationName);
   await expectSingleMigration('down', attachmentsMigrationName);
   expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
@@ -315,6 +308,7 @@ async function backfillsRevisionTitlesFromDocuments(): Promise<void> {
     revisionTitleMigrationName,
     attachmentsMigrationName,
     searchProjectionMigrationName,
+    searchQueryIndexesMigrationName,
   ]);
   const revision = await database
     .selectFrom('document_revisions')

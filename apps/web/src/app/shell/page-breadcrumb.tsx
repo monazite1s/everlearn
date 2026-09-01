@@ -24,6 +24,7 @@ const SEGMENT_LABELS: Readonly<Record<string, string>> = {
   inbox: 'Inbox',
   knowledge: '知识库',
   news: '资讯',
+  search: '搜索',
   trash: '回收站',
   tutorials: '教程',
   workflows: '工作流',

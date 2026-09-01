@@ -4,9 +4,13 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 
 import { AppShell } from './app-shell';
+import { useSearchNavigation } from './search-navigation';
 import { ThemeProvider } from '../theme-provider';
 
 let mockPathname = '/knowledge';
+const routerBack = vi.fn();
+const routerPush = vi.fn();
+const routerReplace = vi.fn();
 
 /** 用于返回应用壳组件测试的稳定路径。 */
 function useMockPathname(): string {
@@ -14,8 +18,13 @@ function useMockPathname(): string {
 }
 
 /** 用于提供应用壳所需的最小 App Router 接口。 */
-function createNavigationMock(): { usePathname: typeof useMockPathname } {
-  return { usePathname: useMockPathname };
+function createNavigationMock() {
+  return { usePathname: useMockPathname, useRouter: useMockRouter };
+}
+
+/** 用于返回测试导航所需的稳定路由器。 */
+function useMockRouter() {
+  return { back: routerBack, push: routerPush, replace: routerReplace };
 }
 
 vi.mock('next/navigation', createNavigationMock);
@@ -44,8 +53,41 @@ function resetShell(): void {
   cleanup();
   localStorage.clear();
   mockPathname = '/knowledge';
+  routerBack.mockReset();
+  routerPush.mockReset();
+  routerReplace.mockReset();
+  window.history.replaceState({}, '', '/');
   document.documentElement.classList.remove('dark');
   window.innerWidth = 1024;
+}
+
+/** 用于从搜索结果层触发统一退出动作。 */
+function SearchExitProbe() {
+  const { leaveSearch } = useSearchNavigation();
+  return (
+    <button onClick={() => leaveSearch()} type="button">
+      关闭搜索
+    </button>
+  );
+}
+
+/** 用于提供知识库范围搜索的稳定来源入口。 */
+function ScopedSearchSource() {
+  return (
+    <>
+      <h1 data-page-title tabIndex={-1}>
+        当前知识库
+      </h1>
+      <a
+        data-search-trigger
+        href="/search?scope=knowledgeBase"
+        id="knowledge-search-trigger-library"
+        onClick={(event) => event.preventDefault()}
+      >
+        搜索当前知识库
+      </a>
+    </>
+  );
 }
 
 afterEach(resetShell);
@@ -159,6 +201,147 @@ function rendersNestedRoutePolicy(): void {
   expect(breadcrumb).not.toHaveTextContent('library-1');
 }
 
+/** 用于验证顶栏入口与快捷键进入搜索且不劫持输入法组合。 */
+function opensSearchFromGlobalEntrypoints(): void {
+  window.history.replaceState({}, '', '/knowledge/library?view=tree');
+  mockPathname = '/knowledge/library';
+  renderShell();
+  const trigger = screen.getByRole('button', { name: '全局搜索' });
+  expect(trigger).toHaveAttribute('id', 'global-search-trigger');
+  expect(trigger.querySelector('svg')).not.toBeNull();
+  expect(within(trigger).getByText('搜索')).toHaveClass('hidden', 'md:inline');
+  fireEvent.click(trigger);
+  expect(routerPush).toHaveBeenLastCalledWith('/search');
+
+  routerPush.mockClear();
+  fireEvent.keyDown(window, { ctrlKey: true, isComposing: true, key: 'k' });
+  expect(routerPush).not.toHaveBeenCalled();
+  fireEvent.keyDown(window, { ctrlKey: true, key: 'k' });
+  expect(routerPush).toHaveBeenLastCalledWith('/search');
+}
+
+/** 用于验证搜索路由只聚焦声明输入且退出后恢复来源触发器。 */
+async function preservesSearchSourceAndFocus(): Promise<void> {
+  window.history.replaceState({}, '', '/knowledge/library?view=tree');
+  mockPathname = '/knowledge/library';
+  const view = render(
+    <ThemeProvider>
+      <AppShell>
+        <h1 data-page-title tabIndex={-1}>
+          当前知识库
+        </h1>
+      </AppShell>
+    </ThemeProvider>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: '全局搜索' }));
+
+  window.history.replaceState({}, '', '/search?query=outbox');
+  mockPathname = '/search';
+  view.rerender(
+    <ThemeProvider>
+      <AppShell>
+        <input aria-label="搜索知识" data-route-focus />
+        <SearchExitProbe />
+      </AppShell>
+    </ThemeProvider>,
+  );
+  await waitFor(() => expect(screen.getByRole('textbox', { name: '搜索知识' })).toHaveFocus());
+
+  routerPush.mockClear();
+  fireEvent.click(screen.getByRole('button', { name: '全局搜索' }));
+  expect(routerPush).not.toHaveBeenCalled();
+  expect(screen.getByRole('textbox', { name: '搜索知识' })).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: '关闭搜索' }));
+  expect(routerBack).toHaveBeenCalledOnce();
+  expect(routerPush).not.toHaveBeenCalled();
+  expect(routerReplace).not.toHaveBeenCalled();
+
+  window.history.replaceState({}, '', '/knowledge/library?view=tree');
+  mockPathname = '/knowledge/library';
+  view.rerender(
+    <ThemeProvider>
+      <AppShell>
+        <h1 data-page-title tabIndex={-1}>
+          当前知识库
+        </h1>
+      </AppShell>
+    </ThemeProvider>,
+  );
+  await waitFor(() => expect(screen.getByRole('button', { name: '全局搜索' })).toHaveFocus());
+}
+
+/** 用于验证直接打开搜索时退出到规定的安全默认页。 */
+function leavesDirectSearchForKnowledge(): void {
+  window.history.replaceState({}, '', '/search?query=direct');
+  mockPathname = '/search';
+  render(
+    <ThemeProvider>
+      <AppShell>
+        <input aria-label="搜索知识" data-route-focus />
+        <SearchExitProbe />
+      </AppShell>
+    </ThemeProvider>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: '关闭搜索' }));
+  expect(routerReplace).toHaveBeenCalledWith('/knowledge');
+  expect(routerBack).not.toHaveBeenCalled();
+  expect(routerPush).not.toHaveBeenCalled();
+}
+
+/** 用于验证搜索面包屑存在且不会激活一级导航。 */
+function rendersSearchLocationOutsidePrimaryNavigation(): void {
+  mockPathname = '/search';
+  renderShell();
+  expect(screen.getByRole('navigation', { name: 'breadcrumb' })).toHaveTextContent('首页搜索');
+  for (const link of screen.getAllByRole('link')) {
+    if (link.closest('[data-sidebar="menu"]')) expect(link).not.toHaveAttribute('aria-current');
+  }
+}
+
+/** 用于验证非持久页面搜索链接仍可恢复到重新渲染后的稳定入口。 */
+async function restoresScopedSearchTrigger(): Promise<void> {
+  window.history.replaceState({}, '', '/knowledge/library');
+  mockPathname = '/knowledge/library';
+  const view = render(
+    <ThemeProvider>
+      <AppShell>
+        <ScopedSearchSource />
+      </AppShell>
+    </ThemeProvider>,
+  );
+  fireEvent.click(screen.getByRole('link', { name: '搜索当前知识库' }));
+  window.history.replaceState({}, '', '/search?scope=knowledgeBase');
+  mockPathname = '/search';
+  view.rerender(
+    <ThemeProvider>
+      <AppShell>
+        <input aria-label="搜索知识" data-route-focus />
+        <SearchExitProbe />
+      </AppShell>
+    </ThemeProvider>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: '关闭搜索' }));
+  expect(routerBack).toHaveBeenCalledOnce();
+  expect(routerPush).not.toHaveBeenCalled();
+  expect(routerReplace).not.toHaveBeenCalled();
+
+  window.history.replaceState({}, '', '/knowledge/library');
+  mockPathname = '/knowledge/library';
+  view.rerender(
+    <ThemeProvider>
+      <AppShell>
+        <ScopedSearchSource />
+      </AppShell>
+    </ThemeProvider>,
+  );
+  await waitFor(() => expect(screen.getByRole('link', { name: '搜索当前知识库' })).toHaveFocus());
+}
+
 test('renders the accessible desktop shell', rendersDesktopShell);
 test('renders mobile reading controls', rendersMobileReadingControls);
 test('keeps nested routes inside their primary destination', rendersNestedRoutePolicy);
+test('opens search from the real global entrypoints', opensSearchFromGlobalEntrypoints);
+test('preserves the search source and route focus', preservesSearchSourceAndFocus);
+test('leaves a directly opened search for knowledge', leavesDirectSearchForKnowledge);
+test('keeps search outside primary navigation', rendersSearchLocationOutsidePrimaryNavigation);
+test('restores a scoped search trigger after returning', restoresScopedSearchTrigger);

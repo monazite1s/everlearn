@@ -3,14 +3,17 @@
 import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from '../database/database.module';
+import { LocalIdentityContext } from '../identity/local-identity.context';
 import { SearchProjectionController } from './search-projection.controller';
 import { SearchProjectionService } from './search-projection.service';
+import { SearchQueryController } from './search-query.controller';
+import { SearchQueryService } from './search-query.service';
 
-/** 用于集中声明 Search 对 PostgreSQL 投影的唯一写入所有权。 */
+/** 用于集中声明 Search 的投影写入与公开只读查询边界。 */
 @Module({
-  controllers: [SearchProjectionController],
+  controllers: [SearchProjectionController, SearchQueryController],
   exports: [SearchProjectionService],
   imports: [DatabaseModule],
-  providers: [SearchProjectionService],
+  providers: [LocalIdentityContext, SearchProjectionService, SearchQueryService],
 })
 export class SearchModule {}

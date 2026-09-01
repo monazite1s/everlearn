@@ -3,7 +3,7 @@
 'use client';
 
 import type { KnowledgeBaseSummary } from '@everlearn/contracts';
-import { ArrowLeftIcon, CalendarClockIcon, FileTextIcon } from 'lucide-react';
+import { ArrowLeftIcon, CalendarClockIcon, FileTextIcon, SearchIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -192,6 +192,18 @@ function DestinationActions(props: {
           返回列表
         </Link>
       </Button>
+      {data && (
+        <Button asChild variant="outline">
+          <Link
+            data-search-trigger
+            href={`/search?scope=knowledgeBase&knowledgeBaseId=${data.id}`}
+            id={`knowledge-search-trigger-${data.id}`}
+          >
+            <SearchIcon aria-hidden="true" />
+            搜索当前知识库
+          </Link>
+        </Button>
+      )}
       {desktop && data && <KnowledgeManagement data={data} offline={offline} onSaved={onSaved} />}
     </>
   );

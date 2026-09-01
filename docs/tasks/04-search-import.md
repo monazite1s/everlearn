@@ -33,18 +33,24 @@
 ## SEARCH-02 实现全局搜索 API 与页面
 
 - 依赖：SEARCH-01、KB-06。
-- 必读：`docs/01-design/pages/knowledge-base.md`、`docs/02-architecture/api-and-events.md`、`docs/01-design/layout-and-navigation.md`。
-- 目标：实现跨全部知识库搜索、当前库范围和标题/正文/标签/更新时间筛选。
-- 实施：游标分页；结果包含文档路径、Block ID 和安全高亮片段；顶部搜索与快捷键打开结果层。
-- 非目标：语义搜索和 AI 回答。
-- 验收：结果只含可访问内容；点击定位匹配 Block；空、加载和索引中状态明确。
-- 验证：搜索集成测试、Playwright 筛选与定位。
+- 授权门禁：用户已批准本阶段非破坏性变更；SEARCH-02 只新增标题检索与当前库范围所需索引，不执行实际业务库 down，不新增运行时依赖。
+- 必读：`docs/01-design/pages/search.md`、`docs/02-architecture/api-and-events.md`、`docs/01-design/layout-and-navigation.md`。
+- 目标：实现跨全部知识库搜索、当前库范围和标题/正文/更新时间筛选。
+- 实施：`GET /search` 使用 `query/scope/knowledgeBaseId/field/updatedAfter/limit/cursor`；每个文档最多返回一项，标题-only 结果允许 `blockId=null`，正文命中返回最佳匹配 Block；祖先路径与高亮均为安全公开投影。新增有效文档标题的 FTS/trigram GIN 与当前库更新时间查询索引，并重新生成数据库类型。顶栏、快捷键与知识库概览进入可深链的 `/search` 结果层。
+- 恢复与状态：空查询不请求；旧请求取消且迟到响应不覆盖；索引未收敛时只返回当前版本投影并以 `updating` 显示部分成功；分页失败保留已有结果；离线保留已加载结果但禁用新请求；不可访问知识库统一 404。
+- 排序与分页：固定相关度、更新时间倒序、文档 ID 升序；不透明游标绑定规范化查询与筛选，筛选变化清空游标；并发更新不承诺分页快照。
+- 施工切片：同一 SEARCH-02 内按“共享契约与真实查询 API → 搜索结果层与 Block 定位 → 真实浏览器、可访问性和性能验收”依次取证。该任务跨公开契约、Search 与 Web，拆开会长期留下无消费方 API 或假数据 UI，因此允许超过八个手写文件，但每个文件仍遵守规模门禁。
+- 非目标：标签与 `tagIds`（SEARCH-03）、最近文档/新建文档等完整 Command Menu 分组、用户排序、语义搜索和 AI 回答。
+- 验收：全局与当前库范围正确；中英文标题/正文查询与更新时间筛选正确；每文档一项，稳定数据集连续分页无重复，客户端在并发更新时按文档去重；标题-only 打开顶部，正文定位匹配 Block，失效 Block 安全回退；已删/他人内容不返回；高亮无 HTML 注入；空、加载、零结果、索引中、失败、分页失败、离线和无权限状态完整；桌面快捷键/Escape 与移动端搜索流程可用。
+- 验证：DTO/游标与共享契约测试、真实 PostgreSQL 查询/所有者/生命周期/中英文/索引 `EXPLAIN` 集成测试、组件状态测试、Playwright 筛选/分页/定位、axe、浅色/深色/390px/reduced-motion 走查，以及 production build 下输入响应、LCP 与路由 JS 预算记录。
+- 风险：1–2 字符查询可能无法从 trigram 索引获益；以足量夹具 300ms 首屏查询预算为发布门禁，超预算时提升最小长度或另行批准中文检索方案。分页不提供快照一致性，文档在翻页期间更新可能重排，产品接受普通 keyset 语义。
+- 进度（2026-09-01）：代码完成且 `pnpm check` 全绿（490 项测试含真实 PostgreSQL 查询、50k 夹具 300ms 预算与生产构建）。按用户新的“速度优先、质量 1.5”指示降级验收：Playwright 浏览器验收因 Playwright 转译器不支持 Nest legacy decorators（`babelPlugins` 固定为空、不读 tsconfig）暂缓，axe 与视觉走查未执行，后续任务顺带补齐或由真实使用覆盖。
 
 ## SEARCH-03 实现标签
 
 - 依赖：KB-01、SEARCH-02。
 - 必读：`docs/02-architecture/data-model.md`、`docs/01-design/pages/editor.md`。
-- 目标：实现标签创建、规范化去重、文档关联和搜索筛选。
+- 目标：实现标签创建、规范化去重、文档关联，并以 `tagIds` 扩展 SEARCH-02 搜索契约和筛选 UI。
 - 实施：标签按所有者唯一；编辑器属性侧栏支持添加/移除；删除标签不删除文档。
 - 非目标：层级标签、标签权限和自动 AI 打标。
 - 验收：大小写/空白规范化后不重复；跨用户不可复用；筛选结果正确。

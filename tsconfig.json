@@ -2,10 +2,13 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     "lib": ["DOM", "ES2024"],
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node"],
+    "verbatimModuleSyntax": false
   },
   "include": ["playwright.config.ts", "tests/**/*.ts", "vitest.config.mts"]
 }

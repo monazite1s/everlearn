@@ -65,7 +65,7 @@ test('目录提取只收集带合法块 ID 与文本的标题', () => {
 test('目录默认折叠，展开后按块 ID 定位到正文标题', () => {
   const scrollTo = vi.fn();
   Element.prototype.scrollIntoView = scrollTo;
-  render(<ReadonlyDocument contentJson={headingDoc()} />);
+  render(<ReadonlyDocument contentJson={headingDoc()} documentVersion={1} />);
   const toggle = screen.getByRole('button', { name: '目录' });
   expect(toggle).toHaveAttribute('aria-expanded', 'false');
   expect(screen.queryByRole('navigation', { name: '文档目录' })).not.toBeInTheDocument();
@@ -96,13 +96,19 @@ test('无标题正文不渲染目录', () => {
         ],
         type: 'doc',
       }}
+      documentVersion={1}
     />,
   );
   expect(screen.queryByRole('navigation', { name: '文档目录' })).not.toBeInTheDocument();
 });
 
 test('非法正文回退为空文档而不抛错', () => {
-  render(<ReadonlyDocument contentJson={{ content: [{ type: '不是节点' }], type: 'doc' }} />);
+  render(
+    <ReadonlyDocument
+      contentJson={{ content: [{ type: '不是节点' }], type: 'doc' }}
+      documentVersion={1}
+    />,
+  );
   const region = screen.getByRole('region', { name: '文档正文（只读）' });
   expect(region.querySelectorAll('p, h1, h2, h3, h4, blockquote, pre, ul, ol').length).toBe(0);
 });

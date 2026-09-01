@@ -7,6 +7,7 @@ import { useState } from 'react';
 import type { DocumentContentDetail } from '@everlearn/contracts';
 
 import { DocumentEditorSession } from './document-session';
+import type { SearchBlockTargetQuery } from './search-block-target';
 
 /** EditorWorkbench 的 props 契约。 */
 export interface EditorWorkbenchProps {
@@ -15,6 +16,7 @@ export interface EditorWorkbenchProps {
   readonly kbName?: string | undefined;
   readonly knowledgeBaseId: string;
   readonly offline: boolean;
+  readonly searchTarget?: SearchBlockTargetQuery | null | undefined;
   readonly wide: boolean;
 }
 
@@ -30,6 +32,7 @@ export function EditorWorkbench(props: EditorWorkbenchProps) {
       knowledgeBaseId={props.knowledgeBaseId}
       offline={props.offline}
       onReplace={(detail) => setSession((current) => ({ detail, key: current.key + 1 }))}
+      searchTarget={props.searchTarget}
       wide={props.wide}
     />
   );

@@ -8,7 +8,20 @@ import { EditorPage } from './editor-page';
 
 const DOC_ID = '11111111-1111-4111-8111-111111111111';
 const KB_ID = '22222222-2222-4222-8222-222222222222';
+const BLOCK_ID = '33333333-3333-4333-8333-333333333333';
 const fetchMock = vi.fn();
+
+/** 用于从测试地址提供与 Next 兼容的只读查询参数。 */
+function useMockSearchParams(): URLSearchParams {
+  return new URLSearchParams(window.location.search);
+}
+
+/** 用于提供编辑页消费的最小 App Router 查询接口。 */
+function createNavigationMock() {
+  return { useSearchParams: useMockSearchParams };
+}
+
+vi.mock('next/navigation', createNavigationMock);
 
 /** 用于构造最小内容投影。 */
 function contentDetail(): DocumentContentDetail {
@@ -25,6 +38,24 @@ function contentDetail(): DocumentContentDetail {
     title: '目标文档',
     updatedAt: '2026-08-17T08:00:00.000Z',
     version: 1,
+  };
+}
+
+/** 用于构造带稳定 Block ID 的搜索定位正文。 */
+function searchableDetail(version = 3): DocumentContentDetail {
+  return {
+    ...contentDetail(),
+    contentJson: {
+      content: [
+        {
+          attrs: { blockId: BLOCK_ID },
+          content: [{ text: '搜索命中正文', type: 'text' }],
+          type: 'paragraph',
+        },
+      ],
+      type: 'doc',
+    },
+    version,
   };
 }
 
@@ -71,6 +102,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   fetchMock.mockReset();
+  window.history.replaceState({}, '', '/');
 });
 
 test('移动端以只读渲染器展示正文且不创建编辑实例', async () => {
@@ -158,4 +190,55 @@ test('离线时桌面端展示离线提示并禁用工具栏', async () => {
   expect(await screen.findByText('当前离线：正文转为只读，编辑与上传暂不可用。')).toBeVisible();
   expect(screen.getByRole('button', { name: '粗体' })).toHaveAttribute('aria-disabled', 'true');
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+});
+
+test('移动只读正文按深链定位版本已变化但仍存在的 Block', async () => {
+  Element.prototype.scrollIntoView = vi.fn();
+  window.history.replaceState({}, '', `/?searchBlockId=${BLOCK_ID}&searchDocumentVersion=2`);
+  fetchMock.mockImplementation((input: RequestInfo | URL) => {
+    const url = toUrl(input);
+    return Promise.resolve(
+      url.pathname.endsWith(`/documents/${DOC_ID}/content`)
+        ? jsonResponse(searchableDetail(3))
+        : jsonResponse({ code: 'INTERNAL_ERROR', message: '不支持' }, 500),
+    );
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  mountPage(false);
+  const block = await screen.findByText('搜索命中正文');
+  await waitFor(() => expect(block).toHaveFocus());
+  expect(await screen.findByRole('status')).toHaveTextContent('文档已更新，已定位到原匹配位置');
+});
+
+test('桌面编辑正文按合法深链定位真实 Block', async () => {
+  const scroll = vi.fn();
+  Element.prototype.scrollIntoView = scroll;
+  window.history.replaceState({}, '', `/?searchBlockId=${BLOCK_ID}&searchDocumentVersion=3`);
+  fetchMock.mockImplementation((input: RequestInfo | URL) => {
+    const url = toUrl(input);
+    return Promise.resolve(
+      url.pathname.endsWith(`/documents/${DOC_ID}/content`)
+        ? jsonResponse(searchableDetail())
+        : jsonResponse({ code: 'INTERNAL_ERROR', message: '不支持' }, 500),
+    );
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  mountPage(true);
+  const block = await screen.findByText('搜索命中正文');
+  await waitFor(() => expect(block).toHaveAttribute('data-search-target', 'true'));
+  expect(block).toHaveAttribute('tabindex', '-1');
+  expect(scroll).toHaveBeenCalled();
+  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+});
+
+test('非法或标题专用地址不执行 Block 定位', async () => {
+  const scroll = vi.fn();
+  Element.prototype.scrollIntoView = scroll;
+  window.history.replaceState({}, '', `/?searchBlockId=not-a-uuid&searchDocumentVersion=3`);
+  fetchMock.mockResolvedValue(jsonResponse(searchableDetail()));
+  vi.stubGlobal('fetch', fetchMock);
+  mountPage(false);
+  await screen.findByText('搜索命中正文');
+  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  expect(scroll).not.toHaveBeenCalled();
 });

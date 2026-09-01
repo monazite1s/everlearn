@@ -15,6 +15,7 @@ import { trashRetentionIndexesMigration } from './migrations/20260817000000_tras
 import { documentRevisionTitleMigration } from './migrations/20260818000000_document_revision_title';
 import { attachmentsMigration } from './migrations/20260819000000_attachments';
 import { searchProjectionMigration } from './migrations/20260824000000_search_projection';
+import { searchQueryIndexesMigration } from './migrations/20260825000000_search_query_indexes';
 
 const applicationMigrations = {
   '20260812010000_identity_knowledge_schema': identityKnowledgeSchemaMigration,
@@ -23,6 +24,7 @@ const applicationMigrations = {
   '20260818000000_document_revision_title': documentRevisionTitleMigration,
   '20260819000000_attachments': attachmentsMigration,
   '20260824000000_search_projection': searchProjectionMigration,
+  '20260825000000_search_query_indexes': searchQueryIndexesMigration,
 } satisfies Record<string, Migration>;
 
 export type MigrationDirection = 'down' | 'up';

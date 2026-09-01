@@ -13,7 +13,6 @@ import type {
 import { runMigrations } from '../src/database/migration-runner';
 import { REQUEST_ID_HEADER } from '../src/http-boundary/request-correlation.middleware';
 import { LOCAL_USER_ID } from '../src/identity/local-identity.constants';
-import { expect } from 'vitest';
 
 export interface KnowledgeBaseFixture {
   readonly deletedAt?: Date | null;
@@ -53,11 +52,17 @@ export function expectInitialParagraphContent(value: unknown, expectedText: stri
     content?: [{ attrs?: { blockId?: string }; content?: unknown[]; type?: string }];
     type?: string;
   };
-  expect(document.content?.[0]?.attrs?.blockId).toMatch(/^[0-9a-f-]{36}$/);
-  expect(document).toMatchObject({
-    content: [{ content: [{ text: expectedText, type: 'text' }], type: 'paragraph' }],
-    type: 'doc',
-  });
+  const paragraph = document.content?.[0];
+  const text = paragraph?.content?.[0] as { text?: string; type?: string } | undefined;
+  assertFixture(/^[0-9a-f-]{36}$/.test(paragraph?.attrs?.blockId ?? ''), 'Block ID 无效');
+  assertFixture(document.type === 'doc', '正文根节点无效');
+  assertFixture(paragraph?.type === 'paragraph', '初始段落无效');
+  assertFixture(text?.type === 'text' && text.text === expectedText, '初始正文文本无效');
+}
+
+/** 用于让共享夹具在 Vitest 与 Playwright 中使用同一失败语义。 */
+function assertFixture(condition: boolean, message: string): asserts condition {
+  if (!condition) throw new Error(`Integration fixture assertion failed: ${message}`);
 }
 
 /** 用于注入真实对象存储凭据的附件集成测试配置。 */
@@ -101,6 +106,13 @@ export class DocumentsTestEnvironment {
     if (address === null || typeof address === 'string')
       throw new Error('Test API port unavailable');
     return `http://127.0.0.1:${address.port}`;
+  }
+
+  /** 用于让真实浏览器经固定回环端口访问当前隔离 API。 */
+  async listenForBrowser(port: number): Promise<string> {
+    if (this.application === undefined) throw new Error('Test application is not initialized');
+    await this.application.listen(port, '127.0.0.1');
+    return `http://127.0.0.1:${port}`;
   }
 
   /** 用于创建已迁移隔离 Schema 并启动生产 Nest 应用。 */
@@ -202,9 +214,10 @@ export class DocumentsTestEnvironment {
     message: string,
   ): Record<string, unknown> {
     const body = this.parseBody<Record<string, unknown>>(response);
-    expect(response.status).toBe(status);
-    expect(body).toMatchObject({ code, message });
-    expect(body.requestId).toBe(response.get(REQUEST_ID_HEADER));
+    assertFixture(response.status === status, `预期状态 ${status}，实际 ${response.status}`);
+    assertFixture(body.code === code, `预期错误码 ${code}`);
+    assertFixture(body.message === message, `预期错误消息 ${message}`);
+    assertFixture(body.requestId === response.get(REQUEST_ID_HEADER), '请求关联标识不一致');
     return body;
   }
 

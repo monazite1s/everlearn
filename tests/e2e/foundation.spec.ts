@@ -5,22 +5,21 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-/** 用于验证主题菜单支持切换并在刷新后保持。 */
+/** 用于验证官方外观菜单支持切换并在刷新后保持。 */
 async function opensFoundationPage({ page }: { page: Page }): Promise<void> {
   await page.goto('/');
 
   await expect(page).toHaveTitle('Everlearn');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('首页');
 
-  const menu = page.getByRole('button', { name: '外观与主题' });
+  const menu = page.getByRole('button', { name: '外观设置' });
   await menu.click();
-  await page.getByRole('menuitem', { name: '雾灰中性' }).click();
-  await menu.click();
-  await page.getByRole('menuitem', { name: '深色' }).click();
+  await page.getByRole('menuitemradio', { name: '深色' }).click();
   await page.reload();
 
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'neutral');
+  await expect(page.locator('html')).toHaveAttribute('data-appearance', 'dark');
   await expect(page.locator('html')).toHaveAttribute('data-color-mode', 'dark');
+  await expect(page.locator('html')).toHaveClass(/\bdark\b/);
 }
 
 /** 用于验证桌面导航同步更新路由、当前态、焦点和可访问性。 */
@@ -39,12 +38,11 @@ async function navigatesDesktopShell({ page }: { page: Page }): Promise<void> {
     'aria-current',
     'page',
   );
-  await expect(page.getByRole('complementary', { name: '当前上下文' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '全局搜索' })).toBeVisible();
   const mainBounds = await page.getByRole('main').boundingBox();
   expect(mainBounds?.width).toBeGreaterThanOrEqual(640);
   const routeAudit = await new AxeBuilder({ page }).analyze();
   expect(routeAudit.violations).toEqual([]);
-  await page.screenshot({ fullPage: true, path: 'test-results/ui-03-desktop.png' });
 }
 
 test('opens the foundation page', opensFoundationPage);

@@ -11,6 +11,7 @@ import { cn } from '@everlearn/ui';
 import './editor-content.css';
 import { createEditorSchema, type EditorDocumentJson } from './editor-schema';
 import { parseDocumentJson } from './parse-document-json';
+import { SearchBlockTarget, type SearchBlockTargetQuery } from './search-block-target';
 
 /** 目录条目：标题层级、文本与定位用块 ID。 */
 export interface DocumentHeadingRef {
@@ -129,6 +130,9 @@ function DocumentToc(props: {
 /** ReadonlyDocument 的 props 契约。 */
 export interface ReadonlyDocumentProps {
   contentJson: unknown;
+  documentVersion: number;
+  /** 搜索结果正文命中携带的可选定位目标。 */
+  searchTarget?: SearchBlockTargetQuery | null | undefined;
   /** 是否展示移动设备阅读提示。 */
   showReadonlyHint?: boolean;
 }
@@ -145,6 +149,12 @@ export function ReadonlyDocument(props: ReadonlyDocumentProps) {
           移动端暂不支持编辑，当前展示只读版本。
         </p>
       )}
+      <SearchBlockTarget
+        currentDocumentVersion={props.documentVersion}
+        ready
+        rootRef={bodyRef}
+        target={props.searchTarget ?? null}
+      />
       {headings.length > 0 && <DocumentToc bodyRef={bodyRef} headings={headings} />}
       {/* HTML 由共享 schema 与信任边界解析器生成，不含用户原始输入。 */}
       <div

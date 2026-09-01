@@ -35,6 +35,12 @@ export {
 } from './document.js';
 export { INBOX_ITEM_CONTENT_MAX_LENGTH } from './inbox-item.js';
 export { KNOWLEDGE_BASE_NAME_MAX_LENGTH } from './knowledge-base.js';
+export {
+  SEARCH_CURSOR_MAX_LENGTH,
+  SEARCH_DEFAULT_LIMIT,
+  SEARCH_MAX_LIMIT,
+  SEARCH_QUERY_MAX_LENGTH,
+} from './search.js';
 
 export type {
   CreateDocumentRequest,
@@ -81,3 +87,20 @@ export type {
   KnowledgeBaseVersionRequest,
   UpdateKnowledgeBaseRequest,
 } from './knowledge-base.js';
+
+export type {
+  SearchAncestor,
+  SearchBothResult,
+  SearchContentResult,
+  SearchContentSnippet,
+  SearchErrorCode,
+  SearchField,
+  SearchHighlightSegment,
+  SearchIndexStatus,
+  SearchMatchedField,
+  SearchRequestQuery,
+  SearchResponse,
+  SearchResultItem,
+  SearchScope,
+  SearchTitleResult,
+} from './search.js';

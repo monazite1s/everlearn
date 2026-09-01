@@ -6,17 +6,6 @@ import { useEffect, useState } from 'react';
 
 const LEFT_PANEL_KEY = 'everlearn-left-panel-collapsed';
 
-/** 用于在客户端路由切换后聚焦新页面标题。 */
-export function usePageTitleFocus(pathname: string): void {
-  useEffect(
-    /** 用于将键盘和读屏上下文移到唯一页面标题。 */
-    function focusPageTitle(): void {
-      document.querySelector<HTMLElement>('[data-page-title]')?.focus();
-    },
-    [pathname],
-  );
-}
-
 /** 用于恢复并保存当前设备的左侧导航折叠偏好。 */
 export function usePersistedLeftPanel(): [boolean, (next: boolean) => void] {
   const [collapsed, setCollapsed] = useState(false);

@@ -99,6 +99,16 @@
   max-width: 100%;
 }
 
+/* 搜索深链命中只短暂标识当前 Block，颜色与焦点边界沿用语义 token。 */
+.editor-content [data-search-target='true'] {
+  background-color: var(--accent);
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  transition:
+    background-color var(--duration-micro),
+    outline-color var(--duration-micro);
+}
+
 /* 附件行在只读渲染中以链接块输出，保持与 NodeView 一致的横向布局。 */
 .editor-content [data-attachment-id] {
   align-items: center;

@@ -261,25 +261,15 @@ async function migratesTrashIndexesReversibly(): Promise<void> {
     return result.rows.map((row) => row.indexname);
   };
   expect((await indexNames()).includes('documents_trash_idx')).toBe(true);
-  const attachmentsDown = await runMigrations(environment.getDatabase(), {
-    ...options,
-    direction: 'down',
-  });
-  expect(attachmentsDown.executedMigrations).toEqual(['20260819000000_attachments']);
-  const revisionTitleDown = await runMigrations(environment.getDatabase(), {
-    ...options,
-    direction: 'down',
-  });
-  expect(revisionTitleDown.executedMigrations).toEqual(['20260818000000_document_revision_title']);
-  const down = await runMigrations(environment.getDatabase(), { ...options, direction: 'down' });
-  expect(down.executedMigrations).toEqual(['20260817000000_trash_retention_indexes']);
+  const reverted: string[] = [];
+  while (!reverted.includes('20260817000000_trash_retention_indexes') && reverted.length < 10) {
+    const step = await runMigrations(environment.getDatabase(), { ...options, direction: 'down' });
+    reverted.push(...step.executedMigrations);
+  }
+  expect(reverted.at(-1)).toBe('20260817000000_trash_retention_indexes');
   expect((await indexNames()).includes('documents_trash_idx')).toBe(false);
   const up = await runMigrations(environment.getDatabase(), options);
-  expect(up.executedMigrations).toEqual([
-    '20260817000000_trash_retention_indexes',
-    '20260818000000_document_revision_title',
-    '20260819000000_attachments',
-  ]);
+  expect(up.executedMigrations).toEqual(reverted.toReversed());
   expect((await indexNames()).includes('knowledge_bases_trash_idx')).toBe(true);
 }
 

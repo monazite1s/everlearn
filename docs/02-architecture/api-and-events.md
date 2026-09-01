@@ -43,7 +43,7 @@
 - `/documents/:id/revisions`、`/documents/:id/revisions/:revisionNumber/restore`：修订列表、预览和恢复（`/documents/:id/restore` 是回收站软删除恢复，两者不同资源）。
 - `/documents/:id/links`、`/documents/:id/backlinks`：内部链接关系。
 - `/inbox-items`、`/inbox-items/:id/convert`：快速记录与幂等转换。
-- `/search`：`query/scope/knowledgeBaseId/tagIds/updatedAfter/cursor`。
+- `/search`：`query/scope/knowledgeBaseId/field/updatedAfter/limit/cursor`。`scope` 为 `all | knowledgeBase`，`field` 为 `all | title | content`；SEARCH-02 不接受 `tagIds`，标签筛选在 SEARCH-03 随标签关系一并扩展。响应按文档去重并返回纯文本高亮分段、可空 Block ID、展示型祖先路径、游标和范围级索引状态，不返回内部物化 path 或高亮 HTML。
 
 ### Files 与导入导出
 

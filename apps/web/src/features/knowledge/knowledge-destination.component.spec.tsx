@@ -105,6 +105,10 @@ async function updatesMetadata(): Promise<void> {
   await screen.findByRole('heading', { level: 1, name: initial.name });
 
   expect(screen.getByRole('link', { name: '返回列表' })).toBeVisible();
+  expect(screen.getByRole('link', { name: '搜索当前知识库' })).toHaveAttribute(
+    'href',
+    `/search?scope=knowledgeBase&knowledgeBaseId=${initial.id}`,
+  );
   expect(screen.getByText('当前知识库内的文档数量')).toBeVisible();
   expect(screen.getByText('最近一次内容更新时间')).toBeVisible();
   fireEvent.pointerDown(await screen.findByRole('button', { name: '知识库操作' }));
