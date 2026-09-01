@@ -67,6 +67,11 @@ export interface WorkflowRunContext {
   readonly status: string;
 }
 
+/** 重启补偿扫描恢复为待执行的运行标识列表。 */
+export interface WorkflowRunRecovery {
+  readonly recoveredRunIds: readonly string[];
+}
+
 /** 计划条目投影。 */
 export interface WorkflowScheduleItem {
   readonly schedule: {

@@ -95,6 +95,11 @@ export function AiQaTab(props: AiQaTabProps) {
       {qa.status === 'done' && qa.answer && (
         <div aria-live="polite" className="grid gap-2">
           <p className="m-0 text-sm whitespace-pre-wrap">{qa.answer.answer}</p>
+          {qa.answer.retrievalMode && (
+            <p className="m-0 text-xs text-muted-foreground">
+              检索模式：{qa.answer.retrievalMode === 'hybrid' ? '混合检索' : '全文检索'}
+            </p>
+          )}
           <CitationList citations={qa.answer.citations} knowledgeBaseId={props.knowledgeBaseId} />
         </div>
       )}

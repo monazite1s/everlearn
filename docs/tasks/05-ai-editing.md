@@ -70,3 +70,9 @@
 
 - 已交付：AI-01 以原生 fetch 实现 OpenAI 兼容网关（无厂商 SDK，稳定错误码 + 确定性伪 Provider）；AI-02/05 的最小闭环（SSE 流式草稿生成、带引用问答，引用经服务端候选集校验）；AI-06 最小编辑器侧栏（流式预览、接受/放弃、问答与引用链接）。
 - 有意裁剪（ponytail 登记于代码）：AI-04 Embedding/pgvector 混合检索未做（FTS/trgm 召回降级）；Generation 无状态不持久化（无断线重连）；接受动作复用现有正文保存（整篇替换而非块级 diff）；AI-03 幂等接受端点未做。
+
+### 补充交付（2026-09-02 第二批）
+
+- AI-04 已补齐：pgvector（本机 0.8.2）`vector(1536)` 列 + HNSW 索引；OpenAI 兼容 `/embeddings` Provider（新增可选 env `EMBEDDING_MODEL`）+ 确定性 Fake 向量；Worker 60s 幂等回填（内容哈希守卫，未配置时 no-op 降级）；`readHybridRecallRows` FTS+向量 RRF（k=60）融合召回跨文档多块；QA 接入并返回 `retrievalMode`。验证：单测 6 例 + 真 PG 集成 6 例（迁移 up/down、回填幂等、距离排序、所有权隔离、FTS 降级）+ search 回归 35 例。
+- M2 里程碑门禁「AI 接受/拒绝与引用定位 E2E 通过」已达成：E2E harness 改为真实构建产物（API/Worker 进程 + 内嵌 Mock LLM 上游），`ai-assistant.spec.ts` 4/4 通过（接受产生修订、放弃零写入、引用点击定位、模型宕机可行动报错且应用可用）。「模型离线时核心知识库仍可用」由同一用例覆盖。
+- 遗留：中文混排自然语言提问在 FTS AND 词素语义下召回为空（技术债，需改召回查询）；接受为整篇替换（块级 diff 仍登记于上文裁剪）。

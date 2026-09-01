@@ -4,6 +4,8 @@ import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from '../database/database.module';
 import { LocalIdentityContext } from '../identity/local-identity.context';
+import { SearchEmbeddingController } from './search-embedding.controller';
+import { SearchEmbeddingService } from './search-embedding.service';
 import { SearchProjectionController } from './search-projection.controller';
 import { SearchProjectionService } from './search-projection.service';
 import { SearchQueryController } from './search-query.controller';
@@ -11,9 +13,14 @@ import { SearchQueryService } from './search-query.service';
 
 /** 用于集中声明 Search 的投影写入与公开只读查询边界。 */
 @Module({
-  controllers: [SearchProjectionController, SearchQueryController],
+  controllers: [SearchEmbeddingController, SearchProjectionController, SearchQueryController],
   exports: [SearchProjectionService],
   imports: [DatabaseModule],
-  providers: [LocalIdentityContext, SearchProjectionService, SearchQueryService],
+  providers: [
+    LocalIdentityContext,
+    SearchEmbeddingService,
+    SearchProjectionService,
+    SearchQueryService,
+  ],
 })
 export class SearchModule {}

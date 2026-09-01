@@ -99,7 +99,8 @@ export class NewsRunsService {
       .where('id', '=', runId)
       .where('status', 'in', [...ACTIVE_RUN_STATUSES])
       .executeTakeFirst();
-    if (Number(result.numChangedRows) === 0) {
+    const changedRows = Number(result.numUpdatedRows ?? result.numChangedRows ?? 0);
+    if (changedRows === 0) {
       throw newsError('NEWS_RUN_NOT_ACTIVE', '简报运行不存在或已进入终态。', 409);
     }
     if (input.seenItems !== undefined && input.seenItems.length > 0) {

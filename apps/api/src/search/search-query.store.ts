@@ -5,6 +5,7 @@ import type { Kysely, Sql } from 'kysely' with { 'resolution-mode': 'import' };
 import type { DatabaseSchema } from '../database/database.types';
 import type { NormalizedSearchQuery, SearchCursorPayload } from './search-query.dto';
 import type { RankedSearchRow, SearchAncestorRow } from './search-query.model';
+import { toVectorLiteral } from '../ai/embedding';
 
 const MICROS_PER_SECOND = 1_000_000n;
 
@@ -191,6 +192,116 @@ export async function readRankedSearchRows(
     database,
   );
   return result.rows;
+}
+
+export interface HybridRecallRequest {
+  readonly knowledgeBaseId: string;
+  readonly limit: number;
+  readonly ownerId: string;
+  readonly query: string;
+  readonly queryEmbedding: readonly number[] | null;
+}
+
+export interface HybridRecallRow {
+  readonly block_id: string;
+  readonly document_id: string;
+  readonly document_title: string;
+  readonly heading_path: readonly string[];
+  readonly text: string;
+}
+
+const RRF_CONSTANT_K = 60;
+
+/** 用于以倒数排名融合多路候选并返回去重后的键序（纯函数便于单元验证）。 */
+export function fuseReciprocalRankFusion(
+  rankings: readonly (readonly string[])[],
+  limit: number = Number.MAX_SAFE_INTEGER,
+  k: number = RRF_CONSTANT_K,
+): readonly string[] {
+  const scores = new Map<string, number>();
+  for (const ranking of rankings) {
+    for (const [index, key] of ranking.entries()) {
+      scores.set(key, (scores.get(key) ?? 0) + 1 / (k + index + 1));
+    }
+  }
+  return [...scores.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .slice(0, limit)
+    .map(([key]) => key);
+}
+
+/** 用于构造问答混合召回共享的参数、可见文档与当前版本块 CTE。 */
+function hybridCandidateCtes(sql: Sql, request: HybridRecallRequest): ReturnType<Sql> {
+  return sql`qa_params AS (
+    SELECT plainto_tsquery('pg_catalog.simple'::regconfig, ${request.query}) AS ts_query,
+      ${literalSubstringPattern(request.query)}::text AS literal_pattern
+  ), qa_documents AS (
+    SELECT d.id, d.title, d.version
+    FROM documents d
+    JOIN knowledge_bases kb ON kb.id = d.knowledge_base_id AND kb.owner_id = d.owner_id
+    WHERE d.owner_id = ${request.ownerId}::uuid AND d.deleted_at IS NULL
+      AND kb.deleted_at IS NULL AND d.knowledge_base_id = ${request.knowledgeBaseId}::uuid
+  ), qa_blocks AS (
+    SELECT sb.document_id, sb.block_id, sb.text, sb.heading_path, sb.search_vector, sb.embedding,
+      d.title AS document_title
+    FROM qa_documents d
+    JOIN search_document_projections projection
+      ON projection.document_id = d.id AND projection.owner_id = ${request.ownerId}::uuid
+      AND projection.indexed_document_version = d.version
+    JOIN search_blocks sb ON sb.document_id = d.id AND sb.owner_id = ${request.ownerId}::uuid
+      AND sb.document_version = d.version
+  )`;
+}
+
+/** 用于按所有权、生命周期与当前版本约束读取并融合 FTS 与向量两路问答候选。 */
+export async function readHybridRecallRows(
+  database: Kysely<DatabaseSchema>,
+  request: HybridRecallRequest,
+): Promise<readonly HybridRecallRow[]> {
+  const sql = await loadSql();
+  const candidateLimit = request.limit * 4;
+  const vectorRanked =
+    request.queryEmbedding === null
+      ? sql``
+      : sql`, vector_ranked AS (
+    SELECT document_id, block_id, text, heading_path, document_title
+    FROM qa_blocks
+    WHERE embedding IS NOT NULL
+    ORDER BY embedding <=> ${toVectorLiteral(request.queryEmbedding)}::vector
+    LIMIT ${candidateLimit}
+  )`;
+  const result = await sql<HybridRecallRow & { source: string }>`WITH ${hybridCandidateCtes(
+    sql,
+    request,
+  )}, fts_ranked AS (
+    SELECT document_id, block_id, text, heading_path, document_title
+    FROM qa_blocks CROSS JOIN qa_params p
+    WHERE search_vector @@ p.ts_query OR text ILIKE p.literal_pattern
+    ORDER BY ts_rank_cd(search_vector, p.ts_query) DESC, document_id, block_id
+    LIMIT ${candidateLimit}
+  )${vectorRanked}
+  SELECT 'fts' AS source, document_id, block_id, text, heading_path, document_title FROM fts_ranked
+  ${
+    request.queryEmbedding === null
+      ? sql``
+      : sql`UNION ALL
+  SELECT 'vector' AS source, document_id, block_id, text, heading_path, document_title
+    FROM vector_ranked`
+  }`.execute(database);
+  const rowsByKey = new Map(
+    result.rows.map((row) => [`${row.document_id}\u0000${row.block_id}`, row as HybridRecallRow]),
+  );
+  const rankings = ['fts', 'vector']
+    .map((source) =>
+      result.rows
+        .filter((row) => row.source === source)
+        .map((row) => `${row.document_id}\u0000${row.block_id}`),
+    )
+    .filter((ranking) => ranking.length > 0);
+  return fuseReciprocalRankFusion(rankings, request.limit).flatMap((key) => {
+    const row = rowsByKey.get(key);
+    return row === undefined ? [] : [row];
+  });
 }
 
 /** 用于批量读取根到父级且最多八项的公开祖先标题链。 */

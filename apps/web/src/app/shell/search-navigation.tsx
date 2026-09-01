@@ -37,9 +37,19 @@ function currentHref(pathname: string): string {
   return `${pathname}${window.location.search}${window.location.hash}`;
 }
 
-/** 用于把焦点交给页面声明的搜索输入。 */
+/** 用于把焦点交给页面声明的搜索输入，页面尚未挂载完成时按帧重试。 */
 function focusSearchInput(): void {
-  document.querySelector<HTMLElement>('[data-route-focus]')?.focus();
+  const attempts = 10;
+  /** 用于逐帧等待搜索输入出现后再聚焦。 */
+  function attempt(remaining: number): void {
+    const input = document.querySelector<HTMLElement>('[data-route-focus]');
+    if (input) {
+      input.focus();
+      return;
+    }
+    if (remaining > 0) requestAnimationFrame(() => attempt(remaining - 1));
+  }
+  attempt(attempts);
 }
 
 /** 用于在路由稳定后按搜索来源或页面标题恢复焦点。 */

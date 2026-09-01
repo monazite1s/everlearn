@@ -19,7 +19,7 @@ let database: Kysely<DatabaseSchema>;
 /** 用于设置连接级搜索路径且不读取或修改凭据。 */
 function createScopedDatabaseUrl(connectionString: string): string {
   const url = new URL(connectionString);
-  url.searchParams.set('options', `-csearch_path=${schemaName}`);
+  url.searchParams.set('options', `-csearch_path=${schemaName},public`);
   return url.toString();
 }
 

@@ -17,6 +17,7 @@ import type {
 import { startTrashPurgeRuntime } from './purge/trash-purge.runtime';
 import type { TrashPurgeRuntime, TrashPurgeRuntimeConfig } from './purge/trash-purge.runtime';
 import { startSearchProjectionRuntime } from './search/search-projection.runtime';
+import { startSearchEmbeddingRuntime } from './search/search-embedding.runtime';
 import { startNewsRuntime } from './news/news-run.runtime';
 import type { NewsRuntime, NewsRuntimeConfig } from './news/news-run.runtime';
 import { startWorkflowRuntime } from './workflows/workflow-run.runtime';
@@ -25,6 +26,10 @@ import type {
   SearchProjectionRuntime,
   SearchProjectionRuntimeConfig,
 } from './search/search-projection.runtime';
+import type {
+  SearchEmbeddingRuntime,
+  SearchEmbeddingRuntimeConfig,
+} from './search/search-embedding.runtime';
 import type { WorkflowRuntimeConfig } from './workflows/workflow-run.runtime';
 
 /** 用于提供队列模块接入前的根依赖注入上下文。 */
@@ -164,6 +169,33 @@ async function startSearchProjection(
   });
 }
 
+/** 用于从配置读取搜索向量回填队列连接参数。 */
+function readSearchEmbeddingConfig(
+  config: ConfigService<Record<string, string>, false>,
+): SearchEmbeddingRuntimeConfig {
+  return {
+    apiInternalUrl: config.get('API_INTERNAL_URL', 'http://127.0.0.1:3001'),
+    intervalMs: 60_000,
+    redisUrl: config.get('REDIS_URL', ''),
+    secret: config.get('PURGE_TRIGGER_SECRET', ''),
+  };
+}
+
+/** 用于启动搜索向量回填调度并注册结构化运行结果日志。 */
+async function startSearchEmbedding(app: INestApplicationContext): Promise<SearchEmbeddingRuntime> {
+  const config = readSearchEmbeddingConfig(app.get(ConfigService<Record<string, string>, false>));
+  return startSearchEmbeddingRuntime(config, {
+    onCompleted:
+      /** 用于记录一次回填批次的更新统计。 */
+      (stats) =>
+        logPurgeOutcome('search.embedding.completed', { ...stats, skipped: stats.skipped ? 1 : 0 }),
+    onFailed:
+      /** 用于记录一次回填触发失败的原因与队列尝试次数。 */
+      (error, attemptsMade) =>
+        logPurgeOutcome('search.embedding.failed', { attemptsMade, reason: error.message }),
+  });
+}
+
 /** 用于在终止信号到达前保持 Worker 存活。 */
 function waitForShutdownSignal(): Promise<void> {
   return new Promise((resolve) => {
@@ -172,36 +204,32 @@ function waitForShutdownSignal(): Promise<void> {
   });
 }
 
-/** 用于启动 Worker 上下文与清理调度，收到终止信号后按序关闭。 */
+/** 用于按启动逆序关闭已启动运行时并忽略未初始化项。 */
+async function closeRuntimes(runtimes: readonly { close: () => Promise<void> }[]): Promise<void> {
+  for (const runtime of [...runtimes].reverse()) await runtime.close();
+}
+
+/** 用于启动 Worker 上下文与全部周期运行时，收到终止信号后按启动逆序关闭。 */
 async function bootstrap(): Promise<void> {
-  let purge: TrashPurgeRuntime | undefined;
-  let attachmentPurge: AttachmentOrphanPurgeRuntime | undefined;
-  let searchProjection: SearchProjectionRuntime | undefined;
-  let workflows: WorkflowRuntime | undefined;
-  let news: NewsRuntime | undefined;
+  const runtimes: { close: () => Promise<void> }[] = [];
   try {
     const app = await NestFactory.createApplicationContext(WorkerModule, { logger: systemLogger });
-    purge = await startPurge(app);
-    attachmentPurge = await startAttachmentPurge(app);
-    searchProjection = await startSearchProjection(app);
-    workflows = await startWorkflows(app);
-    news = await startNews(app);
+    runtimes.push(
+      await startPurge(app),
+      await startAttachmentPurge(app),
+      await startSearchProjection(app),
+      await startSearchEmbedding(app),
+      await startWorkflows(app),
+      await startNews(app),
+    );
     bootstrapLogger.log(createWorkerLogEntry({ event: 'worker.lifecycle.ready' }));
     await waitForShutdownSignal();
-    await searchProjection.close();
-    await news?.close();
-    await workflows?.close();
-    await attachmentPurge.close();
-    await purge.close();
+    await closeRuntimes(runtimes);
     await app.close();
   } catch (error: unknown) {
     const trace = error instanceof Error ? error.stack : undefined;
     bootstrapLogger.error('Worker startup failed', trace);
-    await searchProjection?.close();
-    await news?.close();
-    await workflows?.close();
-    await attachmentPurge?.close();
-    await purge?.close();
+    await closeRuntimes(runtimes);
     process.exitCode = 1;
   }
 }

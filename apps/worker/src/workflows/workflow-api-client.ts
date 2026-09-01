@@ -119,7 +119,13 @@ export async function readKbDocument(
 /** 用于执行文档创建节点。 */
 export async function createDocument(
   config: { apiInternalUrl: string; secret: string },
-  input: { knowledgeBaseId: string; plainText: string; runId: string; title: string },
+  input: {
+    knowledgeBaseId: string;
+    nodeId: string;
+    plainText: string;
+    runId: string;
+    title: string;
+  },
 ): Promise<WorkflowActionResult> {
   return (await callInternal(config, '/actions/doc-create', {
     body: input,
@@ -136,6 +142,17 @@ export async function completeLlm(
     body: { prompt },
     method: 'POST',
   })) as WorkflowActionResult;
+}
+
+/** 用于把中断遗留的运行复位为待执行。 */
+export async function recoverInterruptedRuns(config: {
+  apiInternalUrl: string;
+  secret: string;
+}): Promise<readonly string[]> {
+  const result = await callInternal(config, '/runs/recover', { method: 'POST' });
+  const record =
+    typeof result === 'object' && result !== null ? (result as Record<string, unknown>) : {};
+  return Array.isArray(record.recoveredRunIds) ? (record.recoveredRunIds as string[]) : [];
 }
 
 /** 用于列出启用计划的工作流。 */

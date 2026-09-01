@@ -24,6 +24,7 @@ import {
   CompleteWorkflowRunDto,
   type WorkflowDispatchItem,
   type WorkflowRunContext,
+  type WorkflowRunRecovery,
   type WorkflowScheduleItem,
 } from './workflow.dto';
 import { DocCreateActionDto } from './workflow-doc-create.dto';
@@ -113,6 +114,7 @@ export class WorkflowsInternalController {
     this.requireSecret(request);
     return this.effectsService.createDocument({
       knowledgeBaseId: input.knowledgeBaseId,
+      nodeId: input.nodeId,
       ownerId: this.identity.getActor().ownerId,
       plainText: input.plainText,
       title: input.title,
@@ -126,6 +128,14 @@ export class WorkflowsInternalController {
   completeLlm(@Req() request: Request, @Body() input: LlmActionDto) {
     this.requireSecret(request);
     return this.effectsService.completeLlm(this.identity.getActor().ownerId, input.prompt);
+  }
+
+  /** 用于把中断遗留的 running 运行复位为待执行。 */
+  @Post('runs/recover')
+  @HttpCode(HttpStatus.OK)
+  recoverInterruptedRuns(@Req() request: Request): Promise<WorkflowRunRecovery> {
+    this.requireSecret(request);
+    return this.runsService.recoverInterruptedRuns();
   }
 
   /** 用于列出启用计划的工作流。 */

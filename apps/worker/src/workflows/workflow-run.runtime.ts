@@ -8,6 +8,7 @@ import {
   createScheduledRun,
   dispatchWorkflowRuns,
   listWorkflowSchedules,
+  recoverInterruptedRuns,
 } from './workflow-api-client';
 import { executeWorkflowRun } from './workflow-run.executor';
 import type { WorkflowRunExecutorConfig } from './workflow-run.executor';
@@ -107,6 +108,8 @@ export async function startWorkflowRuntime(
   const dispatchTimer = setInterval(() => {
     dispatchPendingRuns(queue, config).catch(() => undefined);
   }, DISPATCH_INTERVAL_MS);
+  // 补偿扫描：启动时把崩溃遗留的 running 运行复位为 pending，由领取机制保证单执行。
+  await recoverInterruptedRuns(config).catch(() => undefined);
   await dispatchPendingRuns(queue, config).catch(() => undefined);
   const scheduleTimer = setInterval(() => {
     syncWorkflowSchedules(queue, config).catch(() => undefined);

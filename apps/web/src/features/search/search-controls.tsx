@@ -28,6 +28,7 @@ interface SearchControlsProps {
   readonly disabled: boolean;
   readonly filters: SearchFilters;
   readonly onChange: (next: SearchFilters) => void;
+  readonly onLeave: () => void;
   readonly onSearchAll: () => void;
   readonly onSubmit: () => void;
   readonly readOnly: boolean;
@@ -100,12 +101,17 @@ function SearchSelect<T extends string>(props: {
   );
 }
 
-/** 用于渲染搜索输入并让 Enter 跳过防抖。 */
+/** 用于渲染搜索输入并让 Enter 立即提交、Escape 直接离开搜索。 */
 function SearchQueryField(props: SearchControlsProps) {
-  const onKeyDown = /** 用于在非组合输入时立即提交 Enter。 */ (
+  const onKeyDown = /** 用于拦截浏览器对搜索输入的原生清空并交给页面离开动作。 */ (
     event: KeyboardEvent<HTMLInputElement>,
   ): void => {
-    if (event.key === 'Enter' && !event.nativeEvent.isComposing) props.onSubmit();
+    if (event.nativeEvent.isComposing) return;
+    if (event.key === 'Enter') props.onSubmit();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      props.onLeave();
+    }
   };
   return (
     <Field>

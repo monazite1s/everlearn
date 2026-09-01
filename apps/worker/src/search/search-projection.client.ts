@@ -10,7 +10,7 @@ const STATS_KEYS = ['processedEvents', 'quarantinedEvents', 'scannedDocuments'] 
 const REQUEST_TIMEOUT_MS = 60_000;
 
 /** 用于限制 Search 共享内部密钥只经 HTTPS 或本机 HTTP 发送。 */
-function requireSafeSearchApiUrl(value: string): string {
+export function requireSafeSearchApiUrl(value: string): string {
   const url = new URL(value);
   const loopbackHosts = new Set(['127.0.0.1', '::1', '[::1]', 'localhost']);
   if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopbackHosts.has(url.hostname))) {

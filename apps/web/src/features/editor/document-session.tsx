@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor, JSONContent } from '@tiptap/core';
 
 import { DOCUMENT_TITLE_MAX_LENGTH, type DocumentContentDetail } from '@everlearn/contracts';
@@ -233,10 +233,16 @@ function EditorBody(props: {
   const { runtime } = props;
   const readonly = runtime.offline || runtime.save.status === 'conflict';
   const rootRef = useRef<HTMLDivElement | null>(null);
+  // 初始内容身份必须稳定，否则编辑器选项重建导致实例销毁重挂、丢失搜索目标标记。
+  const initialContent = useMemo(
+    () => parseDocumentJson(props.detail.contentJson),
+    [props.detail.contentJson],
+  );
   return (
     <div className="mx-auto w-full max-w-prose px-6 pt-4 pb-16" ref={rootRef}>
       <SearchBlockTarget
         currentDocumentVersion={props.detail.version}
+        editor={runtime.editor}
         ready={runtime.editor !== null}
         rootRef={rootRef}
         target={props.searchTarget ?? null}
@@ -245,7 +251,7 @@ function EditorBody(props: {
         attachmentRetry={runtime.attachments.retryUpload}
         editable={!readonly}
         extraSlashItems={runtime.attachments.slashItems}
-        initialContent={parseDocumentJson(props.detail.contentJson)}
+        initialContent={initialContent}
         onCreate={runtime.handleEditorReady}
         onFilesReceived={runtime.attachments.receiveFiles}
         onUpdate={runtime.handleEditorUpdate}

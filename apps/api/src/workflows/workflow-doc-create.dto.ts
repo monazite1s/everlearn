@@ -19,4 +19,8 @@ export class DocCreateActionDto {
 
   @IsUUID()
   runId!: string;
+
+  @IsString()
+  @Length(1, 200)
+  nodeId!: string;
 }

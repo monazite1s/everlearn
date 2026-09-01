@@ -16,6 +16,7 @@ import type {
   WorkflowDispatchItem,
   WorkflowRunContext,
   WorkflowRunDetail,
+  WorkflowRunRecovery,
   WorkflowRunSummary,
   WorkflowScheduleItem,
 } from './workflow.dto';
@@ -186,6 +187,18 @@ export class WorkflowRunsService {
     if (Number(result.numChangedRows) === 0) {
       throw workflowError('RUN_NOT_ACTIVE', '运行不存在或已进入终态。', 409);
     }
+  }
+
+  /** 用于把中断遗留的 running 运行复位为 pending，交由领取机制保证单执行。 */
+  async recoverInterruptedRuns(): Promise<WorkflowRunRecovery> {
+    // ponytail: 以「Worker 启动时一次性复位 running」近似心跳存活判定；多 Worker 同时滚动重启会把彼此活跃运行复位重跑，升级条件为引入多实例部署。
+    const recovered = await withWorkflowTables(this.databaseService.client)
+      .updateTable('workflow_runs')
+      .set({ status: 'pending', updated_at: new Date() })
+      .where('status', '=', 'running')
+      .returning('id')
+      .execute();
+    return { recoveredRunIds: recovered.map((row) => row.id) };
   }
 
   /** 用于列出启用计划且已有发布版本的工作流。 */

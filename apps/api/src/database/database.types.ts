@@ -172,6 +172,9 @@ export interface SearchBlockTable {
   created_at: Generated<Timestamp>;
   document_id: string;
   document_version: number;
+  embedding: string | null;
+  embedding_content_hash: string | null;
+  embedding_model: string | null;
   heading_path: Generated<string[]>;
   id: string;
   owner_id: string;

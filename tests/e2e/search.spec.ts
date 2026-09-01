@@ -3,14 +3,15 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-import {
-  searchBaseId,
-  searchBodyBlockId,
-  startSearchFixture,
-  type SearchFixtureRuntime,
-} from './search-fixture';
+import type { APIRequestContext } from '@playwright/test';
 
-let fixture: SearchFixtureRuntime | undefined;
+import { startE2eEnvironment, releaseE2eEnvironment } from './environment';
+import { seedSearchFixtures, type SearchFixture } from './search-fixture';
+
+// 环境启动与投影收敛慢于默认 30 秒，整体放宽单用例预算。
+test.setTimeout(90_000);
+
+let fixture: SearchFixture | undefined;
 
 /** 用于输入查询并等待真实 Search API 返回。 */
 async function searchFor(page: Page, query: string): Promise<void> {
@@ -40,7 +41,7 @@ async function searchesAndPaginates(page: Page): Promise<void> {
 /** 用于验证当前库范围名称、390px 排布与键盘返回。 */
 async function searchesCurrentKnowledgeBase(page: Page): Promise<void> {
   await page.setViewportSize({ height: 844, width: 390 });
-  await page.goto(`/search?scope=knowledgeBase&knowledgeBaseId=${searchBaseId}&field=title`);
+  await page.goto(`/search?scope=knowledgeBase&knowledgeBaseId=${fixture!.baseId}&field=title`);
   await expect(page.getByText('搜索验收知识库')).toBeVisible();
   await searchFor(page, 'outbox');
   await expect(page.getByRole('link', { name: 'outbox note 01' })).toBeVisible();
@@ -58,8 +59,8 @@ async function locatesBodyBlock(page: Page): Promise<void> {
   await page.goto('/search?field=content');
   await searchFor(page, 'needle');
   await page.getByRole('link', { name: '正文定位验收' }).click();
-  await expect(page).toHaveURL(new RegExp(`searchBlockId=${searchBodyBlockId}`));
-  const target = page.locator(`[data-block-id="${searchBodyBlockId}"]`);
+  await expect(page).toHaveURL(new RegExp(`searchBlockId=${fixture!.bodyBlockId}`));
+  const target = page.locator(`[data-block-id="${fixture!.bodyBlockId}"]`);
   await expect(target).toHaveAttribute('data-search-target', 'true');
   await expect(target).toBeFocused();
 }
@@ -98,7 +99,7 @@ async function filtersBodyResults(page: Page): Promise<void> {
 async function fallsBackFromMissingBlock(page: Page): Promise<void> {
   const missingBlockId = '64000000-0000-4000-8000-000000000099';
   await page.goto(
-    `/knowledge/${searchBaseId}/documents/63000000-0000-4000-8000-000000000001?searchBlockId=${missingBlockId}&searchDocumentVersion=1`,
+    `/knowledge/${fixture!.baseId}/documents/${fixture!.bodyDocumentId}?searchBlockId=${missingBlockId}&searchDocumentVersion=1`,
   );
   const status = page.getByRole('status', { name: '匹配内容已更新' });
   await expect(status).toBeVisible();
@@ -129,12 +130,13 @@ async function checksDarkAppearance(page: Page): Promise<void> {
   await page.screenshot({ fullPage: true, path: 'test-results/search02-dark.png' });
 }
 
-test.beforeAll(async () => {
-  fixture = await startSearchFixture();
+test.beforeAll(async ({ request }: { request: APIRequestContext }) => {
+  await startE2eEnvironment();
+  fixture = await seedSearchFixtures(request);
 });
 
 test.afterAll(async () => {
-  await fixture?.release();
+  await releaseE2eEnvironment();
 });
 
 test('searches and paginates accessible title results', async ({ page }) => {

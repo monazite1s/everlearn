@@ -21,7 +21,8 @@ import { NavMain } from './nav-main';
 /** 用于渲染可折叠为图标列的内嵌式工作区侧栏。 */
 export function AppSidebar() {
   return (
-    <Sidebar collapsible="icon" variant="inset">
+    // 侧栏内容整体纳入导航地标，避免被可访问性扫描判为地标外内容。
+    <Sidebar aria-label="工作区导航" collapsible="icon" role="navigation" variant="inset">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>

@@ -3,12 +3,15 @@
  */
 
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { DatabaseService } from '../database/database.service';
 import { ApiDomainException } from '../http-boundary/api-domain.exception';
 import { LocalIdentityContext } from '../identity/local-identity.context';
-import { normalizeSearchQuery } from '../search/search-query.dto';
-import { activeKnowledgeBaseExists, readRankedSearchRows } from '../search/search-query.store';
+import type { HybridRecallRow } from '../search/search-query.store';
+import { activeKnowledgeBaseExists, readHybridRecallRows } from '../search/search-query.store';
+import type { EmbeddingProvider } from './embedding';
+import { resolveEmbeddingProvider } from './embedding';
 import type { LlmMessage } from './llm-provider';
 import { LlmGateway } from './llm-gateway';
 
@@ -20,6 +23,7 @@ export interface AiQaAnswer {
   readonly answer: string;
   readonly citations: readonly { readonly blockId: string; readonly documentId: string }[];
   readonly candidateCount: number;
+  readonly retrievalMode: 'fts' | 'hybrid';
 }
 
 /** 携带候选块与用户问题的问答请求。 */
@@ -88,12 +92,18 @@ export function sanitizeCitations(
 /** 用于执行候选召回与引用校验的问答应用服务。 */
 @Injectable()
 export class AiQaService {
-  /** 用于注入数据库、身份边界与 LLM 网关。 */
+  /** 用于注入数据库、身份边界、LLM 网关与进程配置。 */
   constructor(
     private readonly database: DatabaseService,
     private readonly identity: LocalIdentityContext,
     private readonly gateway: LlmGateway,
+    private readonly config: ConfigService<Record<string, string>, false>,
   ) {}
+
+  /** 用于解析可选向量 Provider，未配置时返回 null 走 FTS 降级。 */
+  private resolveQueryEmbeddingProvider(): EmbeddingProvider | null {
+    return resolveEmbeddingProvider(this.config) ?? null;
+  }
 
   /** 用于召回候选块并返回经过引用校验的答案。 */
   async answer(request: AiQaRequest): Promise<AiQaAnswer> {
@@ -104,32 +114,51 @@ export class AiQaService {
       request.knowledgeBaseId,
     );
     if (!exists) throw notFound();
-    const rows = await readRankedSearchRows(this.database.client, {
-      cursor: undefined,
+    const embeddingProvider = this.resolveQueryEmbeddingProvider();
+    const queryEmbedding =
+      embeddingProvider === null
+        ? null
+        : ((await embeddingProvider.embed([request.question]))[0] ?? null);
+    const retrievalMode: AiQaAnswer['retrievalMode'] = queryEmbedding === null ? 'fts' : 'hybrid';
+    const rows = await readHybridRecallRows(this.database.client, {
+      knowledgeBaseId: request.knowledgeBaseId,
       limit: QA_CANDIDATE_LIMIT,
       ownerId,
-      query: normalizeSearchQuery({
-        knowledgeBaseId: request.knowledgeBaseId,
-        query: request.question,
-        scope: 'knowledgeBase',
-      }),
+      query: request.question,
+      queryEmbedding,
     });
     const candidateMap = new Map(
-      rows
-        .filter((row) => row.block_id !== null && row.text !== null)
-        .map((row) => [`${row.document_id}\u0000${row.block_id}`, row.document_id]),
+      rows.map((row) => [`${row.document_id}\u0000${row.block_id}`, row.document_id]),
     );
     if (candidateMap.size === 0)
-      return { answer: '知识库中未找到相关内容。', citations: [], candidateCount: 0 };
+      return {
+        answer: '知识库中未找到相关内容。',
+        citations: [],
+        candidateCount: 0,
+        retrievalMode,
+      };
+    return {
+      ...(await this.completeWithCitations(request.question, rows, candidateMap)),
+      candidateCount: candidateMap.size,
+      retrievalMode,
+    };
+  }
+
+  /** 用于调用模型并过滤候选集之外的非法引用。 */
+  private async completeWithCitations(
+    question: string,
+    rows: readonly HybridRecallRow[],
+    candidateMap: ReadonlyMap<string, string>,
+  ): Promise<{ answer: string; citations: { blockId: string; documentId: string }[] }> {
     const raw = await this.gateway
       .requireProvider()
       .complete(
         buildQaMessages(
-          request.question,
+          question,
           rows
             .map(
               (row, index) =>
-                `[${index + 1}] 文档 ${row.document_title}(${row.document_id}) 块 ${row.block_id}：${row.text ?? ''}`,
+                `[${index + 1}] 文档 ${row.document_title}(${row.document_id}) 块 ${row.block_id}：${row.text}`,
             )
             .join('\n'),
         ),
@@ -142,7 +171,6 @@ export class AiQaService {
         message: '模型输出无法解析，请重试。',
         status: HttpStatus.BAD_GATEWAY,
       });
-    const sanitized = sanitizeCitations(parsed, candidateMap);
-    return { ...sanitized, candidateCount: candidateMap.size };
+    return sanitizeCitations(parsed, candidateMap);
   }
 }

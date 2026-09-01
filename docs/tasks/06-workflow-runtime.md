@@ -80,3 +80,8 @@
 
 - 已交付：WFR-01/02（agent-runtime Zod 定义校验 + 草稿/发布/版本 API，已发布版本不可变）；WFR-03/04 最小闭环（BullMQ 图执行引擎替代 LangGraph——PostgreSQL 状态表 + Worker↔API 内部端点副作用；工具限 kb.read/llm.generate/doc.create）；WFR-07 最小调度（BullMQ repeatable + 计划幂等近似）；WFR-06 最小运行列表与事件读取；最小管理页。
 - 有意裁剪：LangGraph 检查点恢复、人工确认中断、SSE 运行事件流、自动重试、React Flow（M6）。升级路径已用 ponytail 注释登记。
+
+### 补充交付（2026-09-02 第二批）
+
+- M3 门禁「运行可从检查点恢复，重试不产生重复副作用」已达成：doc-create 以 `runId:nodeId` 幂等键接入 `idempotency_records`（内容指纹 + `pg_advisory_xact_lock`，指纹漂移抛 `WORKFLOW_DOC_CREATE_CONFLICT` 防静默覆盖）；事件表 `(run_id,seq)` 唯一约束保证重放不重复事件；Worker 启动补偿扫描把 `running` run 复位重跑。真 PG 集成 3 例：中断重放文档数不翻倍、补偿扫描后走到终态、同键两次 createDocument 返回同一文档。
+- 遗留：多 Worker 滚动重启会复位彼此活跃运行（依赖幂等键兜底，ponytail 登记）；取消端点未实现。

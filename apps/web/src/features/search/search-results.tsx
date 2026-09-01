@@ -164,6 +164,12 @@ function ResultList(props: Pick<SearchResultsProps, 'allowRequests' | 'onRefresh
           </AlertDescription>
         </Alert>
       )}
+      {/* 离线时保留已有结果并提供手动刷新入口，避免新请求；索引更新中由上方提示承载按钮。 */}
+      {!props.allowRequests && results.indexStatus !== 'updating' && (
+        <Button className="mt-4" disabled onClick={props.onRefresh} size="sm" variant="outline">
+          刷新结果
+        </Button>
+      )}
       <ul className="m-0 list-none p-0">
         {results.items.map((item) => (
           <li key={item.documentId}>

@@ -19,6 +19,7 @@ import { searchQueryIndexesMigration } from './migrations/20260825000000_search_
 import { workflowRuntimeMigration } from './migrations/20260901000000_workflow_runtime';
 import { newsSchemaMigration } from './migrations/20260902000000_news_schema';
 import { documentTagsLinksMigration } from './migrations/20260903000000_document_tags_links';
+import { searchEmbeddingsMigration } from './migrations/20260904000000_search_embeddings';
 
 const applicationMigrations = {
   '20260812010000_identity_knowledge_schema': identityKnowledgeSchemaMigration,
@@ -31,6 +32,7 @@ const applicationMigrations = {
   '20260901000000_workflow_runtime': workflowRuntimeMigration,
   '20260902000000_news_schema': newsSchemaMigration,
   '20260903000000_document_tags_links': documentTagsLinksMigration,
+  '20260904000000_search_embeddings': searchEmbeddingsMigration,
 } satisfies Record<string, Migration>;
 
 export type MigrationDirection = 'down' | 'up';

@@ -5,6 +5,17 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import { startE2eEnvironment, releaseE2eEnvironment } from './environment';
+
+test.beforeAll(async () => {
+  // 首页数据来自真实 API，环境未拉起时错误态会污染可访问性扫描。
+  await startE2eEnvironment();
+});
+
+test.afterAll(async () => {
+  await releaseE2eEnvironment();
+});
+
 /** 用于验证官方外观菜单支持切换并在刷新后保持。 */
 async function opensFoundationPage({ page }: { page: Page }): Promise<void> {
   await page.goto('/');
@@ -30,11 +41,13 @@ async function navigatesDesktopShell({ page }: { page: Page }): Promise<void> {
   const pageAudit = await new AxeBuilder({ page }).analyze();
   expect(pageAudit.violations).toEqual([]);
 
-  await page.getByRole('link', { name: '知识库', exact: true }).click();
+  // 侧栏与面包屑存在同名链接，导航断言限定在工作区侧栏 landmark 内。
+  const sidebarNav = page.getByLabel('工作区导航');
+  await sidebarNav.getByRole('link', { name: '知识库', exact: true }).click();
   await expect(page).toHaveURL('/knowledge');
   const title = page.getByRole('heading', { level: 1, name: '知识库' });
   await expect(title).toBeFocused();
-  await expect(page.getByRole('link', { name: '知识库', exact: true })).toHaveAttribute(
+  await expect(sidebarNav.getByRole('link', { name: '知识库', exact: true })).toHaveAttribute(
     'aria-current',
     'page',
   );

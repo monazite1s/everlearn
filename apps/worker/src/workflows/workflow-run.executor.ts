@@ -62,6 +62,7 @@ async function runDocCreate(
 ): Promise<WorkflowNodeOutcome> {
   const result = await createDocument(config, {
     knowledgeBaseId: configString(node, 'knowledgeBaseId'),
+    nodeId: node.id,
     plainText: context.get(configString(node, 'sourceNodeId')) ?? '',
     runId,
     title: configString(node, 'title'),

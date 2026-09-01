@@ -151,6 +151,7 @@ export function ReadonlyDocument(props: ReadonlyDocumentProps) {
       )}
       <SearchBlockTarget
         currentDocumentVersion={props.documentVersion}
+        editor={null}
         ready
         rootRef={bodyRef}
         target={props.searchTarget ?? null}

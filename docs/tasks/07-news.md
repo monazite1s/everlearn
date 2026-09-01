@@ -70,3 +70,8 @@
 
 - 已交付：NEWS-01 最小版（rss-parser RSS/Atom 适配，URL 规范化 + 指纹去重 + 关键词过滤；Tavily Search Provider 未做）；NEWS-02（订阅 CRUD + 自动维护「资讯」知识库 + BullMQ 计划）；NEWS-03（确定性去重与排序，LLM 相关性未做）；NEWS-04（LLM 中文简报写入资讯知识库，同日幂等近似）；NEWS-05 最小资讯页。
 - 有意裁剪：内网地址黑名单等 SSRF 完整防护、运行详情 SSE、部分失败警告结构（全部失败即 run 失败）、E2E 自动发布验证（NEWS-06）。已用 ponytail 注释登记。
+
+### 补充交付（2026-09-02 第二批）
+
+- M4 门禁「计划时间只生成一份简报」已验证：`news-automation.integration.spec.ts` 6/6——真实 RSS 源 + OpenAI 兼容 mock LLM 的执行闭环（抓取→过滤→LLM→简报文档落入资讯知识库、标题「资讯简报 YYYY-MM-DD」、含来源链接且 utm 剥离）；同日重复计划触发返回同一 runId；终态重复 complete 被守卫拒绝（顺带修复 `numUpdatedRows`/`numChangedRows` 字段读错的真实 bug）；停用订阅从调度清单消失。
+- 遗留：E2E 浏览器层的 NEWS-06 未做（集成层已覆盖同一语义）。

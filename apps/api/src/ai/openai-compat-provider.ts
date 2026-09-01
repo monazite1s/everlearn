@@ -63,7 +63,7 @@ function deltaFromLine(line: string): string {
 
 /** 用于桥接 Node ReadableStream 的类型声明与运行时已支持的异步迭代。 */
 function toAsyncIterable(stream: ReadableStream<Uint8Array>): AsyncIterable<Uint8Array> {
-  return stream as unknown as AsyncIterable<Uint8Array>;
+  return stream;
 }
 
 /** 用于逐行解析 SSE 数据帧并抽取增量文本。 */

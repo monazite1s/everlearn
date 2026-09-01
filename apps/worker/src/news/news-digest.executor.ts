@@ -83,6 +83,7 @@ async function generateBrief(
       : await requestBriefText(buildPrompt(selected), item.runId, config);
   const created = await createDocument(config, {
     knowledgeBaseId: item.subscription.newsKnowledgeBaseId,
+    nodeId: 'news-digest-brief',
     plainText,
     runId: item.runId,
     title,

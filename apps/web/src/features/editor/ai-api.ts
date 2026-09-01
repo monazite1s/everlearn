@@ -14,6 +14,8 @@ export interface AiQaAnswer {
   readonly answer: string;
   readonly citations: readonly { readonly blockId: string; readonly documentId: string }[];
   readonly candidateCount: number;
+  /** 本次问答使用的检索模式，旧版后端可能缺省。 */
+  readonly retrievalMode?: 'fts' | 'hybrid' | undefined;
 }
 
 /** 草稿生成 SSE 单帧投影。 */
@@ -70,21 +72,31 @@ export function aiErrorMessage(code: string | undefined): string {
   return known ? ERROR_MESSAGES[known] : '生成失败，请稍后重试。';
 }
 
-/** 用于校验问答响应的字段全集与形态。 */
+/** 用于校验问答响应的字段全集与形态，允许新版后端附带 retrievalMode。 */
 function parseQaAnswer(value: unknown): AiQaAnswer | undefined {
-  if (!isRecord(value) || !hasExactKeys(value, ['answer', 'citations', 'candidateCount'])) {
-    return undefined;
-  }
+  if (!isRecord(value)) return undefined;
+  const baseKeys = ['answer', 'candidateCount', 'citations'];
+  const withModeKeys = [...baseKeys, 'retrievalMode'];
+  if (!hasExactKeys(value, baseKeys) && !hasExactKeys(value, withModeKeys)) return undefined;
   if (typeof value.answer !== 'string' || typeof value.candidateCount !== 'number')
     return undefined;
   if (!Array.isArray(value.citations)) return undefined;
+  const retrievalMode =
+    value.retrievalMode === 'fts' || value.retrievalMode === 'hybrid'
+      ? value.retrievalMode
+      : undefined;
   const citations = value.citations.flatMap((item) => {
     if (!isRecord(item)) return [];
     return typeof item.blockId === 'string' && typeof item.documentId === 'string'
       ? [{ blockId: item.blockId, documentId: item.documentId }]
       : [];
   });
-  return { answer: value.answer, citations, candidateCount: value.candidateCount };
+  return {
+    answer: value.answer,
+    citations,
+    candidateCount: value.candidateCount,
+    ...(retrievalMode ? { retrievalMode } : {}),
+  };
 }
 
 /** 用于发起一次知识库问答并返回校验后的答案。 */

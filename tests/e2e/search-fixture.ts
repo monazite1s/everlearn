@@ -1,117 +1,44 @@
-/** @fileoverview 为真实浏览器搜索验收准备隔离 PostgreSQL、Nest API 与确定性文档。 */
+/** @fileoverview 通过真实 HTTP API 种子搜索验收数据并等待投影收敛。 */
 
 import { randomUUID } from 'node:crypto';
 
-import { DocumentsTestEnvironment } from '../../apps/api/tests/documents-integration.support';
-import { LOCAL_USER_ID } from '../../apps/api/src/identity/local-identity.constants';
+import type { APIRequestContext } from '@playwright/test';
 
-export const SEARCH_E2E_API_PORT = 3201;
-export const searchBaseId = '62000000-0000-4000-8000-000000000001';
-export const searchBodyDocumentId = '63000000-0000-4000-8000-000000000001';
-export const searchBodyBlockId = '64000000-0000-4000-8000-000000000001';
+import {
+  saveDocumentContent,
+  seedDocument,
+  seedKnowledgeBase,
+  waitForSearchResults,
+} from './seed-helpers';
 
-export interface SearchFixtureRuntime {
-  readonly environment: DocumentsTestEnvironment;
-  readonly release: () => Promise<void>;
+/** 搜索验收共享夹具的稳定标识。 */
+export interface SearchFixture {
+  readonly baseId: string;
+  readonly bodyBlockId: string;
+  readonly bodyDocumentId: string;
 }
 
-/** 用于生成可按排序稳定断言的标题文档 UUID。 */
-function titleDocumentId(sequence: number): string {
-  return `63000000-0000-4000-8001-${sequence.toString().padStart(12, '0')}`;
-}
-
-/** 用于写入正文定位验收文档的可检索投影。 */
-async function seedBodyProjection(environment: DocumentsTestEnvironment): Promise<void> {
-  const database = environment.getDatabase();
-  await database
-    .updateTable('documents')
-    .set({
-      content_json: {
-        content: [
-          {
-            attrs: { blockId: searchBodyBlockId },
-            content: [{ text: 'transactional needle content', type: 'text' }],
-            type: 'paragraph',
-          },
-        ],
-        type: 'doc',
+/** 用于写入 21 篇标题分页文档与 1 篇正文定位文档并收敛投影。 */
+export async function seedSearchFixtures(request: APIRequestContext): Promise<SearchFixture> {
+  const baseId = await seedKnowledgeBase(request, '搜索验收知识库');
+  // 搜索按更新时间倒序，倒序创建使首页按 note 01 起始稳定排列。
+  for (let index = 21; index >= 1; index -= 1) {
+    await seedDocument(request, baseId, `outbox note ${String(index).padStart(2, '0')}`);
+  }
+  const bodyDocumentId = await seedDocument(request, baseId, '正文定位验收');
+  const bodyBlockId = randomUUID();
+  await saveDocumentContent(request, bodyDocumentId, {
+    content: [
+      {
+        attrs: { blockId: bodyBlockId },
+        content: [{ text: 'transactional needle content', type: 'text' }],
+        type: 'paragraph',
       },
-      plain_text: 'transactional needle content',
-    })
-    .where('id', '=', searchBodyDocumentId)
-    .execute();
-  await database
-    .insertInto('search_document_projections')
-    .values({
-      document_id: searchBodyDocumentId,
-      indexed_content_hash: 'a'.repeat(64),
-      indexed_document_version: 1,
-      owner_id: LOCAL_USER_ID,
-    })
-    .execute();
-  await database
-    .insertInto('search_blocks')
-    .values({
-      block_id: searchBodyBlockId,
-      block_order: 0,
-      content_hash: 'b'.repeat(64),
-      document_id: searchBodyDocumentId,
-      document_version: 1,
-      heading_path: ['验收章节'],
-      id: randomUUID(),
-      owner_id: LOCAL_USER_ID,
-      text: 'transactional needle content',
-    })
-    .execute();
-}
-
-/** 用于写入标题分页、当前库范围和正文 Block 定位夹具。 */
-async function seedSearchFixtures(environment: DocumentsTestEnvironment): Promise<void> {
-  await environment.insertKnowledgeBases([{ id: searchBaseId, name: '搜索验收知识库' }]);
-  await environment.insertDocuments([
-    ...Array.from({ length: 21 }, (_, index) => ({
-      id: titleDocumentId(index + 1),
-      knowledgeBaseId: searchBaseId,
-      position: index,
-      title: `outbox note ${String(index + 1).padStart(2, '0')}`,
-    })),
-    {
-      id: searchBodyDocumentId,
-      knowledgeBaseId: searchBaseId,
-      position: 99,
-      title: '正文定位验收',
-    },
-  ]);
-  await seedBodyProjection(environment);
-}
-
-/** 用于启动固定端口隔离 API，并返回幂等释放动作。 */
-export async function startSearchFixture(): Promise<SearchFixtureRuntime> {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) throw new Error('DATABASE_URL is required for search browser acceptance');
-  const suffix = randomUUID().replaceAll('-', '');
-  const environment = new DocumentsTestEnvironment(
-    `search_e2e_${process.pid}_${suffix}`,
-    databaseUrl,
-  );
-  try {
-    await environment.prepareApplication();
-    await seedSearchFixtures(environment);
-    await environment.listenForBrowser(SEARCH_E2E_API_PORT);
-  } catch (error) {
-    try {
-      await environment.releaseApplication();
-    } catch (cleanupError) {
-      throw new AggregateError(
-        [error, cleanupError],
-        'Search browser fixture setup and cleanup failed',
-      );
-    }
-    throw error;
-  }
-  /** 用于释放监听端口、连接池和本测试自有 Schema。 */
-  async function release(): Promise<void> {
-    await environment.releaseApplication();
-  }
-  return { environment, release };
+    ],
+    type: 'doc',
+  });
+  // ponytail: 首页分页上限 20 条，收敛判定只要求首页填满，21 条留断言验证加载更多。
+  await waitForSearchResults(request, { field: 'title', minItems: 20, text: 'outbox' });
+  await waitForSearchResults(request, { field: 'content', minItems: 1, text: 'needle' });
+  return { baseId, bodyBlockId, bodyDocumentId };
 }

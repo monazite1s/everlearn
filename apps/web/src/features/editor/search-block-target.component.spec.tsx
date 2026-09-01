@@ -1,9 +1,12 @@
-/** @fileoverview 验证搜索 Block 参数边界、定位、版本提示与减少动效降级。 */
+/** @fileoverview 验证搜索 Block 参数边界、装饰定位、版本提示与减少动效降级。 */
 
 import { act, cleanup, render, screen } from '@testing-library/react';
-import { useRef } from 'react';
+import type { Editor } from '@tiptap/core';
+import { useRef, useState } from 'react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
+import type { EditorDocumentJson } from './editor-schema';
+import { RichTextEditor } from './rich-text-editor';
 import {
   parseSearchBlockTarget,
   SearchBlockTarget,
@@ -13,24 +16,39 @@ import {
 const BLOCK_ID = '11111111-1111-4111-8111-111111111111';
 const scrollIntoView = vi.fn();
 
-/** 用于返回带目标块的最小正文宿主。 */
+/** 用于返回带真实编辑器与目标块的最小正文宿主。 */
 function TargetHarness(props: {
   readonly currentVersion: number;
   readonly ready?: boolean;
   readonly target: SearchBlockTargetQuery | null;
   readonly withBlock?: boolean;
 }) {
+  const [editor, setEditor] = useState<Editor | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const content: EditorDocumentJson = {
+    content:
+      props.withBlock === false
+        ? [{ type: 'paragraph' }]
+        : [
+            {
+              attrs: { blockId: BLOCK_ID },
+              content: [{ text: '匹配正文', type: 'text' }],
+              type: 'paragraph',
+            },
+          ],
+    type: 'doc',
+  };
   return (
     <div>
       <SearchBlockTarget
         currentDocumentVersion={props.currentVersion}
-        ready={props.ready ?? true}
+        editor={editor}
+        ready={props.ready ?? editor !== null}
         rootRef={rootRef}
         target={props.target}
       />
       <div ref={rootRef}>
-        {props.withBlock !== false && <p data-block-id={BLOCK_ID}>匹配正文</p>}
+        <RichTextEditor editable={false} initialContent={content} onCreate={setEditor} />
       </div>
     </div>
   );
@@ -87,48 +105,54 @@ test('只接受成对且唯一的 UUID 与正整数参数', () => {
   }
 });
 
-test('目标存在时聚焦滚动并在短标识后恢复原属性', async () => {
+test('目标存在时经装饰聚焦滚动并在时限后撤下标识', async () => {
   render(<TargetHarness currentVersion={3} target={target()} />);
+  await act(async () => {
+    for (let i = 0; i < 100; i += 1) {
+      await vi.advanceTimersByTimeAsync(16);
+      if (document.querySelector('[data-search-target]')) break;
+    }
+  });
+  await act(async () => vi.advanceTimersByTimeAsync(16));
   const block = screen.getByText('匹配正文');
-  expect(block).toHaveFocus();
-  expect(block).toHaveAttribute('tabindex', '-1');
   expect(block).toHaveAttribute('data-search-target', 'true');
+  expect(block).toHaveAttribute('tabindex', '-1');
+  expect(block).toHaveFocus();
   expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
   await act(async () => vi.advanceTimersByTimeAsync(2000));
   expect(block).not.toHaveAttribute('data-search-target');
-  expect(block).not.toHaveAttribute('tabindex');
 });
 
 test('文档版本变化时仍定位原块并只播报一次更新提示', async () => {
   const view = render(<TargetHarness currentVersion={4} target={target(3)} />);
-  const block = screen.getByText('匹配正文');
-  expect(block).toHaveFocus();
-  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  await act(async () => vi.advanceTimersByTimeAsync(32));
+  await act(async () => vi.advanceTimersByTimeAsync(32));
+  expect(screen.getByText('匹配正文')).toHaveFocus();
   await act(async () => vi.advanceTimersByTimeAsync(0));
-  expect(screen.getByRole('status')).toHaveTextContent('文档已更新，已定位到原匹配位置');
+  expect(screen.getByRole('status', { name: '文档已更新，已定位到原匹配位置' })).toBeVisible();
   view.rerender(<TargetHarness currentVersion={4} target={target(3)} />);
-  expect(screen.getAllByRole('status')).toHaveLength(1);
+  expect(screen.getAllByRole('status', { name: '文档已更新，已定位到原匹配位置' })).toHaveLength(1);
   expect(scrollIntoView).toHaveBeenCalledTimes(1);
 });
 
 test('目标缺失时把焦点交给正文起始状态提示', async () => {
   render(<TargetHarness currentVersion={3} target={target(2)} withBlock={false} />);
-  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  await act(async () => vi.advanceTimersByTimeAsync(32));
   await act(async () => vi.advanceTimersByTimeAsync(0));
-  const status = screen.getByRole('status');
-  expect(status).toHaveTextContent('匹配内容已更新');
+  const status = screen.getByRole('status', { name: '匹配内容已更新' });
   expect(status).toHaveFocus();
   expect(scrollIntoView).not.toHaveBeenCalled();
 });
 
-test('正文未就绪不提前判定缺失且减少动效时即时滚动', () => {
+test('正文未就绪不提前判定缺失且减少动效时即时滚动', async () => {
   vi.stubGlobal('matchMedia', matchMotion(true));
   const view = render(<TargetHarness currentVersion={3} ready={false} target={target()} />);
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
   expect(scrollIntoView).not.toHaveBeenCalled();
-  view.rerender(<TargetHarness currentVersion={3} target={target()} />);
-  expect(screen.getByText('匹配正文')).toHaveFocus();
+  view.rerender(<TargetHarness currentVersion={3} ready target={target()} />);
+  await act(async () => vi.advanceTimersByTimeAsync(32));
   expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' });
+  expect(screen.getByText('匹配正文')).toHaveFocus();
 });

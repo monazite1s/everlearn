@@ -200,6 +200,7 @@ export function SearchPage(props: SearchPageProps) {
         disabled={page.scope.status === 'loading' || unavailable}
         filters={page.filters}
         onChange={page.changeFilters}
+        onLeave={page.onLeave}
         onSearchAll={page.searchAll}
         onSubmit={page.results.submitNow}
         readOnly={!page.online}
