@@ -18,6 +18,7 @@ import { searchProjectionMigration } from './migrations/20260824000000_search_pr
 import { searchQueryIndexesMigration } from './migrations/20260825000000_search_query_indexes';
 import { workflowRuntimeMigration } from './migrations/20260901000000_workflow_runtime';
 import { newsSchemaMigration } from './migrations/20260902000000_news_schema';
+import { documentTagsLinksMigration } from './migrations/20260903000000_document_tags_links';
 
 const applicationMigrations = {
   '20260812010000_identity_knowledge_schema': identityKnowledgeSchemaMigration,
@@ -29,6 +30,7 @@ const applicationMigrations = {
   '20260825000000_search_query_indexes': searchQueryIndexesMigration,
   '20260901000000_workflow_runtime': workflowRuntimeMigration,
   '20260902000000_news_schema': newsSchemaMigration,
+  '20260903000000_document_tags_links': documentTagsLinksMigration,
 } satisfies Record<string, Migration>;
 
 export type MigrationDirection = 'down' | 'up';

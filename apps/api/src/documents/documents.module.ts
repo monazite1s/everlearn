@@ -8,9 +8,12 @@ import { DatabaseModule } from '../database/database.module';
 import { LocalIdentityContext } from '../identity/local-identity.context';
 import { DocumentContentService } from './document-content.service';
 import { DocumentExportService } from './document-export.service';
+import { DocumentLinksService } from './document-links.service';
 import { DocumentMoveService } from './document-move.service';
 import { DocumentRevisionsController } from './document-revisions.controller';
 import { DocumentRevisionService } from './document-revision.service';
+import { DocumentTagsController } from './document-tags.controller';
+import { DocumentTagsService } from './document-tags.service';
 import { DocumentTrashService } from './document-trash.service';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
@@ -26,6 +29,7 @@ import { TrashPurgeService } from './trash-purge.service';
     DocumentsController,
     DocumentRevisionsController,
     KnowledgeBaseDocumentsController,
+    DocumentTagsController,
     TrashController,
     TrashPurgeController,
   ],
@@ -35,6 +39,8 @@ import { TrashPurgeService } from './trash-purge.service';
     DocumentsService,
     DocumentExportService,
     DocumentContentService,
+    DocumentLinksService,
+    DocumentTagsService,
     DocumentMoveService,
     DocumentRevisionService,
     DocumentTrashService,
@@ -52,6 +58,7 @@ export class DocumentsModule implements NestModule {
         DocumentsController,
         DocumentRevisionsController,
         KnowledgeBaseDocumentsController,
+        DocumentTagsController,
         TrashController,
       );
   }

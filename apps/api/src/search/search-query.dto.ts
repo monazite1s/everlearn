@@ -7,10 +7,13 @@ import type { SearchField, SearchRequestQuery, SearchScope } from '@everlearn/co
 };
 import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsIn,
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -24,6 +27,7 @@ const SEARCH_CURSOR_MAX_LENGTH = 512;
 const SEARCH_MAX_LIMIT = 100;
 const SEARCH_QUERY_MAX_LENGTH = 200;
 const SEARCH_SCOPES = ['all', 'knowledgeBase'] as const;
+const SEARCH_MAX_TAG_FILTERS = 5;
 const SEARCH_FIELDS = ['all', 'title', 'content'] as const;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/u;
@@ -54,6 +58,7 @@ export interface SearchCursorPayload {
 /** 用于形成搜索执行和游标指纹共用的规范筛选元组。 */
 export interface NormalizedSearchQuery {
   readonly field: SearchField;
+  readonly tagIds: readonly string[] | null;
   readonly fingerprint: string;
   readonly knowledgeBaseId: string | null;
   readonly query: string;
@@ -76,9 +81,11 @@ function fingerprintQuery(tuple: Omit<NormalizedSearchQuery, 'fingerprint'>): st
 }
 
 /** 用于把已通过 HTTP 校验的输入折叠为大小写不敏感的稳定元组。 */
-export function normalizeSearchQuery(input: SearchRequestQuery): NormalizedSearchQuery {
+export function normalizeSearchQuery(input: SearchQueryDto): NormalizedSearchQuery {
   const tuple = {
     field: input.field ?? 'all',
+    // 待并入共享契约的局部扩展：tagIds 由本 DTO 严格校验后再参与指纹。
+    tagIds: input.tagIds === undefined ? null : [...new Set(input.tagIds)].sort(),
     knowledgeBaseId: input.knowledgeBaseId ?? null,
     query: input.query.trim().toLowerCase(),
     scope: input.scope ?? 'all',
@@ -278,6 +285,20 @@ export class SearchQueryDto implements SearchRequestQuery {
     },
   })
   query!: string;
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string'
+      ? value
+          .split(',')
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0)
+      : value,
+  )
+  @IsArray()
+  @ArrayMaxSize(SEARCH_MAX_TAG_FILTERS)
+  @IsUUID(undefined, { each: true })
+  tagIds?: string[];
 
   @IsOptional()
   @IsIn(SEARCH_SCOPES)

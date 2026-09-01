@@ -7,6 +7,7 @@ import type { Editor } from '@tiptap/core';
 import {
   BoldIcon,
   CodeIcon,
+  FileSymlinkIcon,
   ItalicIcon,
   LinkIcon,
   ListIcon,
@@ -16,6 +17,8 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { FormEvent } from 'react';
+
+import { DocLinkDialog } from './doc-link-dialog';
 
 import {
   Button,
@@ -287,6 +290,67 @@ function LinkControl(props: {
   );
 }
 
+/** 用于渲染内部链接按钮与目标选择弹层并把选中目标写入选区。 */
+function DocLinkControl(props: {
+  readonly disabled: boolean;
+  readonly editor: Editor | null;
+  readonly focused: boolean;
+  readonly onFocus: () => void;
+  readonly registerRef: (element: HTMLButtonElement | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <ToolbarIconButton
+        active={props.editor?.isActive('docLink') ?? false}
+        disabled={props.disabled}
+        focused={props.focused}
+        icon={FileSymlinkIcon}
+        label="文档链接"
+        onFocus={props.onFocus}
+        onRun={() => setOpen(true)}
+        registerRef={props.registerRef}
+      />
+      <DocLinkDialog
+        onOpenChange={setOpen}
+        onPick={(documentId) =>
+          props.editor?.chain().focus().setMark('docLink', { documentId }).run()
+        }
+        open={open}
+      />
+    </>
+  );
+}
+
+/** 用于渲染链接与文档链接两个尾部控件的按钮组。 */
+function TrailingControls(props: {
+  readonly disabled: boolean;
+  readonly editor: Editor | null;
+  readonly focusIndex: number;
+  readonly linkIndex: number;
+  readonly onFocusIndex: (index: number) => void;
+  readonly registerButton: (index: number, element: HTMLButtonElement | null) => void;
+}) {
+  return (
+    <>
+      <LinkControl
+        disabled={props.disabled}
+        editor={props.editor}
+        focused={props.focusIndex === props.linkIndex}
+        onFocus={() => props.onFocusIndex(props.linkIndex)}
+        registerRef={(element) => props.registerButton(props.linkIndex, element)}
+      />
+      <DocLinkControl
+        disabled={props.disabled}
+        editor={props.editor}
+        focused={props.focusIndex === props.linkIndex + 1}
+        onFocus={() => props.onFocusIndex(props.linkIndex + 1)}
+        registerRef={(element) => props.registerButton(props.linkIndex + 1, element)}
+      />
+    </>
+  );
+}
+
 /** 用于渲染正文上方的格式化工具栏，箭头键移动焦点、Tab 逃逸。 */
 export function EditorToolbar(props: EditorToolbarProps) {
   const { editor, disabled } = props;
@@ -301,7 +365,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
     if (isTextInput(event.target)) return;
     event.preventDefault();
     const delta = event.key === 'ArrowLeft' ? -1 : 1;
-    const next = Math.max(0, Math.min(linkIndex, focusIndex + delta));
+    const next = Math.max(0, Math.min(linkIndex + 1, focusIndex + delta));
     setFocusIndex(next);
     buttonRefs.current[next]?.focus();
   }
@@ -322,12 +386,13 @@ export function EditorToolbar(props: EditorToolbarProps) {
           onFocusIndex={setFocusIndex}
           registerButton={(index, element) => registerButtonRef(buttonRefs, index, element)}
         />
-        <LinkControl
+        <TrailingControls
           disabled={disabled}
           editor={editor}
-          focused={focusIndex === linkIndex}
-          onFocus={() => setFocusIndex(linkIndex)}
-          registerRef={(element) => registerButtonRef(buttonRefs, linkIndex, element)}
+          focusIndex={focusIndex}
+          linkIndex={linkIndex}
+          onFocusIndex={setFocusIndex}
+          registerButton={(index, element) => registerButtonRef(buttonRefs, index, element)}
         />
       </div>
     </TooltipProvider>

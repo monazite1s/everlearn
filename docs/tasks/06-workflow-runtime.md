@@ -75,3 +75,8 @@
 ## 检查点
 
 发布一个“读文档 → LLM → 质量检查 → 创建新文档”的测试 Workflow，验证工具边界、中断、重启恢复、调度幂等和 `pnpm check`。
+
+### 进度（2026-09-02，速度优先裁剪交付）
+
+- 已交付：WFR-01/02（agent-runtime Zod 定义校验 + 草稿/发布/版本 API，已发布版本不可变）；WFR-03/04 最小闭环（BullMQ 图执行引擎替代 LangGraph——PostgreSQL 状态表 + Worker↔API 内部端点副作用；工具限 kb.read/llm.generate/doc.create）；WFR-07 最小调度（BullMQ repeatable + 计划幂等近似）；WFR-06 最小运行列表与事件读取；最小管理页。
+- 有意裁剪：LangGraph 检查点恢复、人工确认中断、SSE 运行事件流、自动重试、React Flow（M6）。升级路径已用 ponytail 注释登记。

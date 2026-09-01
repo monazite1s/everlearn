@@ -16,8 +16,10 @@ import {
   TabsTrigger,
 } from '@everlearn/ui';
 
+import { BacklinksSection } from './backlinks-section';
 import { extractAttachmentRefs } from './properties-panel';
 import { PropertiesPanel } from './properties-panel';
+import { TagsSection } from './tags-section';
 import { RevisionTimelinePanel } from './revisions-panel';
 import { useRevisions } from './use-revisions';
 
@@ -52,6 +54,13 @@ export function EditorPanelTabs(props: EditorPanelTabsProps) {
           attachmentRefs={extractAttachmentRefs(props.contentJson)}
           contentDetail={props.contentDetail}
         />
+        <div className="mt-4 grid gap-4 border-t border-border pt-4">
+          <TagsSection documentId={props.documentId} />
+          <BacklinksSection
+            documentId={props.documentId}
+            knowledgeBaseId={props.contentDetail.knowledgeBaseId}
+          />
+        </div>
       </TabsContent>
     </Tabs>
   );

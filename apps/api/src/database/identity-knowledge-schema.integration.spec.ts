@@ -19,6 +19,7 @@ const searchProjectionMigrationName = '20260824000000_search_projection';
 const searchQueryIndexesMigrationName = '20260825000000_search_query_indexes';
 const workflowRuntimeMigrationName = '20260901000000_workflow_runtime';
 const newsSchemaMigrationName = '20260902000000_news_schema';
+const tagsLinksMigrationName = '20260903000000_document_tags_links';
 const otherUserId = '10000000-0000-4000-8000-000000000001';
 const firstKnowledgeBaseId = '20000000-0000-4000-8000-000000000001';
 const secondKnowledgeBaseId = '20000000-0000-4000-8000-000000000002';
@@ -244,6 +245,7 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
     searchQueryIndexesMigrationName,
     workflowRuntimeMigrationName,
     newsSchemaMigrationName,
+    tagsLinksMigrationName,
   ]);
   await expectSchemaAndSeed();
   expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual([]);
@@ -256,6 +258,7 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   await database.deleteFrom('documents').execute();
   await database.deleteFrom('knowledge_bases').execute();
   await database.deleteFrom('users').where('id', '=', otherUserId).execute();
+  await expectSingleMigration('down', tagsLinksMigrationName);
   await expectSingleMigration('down', newsSchemaMigrationName);
   await expectSingleMigration('down', workflowRuntimeMigrationName);
   await expectSingleMigration('down', searchQueryIndexesMigrationName);
@@ -275,11 +278,13 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
     searchQueryIndexesMigrationName,
     workflowRuntimeMigrationName,
     newsSchemaMigrationName,
+    tagsLinksMigrationName,
   ]);
 }
 
 /** 用于把迁移回退到修订标题之前以构造存量行夹具。 */
 async function downToBeforeRevisionTitle(): Promise<void> {
+  await expectSingleMigration('down', tagsLinksMigrationName);
   await expectSingleMigration('down', newsSchemaMigrationName);
   await expectSingleMigration('down', workflowRuntimeMigrationName);
   await expectSingleMigration('down', searchQueryIndexesMigrationName);
@@ -326,6 +331,7 @@ async function backfillsRevisionTitlesFromDocuments(): Promise<void> {
     searchQueryIndexesMigrationName,
     workflowRuntimeMigrationName,
     newsSchemaMigrationName,
+    tagsLinksMigrationName,
   ]);
   const revision = await database
     .selectFrom('document_revisions')

@@ -38,6 +38,12 @@ export interface AttachmentTable {
   updated_at: Generated<Timestamp>;
 }
 
+export interface DocumentLink {
+  source_block_id: string | null;
+  source_document_id: string;
+  target_document_id: string;
+}
+
 export interface DocumentRevisionTable {
   content_json: Json;
   created_at: Generated<Timestamp>;
@@ -73,6 +79,11 @@ export interface DocumentTable {
   version: Generated<number>;
 }
 
+export interface DocumentTag {
+  document_id: string;
+  tag_id: string;
+}
+
 export interface IdempotencyRecordTable {
   created_at: Generated<Timestamp>;
   id: string;
@@ -105,6 +116,37 @@ export interface KnowledgeBaseTable {
   owner_id: string;
   updated_at: Generated<Timestamp>;
   version: Generated<number>;
+}
+
+export interface NewsDigestRun {
+  brief_document_id: string | null;
+  created_at: Generated<Timestamp>;
+  error_code: string | null;
+  id: string;
+  owner_id: string;
+  status: string;
+  subscription_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface NewsSeenItem {
+  content_hash: string;
+  normalized_url: string;
+  seen_at: Generated<Timestamp>;
+  subscription_id: string;
+}
+
+export interface NewsSubscription {
+  created_at: Generated<Timestamp>;
+  exclude_keywords: Generated<string[]>;
+  feed_url: string;
+  id: string;
+  include_keywords: Generated<string[]>;
+  name: string;
+  news_knowledge_base_id: string;
+  owner_id: string;
+  schedule: Json | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface OutboxEventTable {
@@ -146,6 +188,13 @@ export interface SearchDocumentProjectionTable {
   owner_id: string;
 }
 
+export interface Tag {
+  canonical: string;
+  id: string;
+  name: string;
+  owner_id: string;
+}
+
 export interface UserTable {
   created_at: Generated<Timestamp>;
   display_name: string;
@@ -153,17 +202,68 @@ export interface UserTable {
   timezone: string;
 }
 
+export interface WorkflowRunEvent {
+  created_at: Generated<Timestamp>;
+  id: string;
+  message: string | null;
+  node_id: string;
+  run_id: string;
+  seq: number;
+  status: string;
+}
+
+export interface WorkflowRun {
+  created_at: Generated<Timestamp>;
+  error_code: string | null;
+  id: string;
+  output_summary: string | null;
+  owner_id: string;
+  status: string;
+  updated_at: Generated<Timestamp>;
+  version_id: string;
+  workflow_id: string;
+}
+
+export interface Workflow {
+  created_at: Generated<Timestamp>;
+  draft_definition: Json;
+  id: string;
+  name: string;
+  owner_id: string;
+  published_version_id: string | null;
+  schedule: Json | null;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface WorkflowVersion {
+  created_at: Generated<Timestamp>;
+  definition: Json;
+  id: string;
+  version: number;
+  workflow_id: string;
+}
+
 export interface DB {
   attachments: AttachmentTable;
+  document_links: DocumentLink;
   document_revisions: DocumentRevisionTable;
+  document_tags: DocumentTag;
   documents: DocumentTable;
   idempotency_records: IdempotencyRecordTable;
   inbox_items: InboxItemTable;
   knowledge_bases: KnowledgeBaseTable;
+  news_digest_runs: NewsDigestRun;
+  news_seen_items: NewsSeenItem;
+  news_subscriptions: NewsSubscription;
   outbox_events: OutboxEventTable;
   search_blocks: SearchBlockTable;
   search_document_projections: SearchDocumentProjectionTable;
+  tags: Tag;
   users: UserTable;
+  workflow_run_events: WorkflowRunEvent;
+  workflow_runs: WorkflowRun;
+  workflow_versions: WorkflowVersion;
+  workflows: Workflow;
 }
 
 export type DatabaseSchema = DB;

@@ -11,6 +11,7 @@ import type { Transaction } from 'kysely' with {
 import type { DatabaseSchema } from '../database/database.types';
 import { DatabaseService } from '../database/database.service';
 import { AttachmentReferencesService } from '../attachments/attachment-references.service';
+import { DocumentLinksService } from './document-links.service';
 import { ApiConflictException } from '../http-boundary/api-conflict.exception';
 import { LocalIdentityContext } from '../identity/local-identity.context';
 import { appendDocumentSearchEvent } from '../outbox/outbox-event.writer';
@@ -32,6 +33,7 @@ export class DocumentContentService {
     private readonly databaseService: DatabaseService,
     private readonly identityContext: LocalIdentityContext,
     private readonly attachmentReferences: AttachmentReferencesService,
+    private readonly documentLinks: DocumentLinksService,
   ) {}
 
   /** 用于读取有效文档的详情与正文投影。 */
@@ -106,6 +108,7 @@ export class DocumentContentService {
       id,
       content.contentJson,
     );
+    await this.documentLinks.replaceLinks(transaction, id, content.contentJson);
     await transaction
       .updateTable('documents')
       .set({

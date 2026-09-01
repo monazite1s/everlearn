@@ -67,14 +67,22 @@ afterAll(cleanDatabase);
 describe('news schema integration', () => {
   test('迁移 up 创建三张资讯表且 down 逆序删除', async () => {
     await runMigrations(database, migrationOptions('up'));
-    const tables = await database.introspection.getTables();
+    const tables = (await database.introspection.getTables()).filter(
+      (table) => table.schema === schemaName,
+    );
     const names = tables.map((table) => table.name);
     expect(names).toEqual(
       expect.arrayContaining(['news_subscriptions', 'news_seen_items', 'news_digest_runs']),
     );
-    const result = await runMigrations(database, migrationOptions('down'));
-    expect(result.executedMigrations).toEqual([newsMigrationName]);
-    const remaining = await database.introspection.getTables();
+    const reverted: string[] = [];
+    while (!reverted.includes(newsMigrationName) && reverted.length < 10) {
+      const step = await runMigrations(database, migrationOptions('down'));
+      reverted.push(...step.executedMigrations);
+    }
+    expect(reverted.at(-1)).toBe(newsMigrationName);
+    const remaining = (await database.introspection.getTables()).filter(
+      (table) => table.schema === schemaName,
+    );
     expect(remaining.filter((table) => table.name.startsWith('news_'))).toHaveLength(0);
     await runMigrations(database, migrationOptions('up'));
   });

@@ -6,6 +6,7 @@ import { DOCUMENT_APPROVED_HEADING_LEVELS, DOCUMENT_BLOCK_NODE_TYPES } from '@ev
 
 import { EverlearnAttachment, EverlearnImage } from './attachment-nodes';
 import { BlockId } from './block-id';
+import { DocLink } from './doc-link';
 
 /** 正文 JSON 的根文档结构，供序列化与解析共享。 */
 export type EditorDocumentJson = JSONContent;
@@ -28,5 +29,6 @@ export function createEditorSchema(options: EditorSchemaOptions = {}): Extension
     BlockId.configure({ types: [...DOCUMENT_BLOCK_NODE_TYPES] }),
     EverlearnImage.configure({ onRetry: attachmentRetry }),
     EverlearnAttachment.configure({ onRetry: attachmentRetry }),
+    DocLink,
   ];
 }

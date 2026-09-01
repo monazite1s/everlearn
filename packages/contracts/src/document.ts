@@ -48,6 +48,8 @@ export const DOCUMENT_APPROVED_MARK_TYPES: ReadonlySet<string> = new Set([
   'code',
   'underline',
   'link',
+  // SEARCH-04 内部链接标记，attrs.documentId 为目标文档 UUID。
+  'docLink',
 ]);
 
 /** blockId 的合法格式为任意版本的标准 UUID 十六进制，忽略大小写以兼容历史输出。 */

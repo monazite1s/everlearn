@@ -47,6 +47,21 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** 用于校验标记类型专属属性：docLink 必须携带合法目标文档 UUID。 */
+function passesMarkSpecificRules(
+  mark: Record<string, unknown>,
+  rules: DocumentContentRules,
+): boolean {
+  if (mark.type !== 'docLink') {
+    return true;
+  }
+  if (!isPlainObject(mark.attrs)) {
+    return false;
+  }
+  const documentId = mark.attrs.documentId;
+  return typeof documentId === 'string' && rules.blockIdPattern.test(documentId);
+}
+
 /** 用于校验 marks 字段：批准标记名或带合法 type/attrs 的标记对象。 */
 function isValidMarks(value: unknown, rules: DocumentContentRules): boolean {
   if (!Array.isArray(value)) {
@@ -60,7 +75,9 @@ function isValidMarks(value: unknown, rules: DocumentContentRules): boolean {
       return false;
     }
     return (
-      rules.markTypes.has(mark.type) && (mark.attrs === undefined || isPlainObject(mark.attrs))
+      rules.markTypes.has(mark.type) &&
+      (mark.attrs === undefined || isPlainObject(mark.attrs)) &&
+      passesMarkSpecificRules(mark, rules)
     );
   });
 }

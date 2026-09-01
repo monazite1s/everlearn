@@ -44,8 +44,20 @@ function literalSubstringPattern(query: string): string {
 function documentFilters(
   sql: Sql,
   query: NormalizedSearchQuery,
-): { readonly knowledgeBase: ReturnType<Sql>; readonly updatedAfter: ReturnType<Sql> } {
+): {
+  readonly knowledgeBase: ReturnType<Sql>;
+  readonly tagFilter: ReturnType<Sql>;
+  readonly updatedAfter: ReturnType<Sql>;
+} {
+  const tagIds = query.tagIds ?? [];
   return {
+    tagFilter:
+      tagIds.length === 0
+        ? sql``
+        : sql`AND EXISTS (SELECT 1 FROM document_tags dt
+            WHERE dt.document_id = d.id AND dt.tag_id IN (${sql.join(
+              tagIds.map((id) => sql`${id}::uuid`),
+            )}))`,
     knowledgeBase:
       query.scope === 'knowledgeBase'
         ? sql`AND d.knowledge_base_id = ${query.knowledgeBaseId}::uuid`
@@ -96,7 +108,7 @@ function candidateCtes(
     FROM documents d
     JOIN knowledge_bases kb ON kb.id = d.knowledge_base_id AND kb.owner_id = d.owner_id
     WHERE d.owner_id = ${ownerId}::uuid AND d.deleted_at IS NULL AND kb.deleted_at IS NULL
-      ${filters.knowledgeBase} ${filters.updatedAfter}
+      ${filters.knowledgeBase} ${filters.tagFilter} ${filters.updatedAfter}
   ), ranked_blocks AS (
     SELECT sb.document_id, sb.block_id, sb.block_order, sb.text, sb.heading_path,
       CASE WHEN sb.search_vector @@ p.ts_query THEN 5 ELSE 6 END AS rank_tier,
@@ -225,7 +237,7 @@ export async function hasUpdatingProjection(
     LEFT JOIN search_document_projections projection
       ON projection.document_id = d.id AND projection.owner_id = d.owner_id
     WHERE d.owner_id = ${ownerId}::uuid AND d.deleted_at IS NULL AND kb.deleted_at IS NULL
-      ${filters.knowledgeBase} ${filters.updatedAfter}
+      ${filters.knowledgeBase} ${filters.tagFilter} ${filters.updatedAfter}
       AND (projection.document_id IS NULL OR projection.indexed_document_version <> d.version)
   ) AS updating`.execute(database);
   return result.rows[0]?.updating === true;

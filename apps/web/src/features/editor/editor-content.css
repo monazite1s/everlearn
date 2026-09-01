@@ -81,6 +81,13 @@
   padding: var(--space-1) var(--space-2);
 }
 
+.editor-content .doc-link {
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .editor-content a {
   color: var(--primary);
   text-decoration: underline;

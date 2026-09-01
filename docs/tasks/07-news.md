@@ -65,3 +65,8 @@
 ## 检查点
 
 运行 NEWS 全部单元/集成/E2E 与 `pnpm check`；人工检查成品没有保存或展示外部完整正文。
+
+### 进度（2026-09-02，速度优先裁剪交付）
+
+- 已交付：NEWS-01 最小版（rss-parser RSS/Atom 适配，URL 规范化 + 指纹去重 + 关键词过滤；Tavily Search Provider 未做）；NEWS-02（订阅 CRUD + 自动维护「资讯」知识库 + BullMQ 计划）；NEWS-03（确定性去重与排序，LLM 相关性未做）；NEWS-04（LLM 中文简报写入资讯知识库，同日幂等近似）；NEWS-05 最小资讯页。
+- 有意裁剪：内网地址黑名单等 SSRF 完整防护、运行详情 SSE、部分失败警告结构（全部失败即 run 失败）、E2E 自动发布验证（NEWS-06）。已用 ponytail 注释登记。
