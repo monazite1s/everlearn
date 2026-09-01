@@ -64,11 +64,10 @@ test('answers a question with citations and navigates to the cited document', as
   // 投影收敛轮询可能超过默认 30 秒用例预算。
   test.setTimeout(90_000);
   await openAiTab(page, '知识库问答');
-  // 打开编辑页会触发一次块规范化自动保存使版本领先索引，等保存落库且投影收敛后再提问。
-  await expect(page.getByText('已保存').first()).toBeVisible();
+  // 无变更打开不再触发自动保存，版本恒等于索引，直接等投影收敛后提问。
   await waitForSearchResults(page.request, { knowledgeBaseId, minItems: 1, text: 'needle' });
-  // 问答召回的 FTS 词素为 AND 语义，中文混排会产生不匹配词素，这里用正文词提问。
-  await page.getByLabel('问题').fill('needle');
+  // 自然中文混排问句，验证 OR 词素召回不再依赖全英文单词提问。
+  await page.getByLabel('问题').fill('transactional needle 用在哪里？');
   await page.getByRole('button', { name: '提问' }).click();
   await expect(page.getByText(MOCK_QA_ANSWER)).toBeVisible();
   const citation = page.getByRole('link', { name: '引用 1' });

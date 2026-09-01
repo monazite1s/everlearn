@@ -100,3 +100,52 @@ test('点击菜单项插入对应块', async () => {
   expect(editor.state.doc.textContent).toBe('');
   expect(screen.queryByRole('option')).not.toBeInTheDocument();
 });
+
+/** 用于挂载编辑器并统计宿主 onUpdate 回调次数。 */
+async function mountEditorCountingUpdates(
+  content?: EditorDocumentJson,
+): Promise<{ editor: Editor; updates: () => number }> {
+  const holder: { editor?: Editor; count: number } = { count: 0 };
+  render(
+    <RichTextEditor
+      initialContent={content}
+      onCreate={(editor) => {
+        holder.editor = editor;
+      }}
+      onUpdate={() => {
+        holder.count += 1;
+      }}
+    />,
+  );
+  await waitFor(() => {
+    if (!holder.editor) {
+      throw new Error('编辑器未就绪');
+    }
+  });
+  return {
+    editor: holder.editor!,
+    /** 用于读取宿主 onUpdate 累计次数。 */
+    updates: () => holder.count,
+  };
+}
+
+test('打开服务端空内容文档时初始化规范化不触发宿主 onUpdate，编辑后才触发', async () => {
+  const { editor, updates } = await mountEditorCountingUpdates();
+  expect(updates()).toBe(0);
+  act(() => typeTrigger(editor, 'a'));
+  expect(updates()).toBe(1);
+});
+
+test('打开已带合法 blockId 的文档时不触发宿主 onUpdate', async () => {
+  const { updates } = await mountEditorCountingUpdates({
+    content: [
+      {
+        attrs: { blockId: '11111111-1111-4111-8111-111111111111' },
+        content: [{ text: '文本', type: 'text' }],
+        type: 'paragraph',
+      },
+    ],
+    type: 'doc',
+  });
+  expect(updates()).toBe(0);
+});

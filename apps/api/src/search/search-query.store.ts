@@ -41,6 +41,24 @@ function literalSubstringPattern(query: string): string {
   return `%${query.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_')}%`;
 }
 
+/** 用于把查询按空白拆词素并仅保留字母数字与 CJK 字符，白名单过滤防 to_tsquery 语法注入。 */
+export function orTsQueryTerms(query: string): readonly string[] {
+  return query
+    .split(/\s+/u)
+    .map((token) => token.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter((token) => token.length > 0);
+}
+
+/** 用于以 OR 连接各词素的 to_tsquery，替代 plainto_tsquery 全 AND 对中文混排零召回的问题。 */
+function orTsQuery(sql: Sql, query: string): ReturnType<Sql> {
+  const terms = orTsQueryTerms(query);
+  if (terms.length === 0) return sql`NULL::tsquery`;
+  return sql`(${sql.join(
+    terms.map((term) => sql`to_tsquery('pg_catalog.simple'::regconfig, ${term})`),
+    sql.raw(' || '),
+  )})`;
+}
+
 /** 用于按可选范围和严格更新时间构造候选文档过滤。 */
 function documentFilters(
   sql: Sql,
@@ -102,7 +120,7 @@ function candidateCtes(
   return sql`params AS (
     SELECT ${query.query}::text AS literal_query,
       ${literalSubstringPattern(query.query)}::text AS literal_pattern,
-      plainto_tsquery('pg_catalog.simple'::regconfig, ${query.query}) AS ts_query
+      ${orTsQuery(sql, query.query)} AS ts_query
   ), visible_documents AS (
     SELECT d.id, d.owner_id, d.knowledge_base_id, d.title, d.version, d.updated_at,
       kb.name AS knowledge_base_name
@@ -233,7 +251,7 @@ export function fuseReciprocalRankFusion(
 /** 用于构造问答混合召回共享的参数、可见文档与当前版本块 CTE。 */
 function hybridCandidateCtes(sql: Sql, request: HybridRecallRequest): ReturnType<Sql> {
   return sql`qa_params AS (
-    SELECT plainto_tsquery('pg_catalog.simple'::regconfig, ${request.query}) AS ts_query,
+    SELECT ${orTsQuery(sql, request.query)} AS ts_query,
       ${literalSubstringPattern(request.query)}::text AS literal_pattern
   ), qa_documents AS (
     SELECT d.id, d.title, d.version

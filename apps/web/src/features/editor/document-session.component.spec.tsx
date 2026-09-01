@@ -20,7 +20,13 @@ function contentDetail(overrides: Partial<DocumentContentDetail> = {}): Document
   return {
     childCount: 0,
     contentJson: {
-      content: [{ content: [{ text: '初始正文', type: 'text' }], type: 'paragraph' }],
+      content: [
+        {
+          attrs: { blockId: '33333333-3333-4333-8333-333333333333' },
+          content: [{ text: '初始正文', type: 'text' }],
+          type: 'paragraph',
+        },
+      ],
       type: 'doc',
     },
     id: DOC_ID,
@@ -250,6 +256,17 @@ test('冲突后间隔与卸载都不再为被放弃的本地内容创建修订',
   });
   unmount();
   expect(revisionPostCount()).toBe(0);
+});
+
+test('打开会话未编辑时不发起保存，卸载也不补发末次提交', async () => {
+  fetchMock.mockImplementation(() => Promise.resolve(jsonResponse(contentDetail())));
+  const { unmount } = mountWorkbench();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(REVISION_INTERVAL_MS + 1000);
+    await flushMicrotasks();
+  });
+  unmount();
+  expect(recordedCalls().filter(isContentPatch)).toHaveLength(0);
 });
 
 test('上传占位未完成时提交的保存内容剔除占位节点', async () => {

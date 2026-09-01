@@ -140,6 +140,31 @@ async function verifyBackfillIdempotency(): Promise<void> {
   expect(second).toEqual({ skipped: false, updatedBlocks: 0 });
 }
 
+/** 用于验证中文混排问句经 OR 词素仍能召回 FTS 路混排正文块。 */
+async function verifyMixedChineseEnglishRecall(): Promise<void> {
+  const rows = await readHybridRecallRows(getDatabase(), {
+    knowledgeBaseId,
+    limit: 8,
+    ownerId: LOCAL_USER_ID,
+    query: 'tsvector 倒排索引 用在哪里？',
+    queryEmbedding: null,
+  });
+  expect(rows.map((row) => row.text)).toContain(docFtsText);
+}
+
+/** 用于验证查询嵌入为空时降级为纯 FTS 召回且不越权。 */
+async function verifyPureFtsRecallFallback(): Promise<void> {
+  const rows = await readHybridRecallRows(getDatabase(), {
+    knowledgeBaseId,
+    limit: 8,
+    ownerId: LOCAL_USER_ID,
+    query: '全文检索',
+    queryEmbedding: null,
+  });
+  expect(rows.map((row) => row.text)).toContain(docFtsText);
+  expect(rows.map((row) => row.document_title)).not.toContain('他人文档');
+}
+
 describe.skipIf(databaseUrl === undefined)('hybrid recall and embedding backfill', () => {
   beforeAll(prepareDatabase);
   afterAll(cleanDatabase);
@@ -165,17 +190,12 @@ describe.skipIf(databaseUrl === undefined)('hybrid recall and embedding backfill
     expect(rows[0]?.document_title).toBe('向量文档');
   });
 
-  test('falls back to pure FTS recall when query embedding is null', async () => {
-    const rows = await readHybridRecallRows(getDatabase(), {
-      knowledgeBaseId,
-      limit: 8,
-      ownerId: LOCAL_USER_ID,
-      query: '全文检索',
-      queryEmbedding: null,
-    });
-    expect(rows.map((row) => row.text)).toContain(docFtsText);
-    expect(rows.map((row) => row.document_title)).not.toContain('他人文档');
-  });
+  test('falls back to pure FTS recall when query embedding is null', verifyPureFtsRecallFallback);
+
+  test(
+    'recalls mixed Chinese-English question via OR lexemes instead of AND',
+    verifyMixedChineseEnglishRecall,
+  );
 
   test('hybrid recall returns multi-block results across documents', async () => {
     const [queryEmbedding] = await new FakeEmbeddingProvider().embed(['语义召回']);

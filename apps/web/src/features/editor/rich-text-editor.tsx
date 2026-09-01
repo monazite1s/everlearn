@@ -71,6 +71,8 @@ interface EditorOptionsInputs {
 /** 用于组装 schemaVersion 1 编辑器选项，依赖保持稳定以避免重建实例。 */
 function buildEditorOptions(inputs: EditorOptionsInputs) {
   const { handlers, hostRefs, initialContent, onCreateRef, onUpdateRef } = inputs;
+  // 创建期 blockId 规范化事务早于 onCreate 触发 onUpdate，初始化修复不得标记会话脏。
+  let created = false;
   return {
     // ponytail: 最小正文 content 为空时回退默认段落，避免空 doc 违反 block+ 内容式。
     ...(initialContent?.content?.length ? { content: initialContent } : {}),
@@ -97,10 +99,14 @@ function buildEditorOptions(inputs: EditorOptionsInputs) {
       createSlashMenuExtension(handlers),
     ],
     immediatelyRender: false,
-    onCreate: /** 用于把实例交给宿主回调。 */ ({ editor: created }: { editor: Editor }) =>
-      onCreateRef.current?.(created),
-    onUpdate: /** 用于把内容变更交给宿主保存流程。 */ ({ editor }: { editor: Editor }) =>
-      onUpdateRef.current?.(editor),
+    onCreate: /** 用于把实例交给宿主回调。 */ ({ editor }: { editor: Editor }) => {
+      created = true;
+      onCreateRef.current?.(editor);
+    },
+    onUpdate: /** 用于把内容变更交给宿主保存流程。 */ ({ editor }: { editor: Editor }) => {
+      if (!created) return;
+      onUpdateRef.current?.(editor);
+    },
   };
 }
 

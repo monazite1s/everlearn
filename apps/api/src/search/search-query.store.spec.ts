@@ -1,10 +1,10 @@
 /**
- * @fileoverview 验证倒数排名融合纯函数的排序、去重与截断行为。
+ * @fileoverview 验证倒数排名融合纯函数与 OR 词素构造的排序、去重、截断与转义行为。
  */
 
 import { describe, expect, it } from 'vitest';
 
-import { fuseReciprocalRankFusion } from './search-query.store';
+import { fuseReciprocalRankFusion, orTsQueryTerms } from './search-query.store';
 
 describe('fuseReciprocalRankFusion', () => {
   it('按 RRF 得分降序融合两路排名且 k=60 权重正确', () => {
@@ -35,5 +35,19 @@ describe('fuseReciprocalRankFusion', () => {
     );
     expect(fused).toEqual(['a', 'c']);
     expect(fuseReciprocalRankFusion([[], []])).toEqual([]);
+  });
+});
+
+describe('orTsQueryTerms', () => {
+  it('按空白拆词素并保留中文与英数混合词', () => {
+    expect(orTsQueryTerms('needle 在哪里 用在哪里？')).toEqual(['needle', '在哪里', '用在哪里']);
+  });
+
+  it('剥离引号与 tsquery 语法字符防注入', () => {
+    expect(orTsQueryTerms("a' & b) | !c:*")).toEqual(['a', 'b', 'c']);
+  });
+
+  it('全符号或空白查询返回空数组', () => {
+    expect(orTsQueryTerms('  % _ &  ')).toEqual([]);
   });
 });
