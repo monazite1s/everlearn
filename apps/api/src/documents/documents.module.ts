@@ -7,6 +7,7 @@ import { requireJsonContentType } from '../http-boundary/require-json-content-ty
 import { DatabaseModule } from '../database/database.module';
 import { LocalIdentityContext } from '../identity/local-identity.context';
 import { DocumentContentService } from './document-content.service';
+import { DocumentExportService } from './document-export.service';
 import { DocumentMoveService } from './document-move.service';
 import { DocumentRevisionsController } from './document-revisions.controller';
 import { DocumentRevisionService } from './document-revision.service';
@@ -32,6 +33,7 @@ import { TrashPurgeService } from './trash-purge.service';
   imports: [AttachmentsModule, DatabaseModule],
   providers: [
     DocumentsService,
+    DocumentExportService,
     DocumentContentService,
     DocumentMoveService,
     DocumentRevisionService,

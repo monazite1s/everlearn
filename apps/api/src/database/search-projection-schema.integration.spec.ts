@@ -12,7 +12,6 @@ const databaseUrl = process.env.DATABASE_URL;
 const schemaName = `search_projection_test_${process.pid}`;
 const failureSchemaName = `search_projection_failure_test_${process.pid}`;
 const migrationName = '20260824000000_search_projection';
-const searchQueryMigrationName = '20260825000000_search_query_indexes';
 const knowledgeBaseId = '24000000-0000-4000-8000-000000000001';
 const documentId = '24000000-0000-4000-8000-000000000002';
 const blockId = '24000000-0000-4000-8000-000000000003';
@@ -85,16 +84,18 @@ async function migratesUpDownAndUp(): Promise<void> {
   expect(await tableExists(database, schemaName, 'search_document_projections')).toBe(true);
   expect(await tableExists(database, schemaName, 'search_blocks')).toBe(true);
 
-  const queryDown = await runMigrations(database, migrationOptions('down', schemaName));
-  expect(queryDown.executedMigrations).toEqual([searchQueryMigrationName]);
-  const down = await runMigrations(database, migrationOptions('down', schemaName));
-  expect(down.executedMigrations).toEqual([migrationName]);
+  const reverted: string[] = [];
+  while (!reverted.includes(migrationName) && reverted.length < 10) {
+    const step = await runMigrations(database, migrationOptions('down', schemaName));
+    reverted.push(...step.executedMigrations);
+  }
+  expect(reverted.at(-1)).toBe(migrationName);
   expect(await tableExists(database, schemaName, 'outbox_events')).toBe(false);
   expect(await tableExists(database, schemaName, 'search_document_projections')).toBe(false);
   expect(await tableExists(database, schemaName, 'search_blocks')).toBe(false);
 
   const up = await runMigrations(database, migrationOptions('up', schemaName));
-  expect(up.executedMigrations).toEqual([migrationName, searchQueryMigrationName]);
+  expect(up.executedMigrations).toEqual(reverted.toReversed());
 }
 
 /** 用于插入一条有效 Outbox 事件。 */

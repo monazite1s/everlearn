@@ -130,7 +130,11 @@ export class DocumentsTestEnvironment {
     });
     this.applyFixtureEnvironment(scopedUrl);
     const { AppModule } = await import('../src/app.module');
-    this.application = await NestFactory.create(AppModule, { logger: false });
+    // abortOnError:false 让模块装配错误以异常形式暴露，而不是杀死测试进程。
+    this.application = await NestFactory.create(AppModule, {
+      abortOnError: false,
+      logger: false,
+    });
     this.application.setGlobalPrefix('api/v1');
     await this.application.init();
   }

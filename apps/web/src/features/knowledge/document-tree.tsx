@@ -5,23 +5,19 @@
 import type { DocumentDetail, DocumentTreeItem } from '@everlearn/contracts';
 import { FileTextIcon, PlusIcon } from 'lucide-react';
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 
 import { Button } from '@everlearn/ui';
 
 import { EmptyState } from '../../shared/empty-state';
 import { MoveFailureNotice, useTreeMoveInteraction } from './document-tree-drag';
 import { CreateDocumentDialog, RenameDocumentDialog } from './document-tree-dialogs';
-import { MoveDocumentDialog } from './document-tree-move-dialog';
+import { MoveDialogArea } from './document-tree-move-dialog';
 import { ChildrenArea, ChildrenPending } from './document-tree-rows';
+import { TreeMarkdownIo } from './markdown-io-actions';
 import { useDocumentTree } from './document-tree-state';
 import type { TreeBindings, TreeDragController } from './document-tree-bindings';
-import type {
-  DocumentChildList,
-  MoveFailureInfo,
-  MoveOutcome,
-  MoveParentOption,
-  MovePlacement,
-} from './document-tree-model';
+import type { DocumentChildList, MoveFailureInfo } from './document-tree-model';
 
 /** 用于渲染空知识库的首篇文档创建入口。 */
 function TreeEmptyState(props: { desktop: boolean; offline: boolean; onCreate: () => void }) {
@@ -42,25 +38,33 @@ function TreeEmptyState(props: { desktop: boolean; offline: boolean; onCreate: (
   );
 }
 
-/** 用于渲染文档区标题与桌面新建入口。 */
-function TreeHeader(props: { desktop: boolean; offline: boolean; onCreate: () => void }) {
+/** 用于渲染文档区标题与桌面新建、导入导出入口。 */
+function TreeHeader(props: {
+  actions?: ReactNode;
+  desktop: boolean;
+  offline: boolean;
+  onCreate: () => void;
+}) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h2 className="m-0 text-title-small text-foreground" id="knowledge-documents-title">
         文档
       </h2>
-      {props.desktop && (
-        <Button
-          disabled={props.offline}
-          onClick={props.onCreate}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <PlusIcon aria-hidden="true" />
-          新建文档
-        </Button>
-      )}
+      <div className="flex flex-wrap items-center gap-2">
+        {props.actions}
+        {props.desktop && (
+          <Button
+            disabled={props.offline}
+            onClick={props.onCreate}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <PlusIcon aria-hidden="true" />
+            新建文档
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -146,32 +150,6 @@ function MoveFailureArea(props: {
   );
 }
 
-/** 用于在存在移动目标时挂载键盘移动对话框。 */
-function MoveDialogArea(props: {
-  childListOf: (parentId?: string | null) => DocumentChildList;
-  item: DocumentTreeItem | undefined;
-  offline: boolean;
-  parentOf: (id: string) => string | null;
-  optionsOf: (id: string) => readonly MoveParentOption[];
-  move: (id: string, placement: MovePlacement) => Promise<MoveOutcome>;
-  onClose: () => void;
-}) {
-  const { item } = props;
-  if (!item) return null;
-  return (
-    <MoveDocumentDialog
-      childListOf={props.childListOf}
-      currentParentId={props.parentOf(item.id)}
-      item={item}
-      offline={props.offline}
-      onClose={props.onClose}
-      onMove={(placement) => props.move(item.id, placement)}
-      opened
-      options={props.optionsOf(item.id)}
-    />
-  );
-}
-
 /** 用于组装传给递归节点的树操作绑定。 */
 function createTreeBindings(props: {
   activeDocumentId: string | undefined;
@@ -204,6 +182,7 @@ function createTreeBindings(props: {
 
 /** 用于渲染树区主体：头部、移动失败提示与根区域。 */
 function TreeBody(props: {
+  actions?: ReactNode;
   desktop: boolean;
   list: DocumentChildList;
   moves: ReturnType<typeof useTreeMoveInteraction>;
@@ -214,7 +193,12 @@ function TreeBody(props: {
   const { moves } = props;
   return (
     <>
-      <TreeHeader desktop={props.desktop} offline={props.offline} onCreate={props.onCreate} />
+      <TreeHeader
+        {...(props.actions ? { actions: props.actions } : {})}
+        desktop={props.desktop}
+        offline={props.offline}
+        onCreate={props.onCreate}
+      />
       <MoveFailureArea failure={moves.failure} onDismiss={moves.dismiss} onRetry={moves.retry} />
       <RootArea
         desktop={props.desktop}
@@ -320,11 +304,40 @@ function useTreeSection(props: {
   };
 }
 
+/** 用于把树状态绑定到对话框层并转发创建结果与不确定结果。 */
+function ConnectedDialogLayer(props: {
+  knowledgeBaseId: string;
+  offline: boolean;
+  section: ReturnType<typeof useTreeSection>;
+  onCreated: (detail: DocumentDetail) => void;
+  onUncertain: (parentId?: string) => void;
+}) {
+  const { section } = props;
+  const { tree } = section;
+  return (
+    <TreeDialogLayer
+      createTarget={section.createTarget}
+      forgetMoveIntent={section.moves.forget}
+      knowledgeBaseId={props.knowledgeBaseId}
+      moveTarget={section.moveTarget}
+      offline={props.offline}
+      renameTarget={section.renameTarget}
+      tree={tree}
+      onApplyCreated={props.onCreated}
+      onCloseCreate={section.closeDialogs}
+      onCloseMove={section.closeDialogs}
+      onCloseRename={section.closeDialogs}
+      onUncertain={props.onUncertain}
+    />
+  );
+}
+
 /** 用于渲染按需加载的文档树和创建、重命名、移动流程。 */
 export function DocumentTree(props: {
-  /** 当前打开的文档 id，行高亮与当前位置标识。 */
   activeDocumentId?: string;
   desktop: boolean;
+  /** 当前知识库显示名，导出归档命名使用。 */
+  kbName?: string;
   knowledgeBaseId: string;
   offline: boolean;
   onCreated: () => void;
@@ -333,36 +346,37 @@ export function DocumentTree(props: {
   const { desktop, knowledgeBaseId, offline, onCreated, onUncertainOutcome, activeDocumentId } =
     props;
   const section = useTreeSection({ activeDocumentId, desktop, knowledgeBaseId, offline });
-  const { tree } = section;
-  /** 用于把创建结果并入树并同步页面统计。 */
+  /** 用于把创建或导入结果并入树并同步页面统计。 */
   function handleCreated(detail: DocumentDetail): void {
-    tree.applyCreated(detail);
+    section.tree.applyCreated(detail);
     onCreated();
   }
   return (
     <section aria-labelledby="knowledge-documents-title" className="grid grid-cols-1 gap-2 pt-2">
       <TreeBody
+        actions={
+          <TreeMarkdownIo
+            {...(props.kbName ? { kbName: props.kbName } : {})}
+            desktop={desktop}
+            knowledgeBaseId={knowledgeBaseId}
+            offline={offline}
+            onImported={handleCreated}
+          />
+        }
         desktop={desktop}
-        list={tree.childList()}
+        list={section.tree.childList()}
         moves={section.moves}
         offline={offline}
         tree={section.bindings}
         onCreate={section.openRootCreate}
       />
-      <TreeDialogLayer
-        createTarget={section.createTarget}
-        forgetMoveIntent={section.moves.forget}
+      <ConnectedDialogLayer
         knowledgeBaseId={knowledgeBaseId}
-        moveTarget={section.moveTarget}
         offline={offline}
-        renameTarget={section.renameTarget}
-        tree={tree}
-        onApplyCreated={handleCreated}
-        onCloseCreate={section.closeDialogs}
-        onCloseMove={section.closeDialogs}
-        onCloseRename={section.closeDialogs}
+        section={section}
+        onCreated={handleCreated}
         onUncertain={(parentId) => {
-          tree.retry(parentId);
+          section.tree.retry(parentId);
           onUncertainOutcome?.();
         }}
       />

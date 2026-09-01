@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit && tsc --project tsconfig.spec.json"
   },
   "dependencies": {
+    "@everlearn/agent-runtime": "workspace:*",
     "@nestjs/common": "catalog:",
     "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",
@@ -17,6 +18,7 @@
     "class-validator": "catalog:",
     "ioredis": "^6.0.0",
     "reflect-metadata": "catalog:",
+    "rss-parser": "^3.13.0",
     "rxjs": "catalog:"
   },
   "devDependencies": {

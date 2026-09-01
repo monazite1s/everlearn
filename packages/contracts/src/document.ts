@@ -234,3 +234,16 @@ export type DocumentErrorCode =
 
 /** 用于限定回收站列表公开的稳定错误码。 */
 export type TrashErrorCode = 'BAD_REQUEST' | 'INTERNAL_ERROR' | 'VALIDATION_FAILED';
+
+/** 子树导出条目：path 为不含自身的祖先标题链，目录层级由其还原。 */
+export interface DocumentExportItem {
+  readonly contentJson: unknown;
+  readonly id: string;
+  readonly path: readonly string[];
+  readonly title: string;
+}
+
+/** 用于返回按树序排列的文档子树导出投影。 */
+export interface DocumentExportResponse {
+  readonly items: readonly DocumentExportItem[];
+}

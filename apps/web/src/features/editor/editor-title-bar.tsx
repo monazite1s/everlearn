@@ -2,8 +2,9 @@
 
 'use client';
 
+import type { Editor } from '@tiptap/core';
+import { DownloadIcon, PanelRightIcon, SparklesIcon } from 'lucide-react';
 import Link from 'next/link';
-import { PanelRightIcon } from 'lucide-react';
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from '@everlearn/contracts';
 import {
@@ -16,8 +17,17 @@ import {
   Button,
 } from '@everlearn/ui';
 
+import { downloadFile, toSafeFileName } from '../../shared/download-file';
+import { docJsonToMarkdown } from './markdown-conversion';
 import { SaveStatusBadge } from './save-status';
 import type { SessionRuntime } from './document-session';
+
+/** 用于把当前编辑器正文序列化为 Markdown 并触发下载。 */
+function exportMarkdown(title: string, editor: Editor | null): void {
+  if (!editor) return;
+  const markdown = docJsonToMarkdown(editor.getJSON());
+  downloadFile(`${toSafeFileName(title)}.md`, new Blob([markdown], { type: 'text/markdown' }));
+}
 
 /** 用于渲染文档上下文面包屑：知识库名与当前文档标题。 */
 function TitleBreadcrumb(props: {
@@ -44,6 +54,8 @@ function TitleBreadcrumb(props: {
 
 /** 用于渲染标题右侧的保存状态与右栏开合动作组。 */
 function TitleActions(props: {
+  readonly aiOpen: boolean;
+  readonly onToggleAi: () => void;
   readonly onTogglePanel: () => void;
   readonly panelOpen: boolean;
   readonly runtime: SessionRuntime;
@@ -51,6 +63,25 @@ function TitleActions(props: {
   const { runtime } = props;
   return (
     <div className="flex shrink-0 items-center gap-1">
+      <Button
+        aria-label={props.aiOpen ? '收起 AI 助手' : '打开 AI 助手'}
+        aria-pressed={props.aiOpen}
+        onClick={props.onToggleAi}
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+      >
+        <SparklesIcon aria-hidden="true" />
+      </Button>
+      <Button
+        aria-label="导出 Markdown"
+        onClick={() => exportMarkdown(runtime.title, runtime.editor)}
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+      >
+        <DownloadIcon aria-hidden="true" />
+      </Button>
       <SaveStatusBadge
         onCopyLocal={() => void runtime.copyLocal()}
         onRetry={runtime.save.retry}
@@ -72,10 +103,12 @@ function TitleActions(props: {
 
 /** 用于渲染标题输入与保存状态、右栏开合动作组。 */
 export function TitleBar(props: {
+  readonly aiOpen: boolean;
   readonly autoFocus?: boolean | undefined;
   /** 当前知识库显示名，未加载时回退通用名。 */
   readonly kbName?: string | undefined;
   readonly knowledgeBaseId: string;
+  readonly onToggleAi: () => void;
   readonly onTogglePanel: () => void;
   readonly panelOpen: boolean;
   readonly runtime: SessionRuntime;
@@ -104,6 +137,8 @@ export function TitleBar(props: {
           />
         </h1>
         <TitleActions
+          aiOpen={props.aiOpen}
+          onToggleAi={props.onToggleAi}
           onTogglePanel={props.onTogglePanel}
           panelOpen={props.panelOpen}
           runtime={runtime}

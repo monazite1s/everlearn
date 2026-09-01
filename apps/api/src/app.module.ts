@@ -6,12 +6,15 @@ import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 
 import { ApiExceptionFilter, createApiValidationPipe } from './http-boundary/api-exception.filter';
 import { HealthController } from './http-boundary/health.controller';
+import { AiModule } from './ai/ai.module';
 import { KnowledgeBasesModule } from './knowledge-bases/knowledge-bases.module';
+import { NewsModule } from './news/news.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { DocumentsModule } from './documents/documents.module';
 import { InboxItemsModule } from './inbox-items/inbox-items.module';
 import { RequestCorrelationMiddleware } from './http-boundary/request-correlation.middleware';
 import { SearchModule } from './search/search.module';
+import { WorkflowsModule } from './workflows/workflows.module';
 import { validateRuntimeEnvironment } from './config/runtime-config';
 
 /** 用于持有领域模块依赖的 API 基础设施。 */
@@ -23,11 +26,14 @@ import { validateRuntimeEnvironment } from './config/runtime-config';
       isGlobal: true,
       validate: validateRuntimeEnvironment,
     }),
+    AiModule,
     AttachmentsModule,
     DocumentsModule,
     InboxItemsModule,
     KnowledgeBasesModule,
+    NewsModule,
     SearchModule,
+    WorkflowsModule,
   ],
   providers: [
     { provide: APP_PIPE, useFactory: createApiValidationPipe },

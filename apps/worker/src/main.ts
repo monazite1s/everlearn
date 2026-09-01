@@ -17,10 +17,15 @@ import type {
 import { startTrashPurgeRuntime } from './purge/trash-purge.runtime';
 import type { TrashPurgeRuntime, TrashPurgeRuntimeConfig } from './purge/trash-purge.runtime';
 import { startSearchProjectionRuntime } from './search/search-projection.runtime';
+import { startNewsRuntime } from './news/news-run.runtime';
+import type { NewsRuntime, NewsRuntimeConfig } from './news/news-run.runtime';
+import { startWorkflowRuntime } from './workflows/workflow-run.runtime';
+import type { WorkflowRuntime } from './workflows/workflow-run.runtime';
 import type {
   SearchProjectionRuntime,
   SearchProjectionRuntimeConfig,
 } from './search/search-projection.runtime';
+import type { WorkflowRuntimeConfig } from './workflows/workflow-run.runtime';
 
 /** 用于提供队列模块接入前的根依赖注入上下文。 */
 @Module({
@@ -99,6 +104,39 @@ async function startAttachmentPurge(
 }
 
 /** 用于从既有内部 API 与 Redis 配置生成搜索投影运行时配置。 */
+/** 用于从进程配置解析 Workflow 运行时所需字段。 */
+function readWorkflowConfig(
+  config: ConfigService<Record<string, string>, false>,
+): WorkflowRuntimeConfig {
+  return {
+    apiInternalUrl: config.get('API_INTERNAL_URL', 'http://127.0.0.1:3001'),
+    redisUrl: config.get('REDIS_URL', ''),
+    secret: config.get('PURGE_TRIGGER_SECRET', ''),
+  };
+}
+
+/** 用于启动 Workflow 运行队列与计划同步。 */
+async function startWorkflows(app: INestApplicationContext): Promise<WorkflowRuntime> {
+  return startWorkflowRuntime(
+    readWorkflowConfig(app.get(ConfigService<Record<string, string>, false>)),
+  );
+}
+
+/** 用于从既有内部 API 与 Redis 配置生成资讯运行时配置。 */
+function readNewsConfig(config: ConfigService<Record<string, string>, false>): NewsRuntimeConfig {
+  return {
+    apiInternalUrl: config.get('API_INTERNAL_URL', 'http://127.0.0.1:3001'),
+    redisUrl: config.get('REDIS_URL', ''),
+    secret: config.get('PURGE_TRIGGER_SECRET', ''),
+  };
+}
+
+/** 用于启动资讯简报队列与计划同步。 */
+async function startNews(app: INestApplicationContext): Promise<NewsRuntime> {
+  return startNewsRuntime(readNewsConfig(app.get(ConfigService<Record<string, string>, false>)));
+}
+
+/** 用于从配置读取搜索投影队列连接参数。 */
 function readSearchProjectionConfig(
   config: ConfigService<Record<string, string>, false>,
 ): SearchProjectionRuntimeConfig {
@@ -139,14 +177,20 @@ async function bootstrap(): Promise<void> {
   let purge: TrashPurgeRuntime | undefined;
   let attachmentPurge: AttachmentOrphanPurgeRuntime | undefined;
   let searchProjection: SearchProjectionRuntime | undefined;
+  let workflows: WorkflowRuntime | undefined;
+  let news: NewsRuntime | undefined;
   try {
     const app = await NestFactory.createApplicationContext(WorkerModule, { logger: systemLogger });
     purge = await startPurge(app);
     attachmentPurge = await startAttachmentPurge(app);
     searchProjection = await startSearchProjection(app);
+    workflows = await startWorkflows(app);
+    news = await startNews(app);
     bootstrapLogger.log(createWorkerLogEntry({ event: 'worker.lifecycle.ready' }));
     await waitForShutdownSignal();
     await searchProjection.close();
+    await news?.close();
+    await workflows?.close();
     await attachmentPurge.close();
     await purge.close();
     await app.close();
@@ -154,6 +198,8 @@ async function bootstrap(): Promise<void> {
     const trace = error instanceof Error ? error.stack : undefined;
     bootstrapLogger.error('Worker startup failed', trace);
     await searchProjection?.close();
+    await news?.close();
+    await workflows?.close();
     await attachmentPurge?.close();
     await purge?.close();
     process.exitCode = 1;

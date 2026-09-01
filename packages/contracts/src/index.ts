@@ -49,6 +49,8 @@ export type {
   DocumentContentDetail,
   DocumentDetail,
   DocumentErrorCode,
+  DocumentExportItem,
+  DocumentExportResponse,
   DocumentListResponse,
   DocumentLifecycleEventPayload,
   DocumentRevisionDetail,

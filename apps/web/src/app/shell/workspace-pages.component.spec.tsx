@@ -12,14 +12,15 @@ import WorkflowsPage from '../workflows/page';
 
 interface ExplicitPageCase {
   component: ComponentType;
+  marker: string;
   title: string;
 }
 
 const explicitPages: readonly ExplicitPageCase[] = [
-  { component: NewsPage, title: '资讯' },
-  { component: TutorialsPage, title: '教程' },
-  { component: WorkflowsPage, title: '工作流' },
-  { component: SettingsPage, title: '设置' },
+  { component: NewsPage, marker: '创建订阅', title: '资讯' },
+  { component: TutorialsPage, marker: '工作区已就绪', title: '教程' },
+  { component: WorkflowsPage, marker: '从模板创建', title: '工作流' },
+  { component: SettingsPage, marker: '工作区已就绪', title: '设置' },
 ];
 
 afterEach(cleanup);
@@ -31,7 +32,7 @@ function rendersExplicitWorkspacePages(): void {
     const title = screen.getByRole('heading', { level: 1, name: page.title });
     expect(title).toHaveAttribute('data-page-title');
     expect(title).toHaveAttribute('tabindex', '-1');
-    expect(view.container.textContent).toContain('工作区已就绪');
+    expect(view.container.textContent).toContain(page.marker);
     view.unmount();
   }
 }

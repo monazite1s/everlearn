@@ -3,6 +3,8 @@
 import type {
   CreateDocumentRequest,
   DocumentDetail,
+  DocumentExportItem,
+  DocumentExportResponse,
   DocumentErrorCode,
   DocumentListResponse,
   DocumentTreeItem,
@@ -88,6 +90,36 @@ function parseDocumentList(value: unknown): DocumentListResponse | undefined {
   if (!Array.isArray(value.items) || !value.items.every(isDocumentTreeItem)) return undefined;
   if (value.nextCursor !== null && typeof value.nextCursor !== 'string') return undefined;
   return { items: value.items, nextCursor: value.nextCursor };
+}
+
+/** 用于校验子树导出条目的字段全集与形态。 */
+function isDocumentExportItem(value: unknown): value is DocumentExportItem {
+  if (!isRecord(value) || !hasExactKeys(value, ['contentJson', 'id', 'path', 'title']))
+    return false;
+  return (
+    typeof value.id === 'string' &&
+    typeof value.title === 'string' &&
+    Array.isArray(value.path) &&
+    value.path.every((segment) => typeof segment === 'string') &&
+    isRecord(value.contentJson)
+  );
+}
+
+/** 用于解析子树导出投影并拒绝未知字段。 */
+function parseDocumentExport(value: unknown): DocumentExportResponse | undefined {
+  if (!isRecord(value) || !hasExactKeys(value, ['items'])) return undefined;
+  if (!Array.isArray(value.items) || !value.items.every(isDocumentExportItem)) return undefined;
+  return value as unknown as DocumentExportResponse;
+}
+
+/** 用于读取知识库范围内可选根文档的子树导出投影。 */
+export function exportDocuments(
+  knowledgeBaseId: string,
+  rootId?: string,
+): Promise<DocumentApiResult<DocumentExportResponse>> {
+  const query = rootId ? `?rootId=${encodeURIComponent(rootId)}` : '';
+  const url = `${KNOWLEDGE_BASE_PATH}/${encodeURIComponent(knowledgeBaseId)}/documents/export${query}`;
+  return requestDocument(url, 200, parseDocumentExport);
 }
 
 /** 用于把校验通过的详情原样返回给调用方。 */

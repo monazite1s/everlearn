@@ -79,13 +79,17 @@ async function migratesSearchQueryIndexesUpDownAndUp(): Promise<void> {
   );
   for (const name of indexNames) expect(indexes.get(name)).toContain('WHERE (deleted_at IS NULL)');
 
-  const down = await runMigrations(getDatabase(), migrationOptions('down'));
-  expect(down.executedMigrations).toEqual([migrationName]);
+  const reverted: string[] = [];
+  while (!reverted.includes(migrationName) && reverted.length < 10) {
+    const step = await runMigrations(getDatabase(), migrationOptions('down'));
+    reverted.push(...step.executedMigrations);
+  }
+  expect(reverted.at(-1)).toBe(migrationName);
   indexes = await readDocumentIndexes();
   for (const name of indexNames) expect(indexes.has(name)).toBe(false);
 
   const up = await runMigrations(getDatabase(), migrationOptions('up'));
-  expect(up.executedMigrations).toEqual([migrationName]);
+  expect(up.executedMigrations).toEqual(reverted.toReversed());
   indexes = await readDocumentIndexes();
   for (const name of indexNames) expect(indexes.has(name)).toBe(true);
 }

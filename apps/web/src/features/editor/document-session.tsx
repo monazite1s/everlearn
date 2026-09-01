@@ -8,7 +8,10 @@ import type { Editor, JSONContent } from '@tiptap/core';
 import { DOCUMENT_TITLE_MAX_LENGTH, type DocumentContentDetail } from '@everlearn/contracts';
 
 import { OfflineNotice } from '../../shared/offline-notice';
+import { applyAiDraft } from './ai-panel';
 import { parseDocumentJson } from './parse-document-json';
+import { EditorRightRail } from './editor-right-rail';
+import { useConflictDetail, type ConflictInfo } from './use-conflict-detail';
 import { TitleBar } from './editor-title-bar';
 import { AttachmentConfirmDialog } from './attachment-confirm-dialog';
 import { EditorPanelSheet, EditorPanelTabs } from './editor-side-panel';
@@ -37,12 +40,6 @@ export interface DocumentEditorSessionProps {
   readonly wide: boolean;
 }
 
-/** 冲突期间服务端最新投影的拉取状态。 */
-interface ConflictInfo {
-  readonly detail?: DocumentContentDetail;
-  readonly status: 'loading' | 'loaded' | 'failed';
-}
-
 /** 会话控制器引用集合，供各子组件按需消费。 */
 export interface SessionRuntime {
   readonly attachments: ReturnType<typeof useDocumentAttachments>;
@@ -59,21 +56,6 @@ export interface SessionRuntime {
   readonly handleEditorReady: (instance: Editor) => void;
   readonly handleEditorUpdate: (instance: Editor) => void;
   readonly reload: () => Promise<void>;
-}
-
-/** 用于在冲突期间读取一次服务端最新版本时间。 */
-function useConflictDetail(documentId: string, active: boolean): ConflictInfo | undefined {
-  const [info, setInfo] = useState<ConflictInfo | undefined>();
-  const startedRef = useRef(false);
-  useEffect(() => {
-    if (!active || startedRef.current) return;
-    startedRef.current = true;
-    setInfo({ status: 'loading' });
-    void getDocumentContent(documentId).then((result) => {
-      setInfo(result.ok ? { detail: result.data, status: 'loaded' } : { status: 'failed' });
-    });
-  }, [active, documentId]);
-  return info;
 }
 
 /** 用于把标题与正文提交给保存与修订触发器，提交前剔除上传占位。 */
@@ -313,10 +295,12 @@ function AttachmentControls(props: { readonly runtime: SessionRuntime }) {
 
 /** 用于组合编辑区标题、状态、工具栏、正文与附件入口。 */
 function EditorSessionMain(props: {
+  readonly aiOpen: boolean;
   readonly autoFocusTitle?: boolean | undefined;
   readonly detail: DocumentContentDetail;
   readonly knowledgeBaseId: string;
   readonly kbName?: string | undefined;
+  readonly onToggleAi: () => void;
   readonly onTogglePanel: () => void;
   readonly panelOpen: boolean;
   readonly runtime: SessionRuntime;
@@ -325,9 +309,11 @@ function EditorSessionMain(props: {
   return (
     <section aria-label="文档编辑区" className="flex min-w-0 flex-col">
       <TitleBar
+        aiOpen={props.aiOpen}
         autoFocus={props.autoFocusTitle}
         kbName={props.kbName}
         knowledgeBaseId={props.knowledgeBaseId}
+        onToggleAi={props.onToggleAi}
         onTogglePanel={props.onTogglePanel}
         panelOpen={props.panelOpen}
         runtime={props.runtime}
@@ -358,6 +344,7 @@ export function DocumentEditorSession(props: DocumentEditorSessionProps) {
   const runtime = useSessionRuntime(detail, props.offline, props.onReplace);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const panelProps = {
     contentDetail: detail,
     contentJson: runtime.contentJson,
@@ -374,23 +361,28 @@ export function DocumentEditorSession(props: DocumentEditorSessionProps) {
   return (
     <>
       <EditorSessionMain
+        aiOpen={aiOpen}
         autoFocusTitle={props.autoFocusTitle}
         detail={detail}
         kbName={props.kbName}
         knowledgeBaseId={props.knowledgeBaseId}
+        onToggleAi={() => setAiOpen((current) => !current)}
         onTogglePanel={togglePanel}
         panelOpen={wide ? !panelCollapsed : sheetOpen}
         runtime={runtime}
         searchTarget={props.searchTarget}
       />
-      {wide && !panelCollapsed ? (
-        <aside aria-label="文档信息" className="min-w-0 border-l border-border px-4 py-4">
-          <EditorPanelTabs {...panelProps} />
-        </aside>
-      ) : null}
-      {!wide ? (
-        <EditorPanelSheet onOpenChange={setSheetOpen} open={sheetOpen} {...panelProps} />
-      ) : null}
+      {!wide && <EditorPanelSheet onOpenChange={setSheetOpen} open={sheetOpen} {...panelProps} />}
+      <EditorRightRail
+        aiOpen={aiOpen}
+        documentId={detail.id}
+        infoTabs={<EditorPanelTabs {...panelProps} />}
+        knowledgeBaseId={props.knowledgeBaseId}
+        onAccept={(json) => applyAiDraft(runtime.editor, json, () => setAiOpen(false))}
+        onToggleAi={() => setAiOpen(false)}
+        panelCollapsed={panelCollapsed}
+        wide={wide}
+      />
     </>
   );
 }

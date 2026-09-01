@@ -246,3 +246,29 @@ export function MoveDocumentDialog(props: MoveDocumentDialogProps) {
     </Dialog>
   );
 }
+
+/** 用于在存在移动目标时挂载键盘移动对话框。 */
+export function MoveDialogArea(props: {
+  childListOf: (parentId?: string | null) => DocumentChildList;
+  item: DocumentTreeItem | undefined;
+  offline: boolean;
+  parentOf: (id: string) => string | null;
+  optionsOf: (id: string) => readonly MoveParentOption[];
+  move: (id: string, placement: MovePlacement) => Promise<MoveOutcome>;
+  onClose: () => void;
+}) {
+  const { item } = props;
+  if (!item) return null;
+  return (
+    <MoveDocumentDialog
+      childListOf={props.childListOf}
+      currentParentId={props.parentOf(item.id)}
+      item={item}
+      offline={props.offline}
+      onClose={props.onClose}
+      onMove={(placement) => props.move(item.id, placement)}
+      opened
+      options={props.optionsOf(item.id)}
+    />
+  );
+}

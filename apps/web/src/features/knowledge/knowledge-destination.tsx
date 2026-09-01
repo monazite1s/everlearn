@@ -156,6 +156,7 @@ function OverviewContent(props: {
       <DocumentTree
         desktop={desktop}
         key={knowledgeBaseId}
+        kbName={data.name}
         knowledgeBaseId={knowledgeBaseId}
         offline={offline}
         onCreated={onDocumentCreated}
