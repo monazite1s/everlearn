@@ -65,3 +65,10 @@
 ## 检查点
 
 使用伪 Provider 完成两次确认、部分失败、单章重试、取消和恢复 E2E，执行 `pnpm check` 并核对引用覆盖。
+
+### 交付记录（2026-09-04，速度优先可用版）
+
+- TUT-01..05 后端闭环：会话状态机（draft→researching→outline_ready→generating→partial/completed/failed/canceled，未确认范围零研究调用）；研究+结构化大纲（WebSearchProvider 未配置降级仅 KB 研究并记警告，JSON 解析一次重试，环检测拒绝）；第二次确认原子创建 tutorial 知识库+章节占位文档（幂等）；无依赖章节并行生成、依赖完成后释放，写入占位文档新修订（引用 [n]+来源列表）；单章幂等重试（attempt 递增）与取消未开始章节。
+- TUT-06：/tutorials 列表+创建、详情页两次确认/大纲编辑（行内编辑与排序，dependsOn 暂只读标签）/章节状态/单章重试/取消，researching/generating 5s 轮询；组件测试 12 例。
+- 浏览器 E2E：教程完整闭环（含大纲编辑、占位立即可见、引用正文跳转）、单章失败重试（attempt=2）、取消后不领取，三轮全量 E2E 18/18 稳定。
+- 遗留裁剪：大纲 dependsOn 页面不可编辑；章节占位正文仅段落块（行内标记不解析）；无进行中章节中断（cancel 只拦未开始）；真实 Tavily 出网未验证（mock 路径全覆盖）。

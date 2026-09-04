@@ -201,7 +201,7 @@ function buildParagraphContent(text: string): JsonValue {
   return {
     content: [
       {
-        blockId: randomUUID(),
+        attrs: { blockId: randomUUID() },
         content: text.length === 0 ? [] : [{ text, type: 'text' }],
         type: 'paragraph',
       },

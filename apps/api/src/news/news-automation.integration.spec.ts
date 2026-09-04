@@ -138,7 +138,8 @@ async function cleanApplication(): Promise<void> {
 
 /** 用于构造指向测试内 Nest 应用的 Worker 执行器配置。 */
 function createExecutorConfig(): NewsDigestExecutorConfig {
-  return { apiInternalUrl: appBaseUrl, secret: internalSecret };
+  // 测试源绑定环回地址，须跳过私网 feed 校验。
+  return { allowPrivateFeedUrls: true, apiInternalUrl: appBaseUrl, secret: internalSecret };
 }
 
 /** 用于按订阅统计简报运行数量。 */
@@ -157,6 +158,7 @@ afterAll(cleanApplication);
 describe('news automation integration', () => {
   test('计划触发当天幂等创建单个 pending 运行', expectScheduleTriggerIdempotent);
   test('执行器经真实 HTTP 抓源、生成简报并落库为 succeeded', expectExecutorPersistsBrief);
+  test('全来源失败生成失败说明并置 succeeded', expectAllSourcesFailedExplains);
   test('终态运行后当天重复计划触发不再创建新运行或新简报', expectNoDuplicateAfterTerminal);
   test('停用计划的订阅不再出现在调度清单中', expectDisabledScheduleExcluded);
 });
@@ -210,6 +212,43 @@ async function expectExecutorPersistsBrief(): Promise<void> {
   expect(revision.plain_text).toContain(briefText);
   expect(revision.plain_text).toContain('http://127.0.0.1:9/beta');
   expect(revision.plain_text).toContain('http://127.0.0.1:9/alpha');
+  const detail = await database!
+    .selectFrom('news_digest_runs')
+    .select(['source_results', 'warnings'])
+    .where('id', '=', claimed.runId)
+    .executeTakeFirstOrThrow();
+  expect(Array.isArray(detail.source_results)).toBe(true);
+  const sourceResults = detail.source_results as { decision: string; reason: string }[];
+  expect(sourceResults).toHaveLength(2);
+  expect(sourceResults.every((entry) => entry.decision === 'adopted')).toBe(true);
+  const warnings = detail.warnings as string[];
+  expect(warnings).toContain('来源不足，简报仅基于 2 条来源');
+  expect(warnings.some((entry) => entry.includes('相关性判定'))).toBe(true);
+  const summary = await newsService.getRun(claimed.runId);
+  expect(summary.sourceResults).toHaveLength(2);
+  expect(summary.warnings).toContain('来源不足，简报仅基于 2 条来源');
+}
+
+/** 用于断言全来源失败时生成失败说明文档并置 succeeded。 */
+async function expectAllSourcesFailedExplains(): Promise<void> {
+  const subscription = await newsService.create({
+    feedUrl: 'http://127.0.0.1:9/dead-feed.xml',
+    name: '失败测试源',
+  });
+  await newsService.createRun(subscription.id);
+  const [claimed] = await runsService.claimPendingDigestRuns(5);
+  if (claimed === undefined) throw new Error('领取待执行运行失败');
+  await executeNewsDigest(claimed, createExecutorConfig());
+  const run = await newsService.getRun(claimed.runId);
+  expect(run.status).toBe('succeeded');
+  expect(run.warnings[0]).toContain('资讯源抓取失败');
+  const revision = await database!
+    .selectFrom('document_revisions')
+    .select(['plain_text', 'title'])
+    .where('document_id', '=', run.briefDocumentId!)
+    .executeTakeFirstOrThrow();
+  expect(revision.title).toContain('资讯简报生成失败说明');
+  expect(revision.plain_text).toContain('失败步骤：资讯源抓取');
 }
 
 /** 用于断言终态运行后当天重复计划触发不再创建新运行或新简报。 */

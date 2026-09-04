@@ -34,7 +34,7 @@ export async function dispatchPendingDigests(
 ): Promise<number> {
   const items = await dispatchNewsDigests(config, 3);
   for (const item of items) {
-    await queue.add('news-digest', { digest: item }, { jobId: `run:${item.runId}` });
+    await queue.add('news-digest', { digest: item }, { jobId: `run-${item.runId}` });
   }
   return items.length;
 }

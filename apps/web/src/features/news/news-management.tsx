@@ -57,7 +57,12 @@ export function NewsManagement() {
           pending={pending}
         />
       )}
-      <DigestRuns items={items} runs={runs} />
+      <DigestRuns
+        items={items}
+        onRetry={(id) => void handleRun(id)}
+        pending={pending}
+        runs={runs}
+      />
     </PageShell>
   );
 }

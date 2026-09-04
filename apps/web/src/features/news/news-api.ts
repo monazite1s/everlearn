@@ -29,8 +29,18 @@ export interface NewsDigestRunItem {
   readonly createdAt: string;
   readonly errorCode: string | null;
   readonly id: string;
+  readonly sourceResults: readonly NewsDigestSourceResult[];
   readonly status: string;
   readonly subscriptionId: string;
+  readonly warnings: readonly string[];
+}
+
+/** 单条来源采纳结果的局部投影。 */
+export interface NewsDigestSourceResult {
+  readonly decision: 'adopted' | 'skipped';
+  readonly reason: string;
+  readonly title: string;
+  readonly url: string;
 }
 
 const KNOWN_CODES = [
@@ -75,6 +85,29 @@ export function parseSubscriptionList(value: unknown): NewsSubscriptionItem[] | 
   return items;
 }
 
+/** 用于收窄来源采纳结果数组。 */
+function parseSourceResults(value: unknown): NewsDigestSourceResult[] {
+  if (!Array.isArray(value)) return [];
+  const results: NewsDigestSourceResult[] = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) continue;
+    if (entry.decision !== 'adopted' && entry.decision !== 'skipped') continue;
+    if (
+      typeof entry.title !== 'string' ||
+      typeof entry.url !== 'string' ||
+      typeof entry.reason !== 'string'
+    )
+      continue;
+    results.push({
+      decision: entry.decision,
+      reason: entry.reason,
+      title: entry.title,
+      url: entry.url,
+    });
+  }
+  return results;
+}
+
 /** 用于把未知响应收窄为简报运行列表投影。 */
 export function parseDigestRunList(value: unknown): NewsDigestRunItem[] | undefined {
   if (!Array.isArray(value)) return undefined;
@@ -86,11 +119,33 @@ export function parseDigestRunList(value: unknown): NewsDigestRunItem[] | undefi
       createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : '',
       errorCode: stringOrNull(entry.errorCode),
       id: entry.id,
+      sourceResults: parseSourceResults(entry.sourceResults),
       status: typeof entry.status === 'string' ? entry.status : '',
       subscriptionId: typeof entry.subscriptionId === 'string' ? entry.subscriptionId : '',
+      warnings: parseStringList(entry.warnings),
     });
   }
   return items;
+}
+
+/** 用于收窄字符串数组且容忍缺省。 */
+function parseStringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
+/** 简报运行错误码的中文文案映射。 */
+const RUN_ERROR_LABELS: Record<string, string> = {
+  INTERNAL_ERROR: '服务内部错误，请稍后重试。',
+  NEWS_KB_MISSING: '资讯知识库缺失，请先重建资讯知识库。',
+  NOT_FOUND: '运行记录不存在，可能已被清理。',
+  PROVIDER_UNAVAILABLE: '内容提供方暂不可用，请稍后重试。',
+};
+
+/** 用于把简报运行错误码转换为中文文案。 */
+export function describeRunErrorCode(code: string): string {
+  return RUN_ERROR_LABELS[code] ?? `运行失败（${code}），请稍后重试。`;
 }
 
 /** 用于列出订阅。 */

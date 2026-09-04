@@ -74,8 +74,9 @@ describe('selectNewItems', () => {
       limit: 10,
       seenHashes: [],
     });
-    expect(result).toHaveLength(2);
-    expect(result[0]!.normalizedUrl).toBe('https://a.com/1');
+    expect(result.adopted).toHaveLength(2);
+    expect(result.adopted[0]!.normalizedUrl).toBe('https://a.com/1');
+    expect(result.skipped.map((entry) => entry.reason)).toEqual(['重复']);
   });
 
   it('跳过已见指纹', () => {
@@ -87,6 +88,22 @@ describe('selectNewItems', () => {
       limit: 10,
       seenHashes: seen,
     });
-    expect(result.map((entry) => entry.item.title)).toEqual(['t2']);
+    expect(result.adopted.map((entry) => entry.item.title)).toEqual(['t2']);
+  });
+
+  it('标记关键词排除与超量截断原因', () => {
+    const result = selectNewItems({
+      excludeKeywords: ['球赛'],
+      includeKeywords: [],
+      items: [
+        { link: 'https://a.com/1', summary: '技术', title: 't1' },
+        { link: 'https://a.com/2', summary: '赛事', title: '球赛回顾' },
+        { link: 'https://a.com/3', summary: '技术3', title: 't3' },
+      ],
+      limit: 1,
+      seenHashes: [],
+    });
+    expect(result.adopted.map((entry) => entry.item.title)).toEqual(['t1']);
+    expect(result.skipped.map((entry) => entry.reason)).toEqual(['关键词排除', '超量截断']);
   });
 });

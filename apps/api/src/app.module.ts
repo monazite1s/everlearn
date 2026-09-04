@@ -14,6 +14,7 @@ import { DocumentsModule } from './documents/documents.module';
 import { InboxItemsModule } from './inbox-items/inbox-items.module';
 import { RequestCorrelationMiddleware } from './http-boundary/request-correlation.middleware';
 import { SearchModule } from './search/search.module';
+import { TutorialsModule } from './tutorials/tutorials.module';
 import { WorkflowsModule } from './workflows/workflows.module';
 import { validateRuntimeEnvironment } from './config/runtime-config';
 
@@ -33,6 +34,7 @@ import { validateRuntimeEnvironment } from './config/runtime-config';
     KnowledgeBasesModule,
     NewsModule,
     SearchModule,
+    TutorialsModule,
     WorkflowsModule,
   ],
   providers: [

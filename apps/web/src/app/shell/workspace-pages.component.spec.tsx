@@ -18,7 +18,7 @@ interface ExplicitPageCase {
 
 const explicitPages: readonly ExplicitPageCase[] = [
   { component: NewsPage, marker: '创建订阅', title: '资讯' },
-  { component: TutorialsPage, marker: '工作区已就绪', title: '教程' },
+  { component: TutorialsPage, marker: '新建教程', title: '教程' },
   { component: WorkflowsPage, marker: '从模板创建', title: '工作流' },
   { component: SettingsPage, marker: '工作区已就绪', title: '设置' },
 ];

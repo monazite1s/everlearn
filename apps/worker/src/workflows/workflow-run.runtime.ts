@@ -42,7 +42,7 @@ export async function dispatchPendingRuns(
 ): Promise<number> {
   const items = await dispatchWorkflowRuns(config, 3);
   for (const item of items) {
-    await queue.add('workflow-run', { runId: item.runId }, { jobId: `run:${item.runId}` });
+    await queue.add('workflow-run', { runId: item.runId }, { jobId: `run-${item.runId}` });
   }
   return items.length;
 }
@@ -88,7 +88,7 @@ export async function processWorkflowJob(
     await queue.add(
       'workflow-run',
       { runId },
-      { jobId: `${SCHEDULED_JOB_PREFIX}:${job.data.workflowId}:${day}` },
+      { jobId: `${SCHEDULED_JOB_PREFIX}-${job.data.workflowId}-${day}` },
     );
   }
   if (runId !== undefined) await executeWorkflowRun(runId, config);

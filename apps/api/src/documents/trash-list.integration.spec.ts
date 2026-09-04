@@ -262,7 +262,7 @@ async function migratesTrashIndexesReversibly(): Promise<void> {
   };
   expect((await indexNames()).includes('documents_trash_idx')).toBe(true);
   const reverted: string[] = [];
-  while (!reverted.includes('20260817000000_trash_retention_indexes') && reverted.length < 10) {
+  while (!reverted.includes('20260817000000_trash_retention_indexes') && reverted.length < 25) {
     const step = await runMigrations(environment.getDatabase(), { ...options, direction: 'down' });
     reverted.push(...step.executedMigrations);
   }

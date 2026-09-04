@@ -8,6 +8,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Kysely } from 'kysely' with { 'resolution-mode': 'import' };
 
 import { DatabaseService } from '../database/database.service';
+import type { Json } from '../database/database.types';
 import { CompleteNewsDigestDto } from './complete-news-digest.dto';
 import { withNewsTables, type NewsDatabaseSchema } from './news-db.types';
 import type { NewsDigestDispatchItem, NewsDigestRunSummary, NewsScheduleItem } from './news.dto';
@@ -94,7 +95,9 @@ export class NewsRunsService {
         status: input.status,
         brief_document_id: input.briefDocumentId ?? null,
         error_code: input.errorCode ?? null,
+        source_results: JSON.stringify(input.sourceResults ?? []) as unknown as Json,
         updated_at: new Date(),
+        warnings: JSON.stringify(input.warnings ?? []) as unknown as Json,
       })
       .where('id', '=', runId)
       .where('status', 'in', [...ACTIVE_RUN_STATUSES])
@@ -104,21 +107,30 @@ export class NewsRunsService {
       throw newsError('NEWS_RUN_NOT_ACTIVE', '简报运行不存在或已进入终态。', 409);
     }
     if (input.seenItems !== undefined && input.seenItems.length > 0) {
-      const subscriptionId = (await this.readSubscriptionId(runId)) ?? '';
-      await database
-        .insertInto('news_seen_items')
-        .values(
-          input.seenItems.map((item) => ({
-            subscription_id: subscriptionId,
-            normalized_url: item.normalizedUrl,
-            content_hash: item.contentHash,
-          })),
-        )
-        .onConflict((constraint) =>
-          constraint.columns(['subscription_id', 'content_hash']).doNothing(),
-        )
-        .execute();
+      await this.persistSeenItems(runId, input.seenItems);
     }
+  }
+
+  /** 用于写入本次运行新增的已见条目并忽略重复。 */
+  private async persistSeenItems(
+    runId: string,
+    items: NonNullable<CompleteNewsDigestDto['seenItems']>,
+  ): Promise<void> {
+    const database = withNewsTables(this.databaseService.client);
+    const subscriptionId = (await this.readSubscriptionId(runId)) ?? '';
+    await database
+      .insertInto('news_seen_items')
+      .values(
+        items.map((item) => ({
+          subscription_id: subscriptionId,
+          normalized_url: item.normalizedUrl,
+          content_hash: item.contentHash,
+        })),
+      )
+      .onConflict((constraint) =>
+        constraint.columns(['subscription_id', 'content_hash']).doNothing(),
+      )
+      .execute();
   }
 
   /** 用于读取运行所属订阅 id。 */

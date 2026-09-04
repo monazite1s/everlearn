@@ -6,9 +6,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 
+import { resolveTutorialContent, writeTavilyResponse } from './tutorial-mock';
+
 /** mock LLM 固定端口。 */
 export const E2E_LLM_PORT = 3202;
 export const E2E_LLM_BASE_URL = `http://127.0.0.1:${E2E_LLM_PORT}/v1`;
+
+/** mock Tavily 搜索基础地址，与 mock LLM 共用同一端口。 */
+export const E2E_TAVILY_BASE_URL = `http://127.0.0.1:${E2E_LLM_PORT}/tavily`;
 
 /** 用于读取 web 构建产物中固化的同源代理目标，API 必须监听同一端口。 */
 function resolveBakedApiOrigin(): string {
@@ -77,23 +82,18 @@ function toChunks(text: string): string[] {
   return chunks;
 }
 
-/** 用于处理 mock LLM 的 chat/completions 与 embeddings 请求。 */
+/** 用于处理 mock LLM 的 chat/completions、embeddings 与 mock Tavily 请求。 */
 async function handleLlmRequest(
   request: IncomingMessageLike,
   response: ServerResponseLike,
 ): Promise<void> {
   const rawBody = await readBody(request);
+  if (request.url?.includes('/tavily/search')) {
+    writeTavilyResponse(response);
+    return;
+  }
   if (request.url?.includes('/embeddings')) {
-    response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end(
-      JSON.stringify({
-        data: [
-          { embedding: Array.from({ length: 1536 }, () => 0.01), index: 0, object: 'embedding' },
-        ],
-        model: 'mock',
-        object: 'list',
-      }),
-    );
+    writeEmbeddingsResponse(response);
     return;
   }
   if (!request.url?.includes('/chat/completions')) {
@@ -101,13 +101,43 @@ async function handleLlmRequest(
     response.end();
     return;
   }
+  await handleChatRequest(rawBody, response);
+}
+
+/** 用于写出 mock embeddings 的固定向量响应。 */
+function writeEmbeddingsResponse(response: ServerResponseLike): void {
+  response.writeHead(200, { 'Content-Type': 'application/json' });
+  response.end(
+    JSON.stringify({
+      data: [
+        { embedding: Array.from({ length: 1536 }, () => 0.01), index: 0, object: 'embedding' },
+      ],
+      model: 'mock',
+      object: 'list',
+    }),
+  );
+}
+
+/** 用于处理 mock LLM 的 chat/completions 请求体。 */
+async function handleChatRequest(rawBody: string, response: ServerResponseLike): Promise<void> {
   const body = JSON.parse(rawBody) as {
     messages?: { content?: string; role?: string }[];
     stream?: boolean;
   };
   const messages = body.messages ?? [];
-  const content = isQaRequest(messages) ? qaContent() : draftContent();
-  if (body.stream !== true) {
+  const promptText = messages.map((message) => message.content ?? '').join('\n');
+  const tutorialContent = await resolveTutorialContent(promptText, response);
+  const content = tutorialContent ?? (isQaRequest(messages) ? qaContent() : draftContent());
+  if (content.length > 0) await writeChatCompletion(body.stream === true, content, response);
+}
+
+/** 用于按流式开关写出 chat/completions 响应。 */
+async function writeChatCompletion(
+  stream: boolean,
+  content: string,
+  response: ServerResponseLike,
+): Promise<void> {
+  if (!stream) {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(
       JSON.stringify({
@@ -233,7 +263,11 @@ function assertBuildArtifacts(): void {
   }
 }
 
-/** 用于拉起 mock LLM 并返回其服务句柄。 */
+/** 当前 mock LLM 服务句柄与不可用标记。 */
+let mockLlmServer: http.Server | undefined;
+let mockLlmDown = false;
+
+/** 用于拉起 mock LLM 并记录其服务句柄。 */
 async function startMockLlm(): Promise<http.Server> {
   const llmServer = createServer((request, response) => {
     void handleLlmRequest(request, response).catch(() => {
@@ -242,6 +276,9 @@ async function startMockLlm(): Promise<http.Server> {
     });
   });
   await new Promise<void>((resolve) => llmServer.listen(E2E_LLM_PORT, '127.0.0.1', resolve));
+  // 禁用 keep-alive 超时，避免空闲后服务端单方面断连导致 Worker 侧 fetch 偶发失败。
+  llmServer.keepAliveTimeout = 0;
+  mockLlmServer = llmServer;
   return llmServer;
 }
 
@@ -250,6 +287,13 @@ interface ApiHandle {
   readonly apiProcess: ChildProcess | undefined;
   readonly ownsApi: boolean;
 }
+
+/** API 与 Worker 共用的 mock 搜索注入：API 侧无消费者，Worker 教程研究指向 mock Tavily。 */
+const MOCK_SEARCH_ENV = {
+  SEARCH_API_KEY: 'e2e-search-key',
+  SEARCH_PROVIDER: 'tavily',
+  TAVILY_BASE_URL: E2E_TAVILY_BASE_URL,
+};
 
 /** 用于复用或拉起 API 进程并等待就绪。 */
 async function ensureApiProcess(): Promise<ApiHandle> {
@@ -263,6 +307,7 @@ async function ensureApiProcess(): Promise<ApiHandle> {
           LLM_BASE_URL: E2E_LLM_BASE_URL,
           LLM_MODEL: 'mock-model',
           PORT: String(E2E_API_PORT),
+          ...MOCK_SEARCH_ENV,
         }),
         stdio: ['ignore', 'pipe', 'pipe'],
       })
@@ -277,7 +322,7 @@ async function ensureApiProcess(): Promise<ApiHandle> {
 /** 用于拉起 Worker 进程。 */
 function startWorkerProcess(): ChildProcess {
   const workerProcess = spawn('node', ['apps/worker/dist/main.js'], {
-    env: childEnv({ API_INTERNAL_URL: E2E_API_ORIGIN }),
+    env: childEnv({ API_INTERNAL_URL: E2E_API_ORIGIN, ...MOCK_SEARCH_ENV }),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   trackedChildren.add(workerProcess);
@@ -289,29 +334,38 @@ function startWorkerProcess(): ChildProcess {
 /** 用于拉起 mock LLM、API 与 Worker 并等待就绪。 */
 async function bootstrap(): Promise<E2eRuntime> {
   assertBuildArtifacts();
-  const llmServer = await startMockLlm();
+  await startMockLlm();
   const { apiProcess, ownsApi } = await ensureApiProcess();
   const workerProcess = startWorkerProcess();
 
-  let llmKilled = false;
   /** 用于关闭 mock LLM 并容忍 keep-alive 连接。 */
   const closeLlm = async (): Promise<void> => {
-    llmServer.closeAllConnections();
-    await new Promise<void>((resolve) => llmServer.close(() => resolve()));
+    const server = mockLlmServer;
+    if (server === undefined) return;
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    mockLlmServer = undefined;
   };
   return {
     killMockLlm: /** 用于主动终止 mock LLM 以验收模型不可用场景。 */ async () => {
-      llmKilled = true;
+      mockLlmDown = true;
       // 直连 keep-alive 连接会阻塞 close 回调，先强制断开再关闭监听。
       await closeLlm();
     },
     release: /** 用于终止本运行时拉起的全部子进程。 */ async () => {
-      if (!llmKilled) await closeLlm();
+      if (!mockLlmDown) await closeLlm();
       // ponytail: 复用外部已有 API 时不越权终止；仅清理本进程拉起的子进程。
       if (ownsApi) await terminate(apiProcess);
       await terminate(workerProcess);
     },
   };
+}
+
+/** 用于在 mock LLM 被不可用用例终止后重新拉起，供后续需要 LLM 的 spec 复用。 */
+export async function ensureMockLlmAlive(): Promise<void> {
+  if (!mockLlmDown) return;
+  await startMockLlm();
+  mockLlmDown = false;
 }
 
 /** 用于在多 spec 共享下幂等获取运行时，引用计数归零时释放。 */

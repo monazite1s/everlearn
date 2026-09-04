@@ -51,6 +51,31 @@ function toSummary(row: {
   };
 }
 
+/** 用于把运行行投影为带来源决策与警告的公开摘要。 */
+export function toDigestRunSummary(row: {
+  brief_document_id: string | null;
+  created_at: Date;
+  error_code: string | null;
+  id: string;
+  source_results: JsonValue;
+  status: string;
+  subscription_id: string;
+  warnings: JsonValue;
+}): NewsDigestRunSummary {
+  return {
+    briefDocumentId: row.brief_document_id,
+    createdAt: row.created_at.toISOString(),
+    errorCode: row.error_code,
+    id: row.id,
+    sourceResults: Array.isArray(row.source_results)
+      ? (row.source_results as unknown as NewsDigestRunSummary['sourceResults'])
+      : [],
+    status: row.status,
+    subscriptionId: row.subscription_id,
+    warnings: Array.isArray(row.warnings) ? (row.warnings as string[]) : [],
+  };
+}
+
 /** 用于持有资讯订阅切片的数据库与身份依赖。 */
 @Injectable()
 export class NewsService {
@@ -196,14 +221,7 @@ export class NewsService {
       })
       .returningAll()
       .executeTakeFirstOrThrow();
-    return {
-      briefDocumentId: row.brief_document_id,
-      createdAt: row.created_at.toISOString(),
-      errorCode: row.error_code,
-      id: row.id,
-      status: row.status,
-      subscriptionId: row.subscription_id,
-    };
+    return toDigestRunSummary(row);
   }
 
   /** 用于按订阅或全局列出最近简报运行。 */
@@ -219,13 +237,19 @@ export class NewsService {
       .orderBy('created_at', 'desc')
       .limit(20)
       .execute();
-    return rows.map((row) => ({
-      briefDocumentId: row.brief_document_id,
-      createdAt: row.created_at.toISOString(),
-      errorCode: row.error_code,
-      id: row.id,
-      status: row.status,
-      subscriptionId: row.subscription_id,
-    }));
+    return rows.map(toDigestRunSummary);
+  }
+
+  /** 用于读取所有者名下单个简报运行的详情。 */
+  async getRun(runId: string): Promise<NewsDigestRunSummary> {
+    const ownerId = this.identity.getActor().ownerId;
+    const row = await withNewsTables(this.databaseService.client)
+      .selectFrom('news_digest_runs')
+      .selectAll()
+      .where('id', '=', runId)
+      .where('owner_id', '=', ownerId)
+      .executeTakeFirst();
+    if (row === undefined) throw new NotFoundException();
+    return toDigestRunSummary(row);
   }
 }

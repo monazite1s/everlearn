@@ -19,14 +19,24 @@ export interface NewsSubscriptionSummary {
   } | null;
 }
 
+/** 单条来源在简报运行中的决策记录。 */
+export interface NewsSourceResult {
+  readonly decision: 'adopted' | 'skipped';
+  readonly reason: string;
+  readonly title: string;
+  readonly url: string;
+}
+
 /** 简报运行投影。 */
 export interface NewsDigestRunSummary {
   readonly briefDocumentId: string | null;
   readonly createdAt: string;
   readonly errorCode: string | null;
   readonly id: string;
+  readonly sourceResults: readonly NewsSourceResult[];
   readonly status: string;
   readonly subscriptionId: string;
+  readonly warnings: readonly string[];
 }
 
 /** Worker 领取待执行简报运行时的载荷。 */

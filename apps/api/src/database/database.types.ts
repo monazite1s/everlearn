@@ -124,9 +124,11 @@ export interface NewsDigestRun {
   error_code: string | null;
   id: string;
   owner_id: string;
+  source_results: Generated<Json>;
   status: string;
   subscription_id: string;
   updated_at: Generated<Timestamp>;
+  warnings: Generated<Json>;
 }
 
 export interface NewsSeenItem {
@@ -198,6 +200,41 @@ export interface Tag {
   owner_id: string;
 }
 
+export interface TutorialChapter {
+  attempt: Generated<number>;
+  created_at: Generated<Timestamp>;
+  depends_on: Generated<string[]>;
+  document_id: string | null;
+  error_code: string | null;
+  id: string;
+  node_key: string;
+  session_id: string;
+  status: string;
+  title: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface TutorialSession {
+  audience: string;
+  created_at: Generated<Timestamp>;
+  depth: string;
+  error_code: string | null;
+  exclude_topics: Generated<string[]>;
+  goals: Generated<string>;
+  id: string;
+  include_topics: Generated<string[]>;
+  kb_scope: Generated<string[]>;
+  level: number;
+  outline: Json | null;
+  outline_locked_at: Timestamp | null;
+  owner_id: string;
+  status: string;
+  topic: string;
+  tutorial_kb_id: string | null;
+  updated_at: Generated<Timestamp>;
+  warnings: Generated<Json>;
+}
+
 export interface UserTable {
   created_at: Generated<Timestamp>;
   display_name: string;
@@ -262,6 +299,8 @@ export interface DB {
   search_blocks: SearchBlockTable;
   search_document_projections: SearchDocumentProjectionTable;
   tags: Tag;
+  tutorial_chapters: TutorialChapter;
+  tutorial_sessions: TutorialSession;
   users: UserTable;
   workflow_run_events: WorkflowRunEvent;
   workflow_runs: WorkflowRun;

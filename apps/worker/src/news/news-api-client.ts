@@ -72,6 +72,14 @@ export async function dispatchNewsDigests(
   return Array.isArray(result) ? (result as NewsDigestDispatchItem[]) : [];
 }
 
+/** 来源决策记录的传输形态。 */
+export interface NewsSourceResultPayload {
+  readonly decision: 'adopted' | 'skipped';
+  readonly reason: string;
+  readonly title: string;
+  readonly url: string;
+}
+
 /** 用于写入简报运行终态与已见条目。 */
 export async function completeNewsDigest(
   config: { apiInternalUrl: string; secret: string },
@@ -80,7 +88,9 @@ export async function completeNewsDigest(
     briefDocumentId?: string;
     errorCode?: string;
     seenItems?: { contentHash: string; normalizedUrl: string }[];
+    sourceResults?: readonly NewsSourceResultPayload[];
     status: 'failed' | 'succeeded';
+    warnings?: readonly string[];
   },
 ): Promise<void> {
   await callInternal(config, `/runs/${runId}/complete`, { body: input, method: 'POST' });

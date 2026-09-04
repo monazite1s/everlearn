@@ -21,6 +21,9 @@ import { startSearchEmbeddingRuntime } from './search/search-embedding.runtime';
 import { startNewsRuntime } from './news/news-run.runtime';
 import type { NewsRuntime, NewsRuntimeConfig } from './news/news-run.runtime';
 import { startWorkflowRuntime } from './workflows/workflow-run.runtime';
+import { startTutorialRuntime } from './tutorials/tutorial-run.runtime';
+import type { TutorialRuntime } from './tutorials/tutorial-run.runtime';
+import { resolveTutorialWebSearch } from './tutorials/tutorial-research';
 import type { WorkflowRuntime } from './workflows/workflow-run.runtime';
 import type {
   SearchProjectionRuntime,
@@ -141,6 +144,27 @@ async function startNews(app: INestApplicationContext): Promise<NewsRuntime> {
   return startNewsRuntime(readNewsConfig(app.get(ConfigService<Record<string, string>, false>)));
 }
 
+/** 用于按名读取 Worker 环境配置。 */
+function readWorkerEnv(
+  config: ConfigService<Record<string, string>, false>,
+  name: string,
+): string | undefined {
+  return config.get<string>(name);
+}
+
+/** 用于从既有内部 API 与 Redis 配置启动教程队列运行时。 */
+async function startTutorials(app: INestApplicationContext): Promise<TutorialRuntime> {
+  const config = app.get(ConfigService<Record<string, string>, false>);
+  return startTutorialRuntime(
+    {
+      apiInternalUrl: config.get('API_INTERNAL_URL', 'http://127.0.0.1:3001'),
+      redisUrl: config.get('REDIS_URL', ''),
+      secret: config.get('PURGE_TRIGGER_SECRET', ''),
+    },
+    resolveTutorialWebSearch({ get: readWorkerEnv.bind(null, config) }),
+  );
+}
+
 /** 用于从配置读取搜索投影队列连接参数。 */
 function readSearchProjectionConfig(
   config: ConfigService<Record<string, string>, false>,
@@ -221,6 +245,7 @@ async function bootstrap(): Promise<void> {
       await startSearchEmbedding(app),
       await startWorkflows(app),
       await startNews(app),
+      await startTutorials(app),
     );
     bootstrapLogger.log(createWorkerLogEntry({ event: 'worker.lifecycle.ready' }));
     await waitForShutdownSignal();

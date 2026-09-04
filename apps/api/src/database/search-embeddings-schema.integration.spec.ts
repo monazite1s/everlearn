@@ -93,15 +93,19 @@ describe.skipIf(databaseUrl === undefined)('search embeddings migration', () => 
   });
 
   test('reverts columns and index but keeps the extension on down, then reapplies', async () => {
-    const down = await runMigrations(getDatabase(), migrationOptions('down'));
-    expect(down.executedMigrations).toEqual([migrationName]);
+    const reverted: string[] = [];
+    while (!reverted.includes(migrationName) && reverted.length < 25) {
+      const step = await runMigrations(getDatabase(), migrationOptions('down'));
+      reverted.push(...step.executedMigrations);
+    }
+    expect(reverted.at(-1)).toBe(migrationName);
     let state = await readEmbeddingState();
     expect(state.extension).toBe(true);
     expect(state.columns).toEqual([]);
     expect(state.indexDef).toBeUndefined();
 
     const up = await runMigrations(getDatabase(), migrationOptions('up'));
-    expect(up.executedMigrations).toEqual([migrationName]);
+    expect(up.executedMigrations).toEqual(reverted.toReversed());
     state = await readEmbeddingState();
     expect(state.columns).toEqual(['embedding', 'embedding_content_hash', 'embedding_model']);
     expect(state.indexDef).toContain('hnsw');

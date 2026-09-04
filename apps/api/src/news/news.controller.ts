@@ -72,4 +72,10 @@ export class NewsController {
   listRuns(@Query() query: ListNewsDigestRunsDto): Promise<NewsDigestRunSummary[]> {
     return this.newsService.listRuns(query.subscriptionId);
   }
+
+  /** 用于读取单个简报运行的来源决策与警告详情。 */
+  @Get('digest-runs/:runId')
+  getRun(@Param() params: UuidParamDto): Promise<NewsDigestRunSummary> {
+    return this.newsService.getRun(params.id);
+  }
 }

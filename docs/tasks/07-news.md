@@ -75,3 +75,12 @@
 
 - M4 门禁「计划时间只生成一份简报」已验证：`news-automation.integration.spec.ts` 6/6——真实 RSS 源 + OpenAI 兼容 mock LLM 的执行闭环（抓取→过滤→LLM→简报文档落入资讯知识库、标题「资讯简报 YYYY-MM-DD」、含来源链接且 utm 剥离）；同日重复计划触发返回同一 runId；终态重复 complete 被守卫拒绝（顺带修复 `numUpdatedRows`/`numChangedRows` 字段读错的真实 bug）；停用订阅从调度清单消失。
 - 遗留：E2E 浏览器层的 NEWS-06 未做（集成层已覆盖同一语义）。
+
+### 正式化交付（2026-09-04）
+
+- NEWS-01 补齐：Tavily Web 搜索 Provider（`SEARCH_PROVIDER/SEARCH_API_KEY/TAVILY_BASE_URL`，未配置整体降级）；RSS 抓取前置 SSRF 私网/环回/链路本地地址守卫。
+- NEWS-03/04 补齐：LLM 批量相关性判定（失败降级保留全部并记警告）；每条来源 adopted/skipped+原因落库可追溯；adopted<3 结构化「来源不足」警告；全源失败生成失败说明文档。
+- NEWS-05 补齐：运行详情（警告条、来源 ✓/✗ 明细、失败重试按钮）进资讯页。
+- 门禁「计划任务自动触发」在浏览器层达成：真实 Worker + mock Tavily/LLM 的 E2E（news-detail.spec）与 18 用例全量 E2E 稳定通过。
+- 顺带修复：BullMQ 6 禁止 jobId 含 `:` 导致三个队列投递静默失败（P0，改 `-` 分隔）；自动化写入 content_json 形态错误导致其文档永不进搜索且全站 indexStatus 恒 updating（P1，改为编辑器 schema v1 形态）；终态守卫字段误读（前批）。
+- 遗留：`allowPrivateFeedUrls` 测试缝未接 Worker 进程 env（浏览器级真实 RSS 抓取用例待补）；订阅级自定义相关性主题未做。

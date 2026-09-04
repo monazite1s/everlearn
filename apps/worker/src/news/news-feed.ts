@@ -106,24 +106,51 @@ export interface SelectNewItemsInput {
   readonly seenHashes: readonly string[];
 }
 
-/** 用于规范化、去重并按关键词过滤条目，返回可入库的最新条目。 */
-export function selectNewItems(input: SelectNewItemsInput): {
-  contentHash: string;
-  item: FeedItem;
-  normalizedUrl: string;
-}[] {
+/** 筛选后的入选条目与带原因的落选条目。 */
+export interface SelectNewItemsResult {
+  readonly adopted: {
+    readonly contentHash: string;
+    readonly item: FeedItem;
+    readonly normalizedUrl: string;
+  }[];
+  readonly skipped: { readonly item: FeedItem; readonly reason: string }[];
+}
+
+/** 用于规范化、去重、关键词过滤并标记落选原因，返回入选与落选明细。 */
+export function selectNewItems(input: SelectNewItemsInput): SelectNewItemsResult {
   const seen = new Set(input.seenHashes);
-  const filtered = filterByKeywords(input.items, input.includeKeywords, input.excludeKeywords);
-  const result: { contentHash: string; item: FeedItem; normalizedUrl: string }[] = [];
   const batchHashes = new Set<string>();
-  for (const item of filtered) {
+  const adopted: SelectNewItemsResult['adopted'] = [];
+  const skipped: SelectNewItemsResult['skipped'] = [];
+  for (const item of input.items) {
+    const haystack = `${item.title}\n${item.summary}`.toLowerCase();
+    if (input.excludeKeywords.some((keyword) => haystack.includes(keyword.toLowerCase()))) {
+      skipped.push({ item, reason: '关键词排除' });
+      continue;
+    }
+    if (
+      input.includeKeywords.length > 0 &&
+      !input.includeKeywords.some((keyword) => haystack.includes(keyword.toLowerCase()))
+    ) {
+      skipped.push({ item, reason: '未命中包含关键词' });
+      continue;
+    }
     const normalizedUrl = normalizeUrl(item.link);
-    if (normalizedUrl === null) continue;
+    if (normalizedUrl === null) {
+      skipped.push({ item, reason: '链接无效' });
+      continue;
+    }
     const contentHash = contentFingerprint(normalizedUrl, item.title);
-    if (seen.has(contentHash) || batchHashes.has(contentHash)) continue;
+    if (seen.has(contentHash) || batchHashes.has(contentHash)) {
+      skipped.push({ item, reason: '重复' });
+      continue;
+    }
+    if (adopted.length >= input.limit) {
+      skipped.push({ item, reason: '超量截断' });
+      continue;
+    }
     batchHashes.add(contentHash);
-    result.push({ contentHash, item, normalizedUrl });
-    if (result.length >= input.limit) break;
+    adopted.push({ contentHash, item, normalizedUrl });
   }
-  return result;
+  return { adopted, skipped };
 }

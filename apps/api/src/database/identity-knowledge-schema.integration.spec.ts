@@ -20,6 +20,8 @@ const searchQueryIndexesMigrationName = '20260825000000_search_query_indexes';
 const workflowRuntimeMigrationName = '20260901000000_workflow_runtime';
 const newsSchemaMigrationName = '20260902000000_news_schema';
 const tagsLinksMigrationName = '20260903000000_document_tags_links';
+const newsRunDetailsMigrationName = '20260905000000_news_run_details';
+const tutorialSchemaMigrationName = '20260906000000_tutorial_schema';
 const searchEmbeddingsMigrationName = '20260904000000_search_embeddings';
 const fullMigrationNames = [
   schemaMigrationName,
@@ -33,6 +35,8 @@ const fullMigrationNames = [
   newsSchemaMigrationName,
   tagsLinksMigrationName,
   searchEmbeddingsMigrationName,
+  newsRunDetailsMigrationName,
+  tutorialSchemaMigrationName,
 ];
 const otherUserId = '10000000-0000-4000-8000-000000000001';
 const firstKnowledgeBaseId = '20000000-0000-4000-8000-000000000001';
@@ -261,6 +265,8 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   await database.deleteFrom('documents').execute();
   await database.deleteFrom('knowledge_bases').execute();
   await database.deleteFrom('users').where('id', '=', otherUserId).execute();
+  await expectSingleMigration('down', tutorialSchemaMigrationName);
+  await expectSingleMigration('down', newsRunDetailsMigrationName);
   await expectSingleMigration('down', searchEmbeddingsMigrationName);
   await expectSingleMigration('down', tagsLinksMigrationName);
   await expectSingleMigration('down', newsSchemaMigrationName);
@@ -279,6 +285,8 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
 
 /** 用于把迁移回退到修订标题之前以构造存量行夹具。 */
 async function downToBeforeRevisionTitle(): Promise<void> {
+  await expectSingleMigration('down', tutorialSchemaMigrationName);
+  await expectSingleMigration('down', newsRunDetailsMigrationName);
   await expectSingleMigration('down', searchEmbeddingsMigrationName);
   await expectSingleMigration('down', tagsLinksMigrationName);
   await expectSingleMigration('down', newsSchemaMigrationName);

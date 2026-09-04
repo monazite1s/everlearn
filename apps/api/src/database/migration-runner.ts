@@ -20,6 +20,8 @@ import { workflowRuntimeMigration } from './migrations/20260901000000_workflow_r
 import { newsSchemaMigration } from './migrations/20260902000000_news_schema';
 import { documentTagsLinksMigration } from './migrations/20260903000000_document_tags_links';
 import { searchEmbeddingsMigration } from './migrations/20260904000000_search_embeddings';
+import { tutorialSchemaMigration } from './migrations/20260906000000_tutorial_schema';
+import { newsRunDetailsMigration } from './migrations/20260905000000_news_run_details';
 
 const applicationMigrations = {
   '20260812010000_identity_knowledge_schema': identityKnowledgeSchemaMigration,
@@ -33,6 +35,8 @@ const applicationMigrations = {
   '20260902000000_news_schema': newsSchemaMigration,
   '20260903000000_document_tags_links': documentTagsLinksMigration,
   '20260904000000_search_embeddings': searchEmbeddingsMigration,
+  '20260905000000_news_run_details': newsRunDetailsMigration,
+  '20260906000000_tutorial_schema': tutorialSchemaMigration,
 } satisfies Record<string, Migration>;
 
 export type MigrationDirection = 'down' | 'up';
