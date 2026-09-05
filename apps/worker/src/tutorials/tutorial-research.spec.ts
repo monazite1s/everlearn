@@ -54,8 +54,8 @@ describe('json-extraction', () => {
     expect(extractJsonObject(text)).toEqual({ a: { b: '包含 } 花括号' }, c: [1, 2] });
   });
 
-  test('截断对象与无对象文本返回 null', () => {
-    expect(extractJsonObject('{"a": {"b": 1}')).toBeNull();
+  test('截断对象补全闭合花括号，无对象文本返回 null', () => {
+    expect(extractJsonObject('{"a": {"b": 1}')).toEqual({ a: { b: 1 } });
     expect(extractJsonObject('纯文本回复')).toBeNull();
   });
 

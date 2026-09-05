@@ -73,3 +73,30 @@ describe('extractJsonObject 修复重试', () => {
     });
   });
 });
+
+describe('extractJsonObject 闭合失败修复', () => {
+  it('修复尾段转义引号破坏闭合并补全花括号（真 GLM 失败样本）', () => {
+    const raw =
+      '{"reply":"已重写引言","proposal":{"kind":"chapter","payload":{"nodeKey":"intro","markdown":"# 引言\\"}}';
+    expect(extractJsonObject(raw)).toEqual({
+      reply: '已重写引言',
+      proposal: {
+        kind: 'chapter',
+        payload: { nodeKey: 'intro', markdown: '# 引言\\' },
+      },
+    });
+  });
+
+  it('闭合修复后首尾多余的右花括号被截断', () => {
+    expect(extractJsonObject('{"a":"x\\"}}')).toEqual({ a: 'x\\' });
+  });
+
+  it('字符串与对象被截断到文本末尾时补齐闭合引号与花括号', () => {
+    expect(extractJsonObject('{"reply":"回答被截断')).toEqual({ reply: '回答被截断' });
+    expect(extractJsonObject('{"outer":{"inner":"v"')).toEqual({ outer: { inner: 'v' } });
+  });
+
+  it('闭合失败且补全后仍非法时返回 null', () => {
+    expect(extractJsonObject('{"a":1 {"b":2')).toBeNull();
+  });
+});

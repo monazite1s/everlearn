@@ -65,10 +65,24 @@ describe('parseAgentReply', () => {
 });
 
 describe('parseAgentReply 解析失败提示', () => {
-  test('疑似提案结构解析失败时附加提示行并记录结构化警告', () => {
+  test('截断的章节提案经闭合修复后仍可提取且不告警', () => {
     const warn = vi.spyOn(Logger.prototype, 'warn').mockReturnValue(undefined);
     const reply = parseAgentReply(
       '{"reply":"好的，我来重写第一章。","proposal":{"kind":"chapter","payload":{"nodeKey":"intro","markdown":"# 引言',
+    );
+    expect(reply.proposal).toEqual({
+      kind: 'chapter',
+      payload: { nodeKey: 'intro', markdown: '# 引言' },
+    });
+    expect(reply.reply).toBe('好的，我来重写第一章。');
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  test('疑似提案结构解析失败时附加提示行并记录结构化警告', () => {
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockReturnValue(undefined);
+    const reply = parseAgentReply(
+      '{"reply":"好的，我来重写第一章。","proposal":{"kind":"chapter","payload":{"nodeKey":}}}',
     );
     expect(reply.proposal).toBeNull();
     expect(reply.reply).toContain('好的，我来重写第一章。');

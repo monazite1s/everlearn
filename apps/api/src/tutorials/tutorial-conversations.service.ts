@@ -95,17 +95,17 @@ export class TutorialConversationsService {
     return parseAgentReply(text);
   }
 
-  /** 用于读取最近对话历史作为提示词上下文。 */
+  /** 用于读取最近 50 条对话历史（升序返回），保证长会话下最新消息进入提示词上下文。 */
   private async readHistory(conversationId: string): Promise<ComposeHistoryItem[]> {
     const rows = await withTutorialTables(this.databaseService.client)
       .selectFrom('tutorial_messages')
       .select(['content', 'proposal', 'role'])
       .where('conversation_id', '=', conversationId)
-      .orderBy('created_at', 'asc')
-      .orderBy('id', 'asc')
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
       .limit(50)
       .execute();
-    return rows.map((row) => {
+    return rows.reverse().map((row) => {
       const kind = row.role === 'agent' ? readProposalKind(row.proposal) : null;
       return {
         content: row.content,
