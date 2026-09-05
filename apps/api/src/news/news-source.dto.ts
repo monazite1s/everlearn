@@ -2,7 +2,9 @@
  * @fileoverview 定义单条订阅来源的请求边界形态。
  */
 
-import { IsIn, IsString, Matches } from 'class-validator';
+import { IsIn, IsString, Validate } from 'class-validator';
+
+import { IsValidSourceValueConstraint } from './news-source-value.constraint';
 
 /** 单条订阅来源的请求边界形态。 */
 export class NewsSourceDto {
@@ -10,6 +12,6 @@ export class NewsSourceDto {
   type!: 'rss' | 'search' | 'site';
 
   @IsString()
-  @Matches(/^https?:\/\/\S{1,2000}$/u)
+  @Validate(IsValidSourceValueConstraint)
   value!: string;
 }

@@ -90,6 +90,19 @@ async function researchChapter(
     .join('\n');
 }
 
+/** 用于匹配未实例化的字面引用占位符（如 [n]、[ n ]）。 */
+const CITATION_PLACEHOLDER_PATTERN = /\[\s*n\s*\]/iu;
+
+/** 用于检测章节文本是否仍含字面引用占位符。 */
+function hasCitationPlaceholder(text: string): boolean {
+  return CITATION_PLACEHOLDER_PATTERN.test(text);
+}
+
+/** 用于在重试后仍含占位符的稿尾追加人工复核警告，不阻断落稿。 */
+function withPlaceholderWarning(markdown: string): string {
+  return `${markdown}\n\n> ⚠️ 自动校验发现未实例化的引用占位符 [n]，已保留原稿，请人工修订引用编号。`;
+}
+
 /** 用于构造章节撰写提示词并调用 LLM 校验非空。 */
 async function writeChapter(
   item: ChapterItem,
@@ -104,6 +117,19 @@ async function writeChapter(
     title: item.title,
     topic: item.sessionTopic,
   });
+  let text = await requestChapterText(deps, prompt);
+  if (hasCitationPlaceholder(text)) {
+    text = await requestChapterText(deps, prompt);
+    if (hasCitationPlaceholder(text)) return withPlaceholderWarning(text);
+  }
+  return text;
+}
+
+/** 用于调用 LLM 生成章节正文并校验非空。 */
+async function requestChapterText(
+  deps: TutorialChapterExecutorDeps,
+  prompt: string,
+): Promise<string> {
   const text = await deps.llm(prompt);
   if (text.trim().length === 0) {
     throw new WorkflowApiError('TUTORIAL_CHAPTER_EMPTY', 'chapter llm returned empty content');

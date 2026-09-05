@@ -249,6 +249,7 @@ export class NewsRunsService {
         throw newsError('NEWS_RUN_NOT_ACTIVE', '简报运行不存在或已进入终态。', 409);
       }
       if (subscriptionId !== null) await this.applyItemResults(database, subscriptionId, input);
+      if (input.status === 'failed') await this.deleteFailedRunResidue(database, runId);
     });
   }
 
@@ -289,6 +290,20 @@ export class NewsRunsService {
       .where('id', '=', runId)
       .executeTakeFirst();
     return row?.subscription_id ?? null;
+  }
+
+  /** 用于删除失败 run 登记且未被显式拒绝的条目，使其退出条目流与重试去重集合。 */
+  private async deleteFailedRunResidue(
+    database: Kysely<NewsDatabaseSchema>,
+    runId: string,
+  ): Promise<void> {
+    // ponytail: 失败 run 的残留以删除而非置 rejected 收敛，避免重试 run 撞订阅内指纹唯一约束；
+    // 升级条件为需要审计失败 run 的原始采集时改为软隐藏并放开登记冲突翻回。
+    await database
+      .deleteFrom('news_items')
+      .where('discovered_run_id', '=', runId)
+      .where('relevance', '=', 'accepted')
+      .execute();
   }
 
   /** 用于列出启用且配置了计划的订阅。 */

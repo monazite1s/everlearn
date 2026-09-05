@@ -66,7 +66,7 @@
 - `/news-subscriptions` 管理订阅、启停与 `/:id/run` 手动运行；配置界面收敛在资讯页头。
 - `/news-items` 条目流：`subscriptionId/sourceType/importance/limit/cursor` 过滤，固定 `importance desc → discoveredAt desc → id desc` 排序和不透明游标；被判无关条目不返回。`/news-items/:id` 返回处理正文、相关性/重要性判定与发现运行 ID。
 - `/news-digests` 简报按日列表；`/digest-runs/:id` 查询详情和重试步骤。
-- `/tutorials`：列表（含进度与状态投影）与创建草案；`/:id/confirm-scope`、`/:id/confirm-outline` 对应两次不可隐式跳过的确认闸门；章节重试为 `/tutorial-chapters/:id/retry`。
+- `/tutorials`：列表（含进度与状态投影）与创建草案；`/:id/confirm-scope`、`/:id/confirm-outline` 对应两次不可隐式跳过的确认闸门（compose 快照中的 outline gate 确认卡即 `confirm-outline` 端点语义，首次大纲确认走该端点；对话内 outline 提案用于建库后的修订）；章节重试为 `/tutorial-chapters/:id/retry`。
 - `/tutorials/:id/compose` 返回会话快照（分页消息、待处理提案与确认卡、大纲与章节状态）；`POST /tutorials/:id/compose/messages` 以幂等键发送消息并返回 202；`POST /tutorials/:id/compose/proposals/:proposalId/accept|reject` 决议提案，重复决议返回首次结果；章节差异接受沿用 `/generations/:id/accept`；compose 流式更新订阅既有 `/workflow-runs/:id/events`。
 
 ## SSE

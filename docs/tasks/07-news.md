@@ -108,3 +108,4 @@
 4. 同日幂等近似：`createScheduledDigest` 以「当天已有运行即跳过」近似 scheduleId+scheduledAt 幂等（ponytail 已注明）。升级条件：出现跨天重放或错过补跑需求时改为精确幂等键。
 5. 经验常量未配置化：`MAX_ITEMS=8`、`SUMMARY_LIMIT=120`、`listRuns` limit 20、seenHashes 500 等为硬编码。升级条件：出现分页或订阅级定制需求时入配置。
 6. 双份同源实现未下沉：json-extraction（api/ai 与 worker/tutorials）、搜索 Provider 契约（api/web-search 与 worker/tutorial-research）因跨包限制逐行复制维护，ponytail 已注明下沉条件。升级条件：任一份需要独立演化或出现第三处复用时抽到 packages。
+7. 来源池质量偏弱（2026-09-05 真机生产发现）：搜索来源结果中 CSDN 与课程营销页占比高，同题异源条目未去重，简报信噪比受限。升级条件：开启多引擎（Tavily/GLM 并行取优）、引入站点权重或黑名单、按标题相似度做同题聚类指纹合并。

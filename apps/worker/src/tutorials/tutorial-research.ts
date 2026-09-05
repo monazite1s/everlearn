@@ -193,7 +193,7 @@ export function buildChapterPrompt(input: {
   return [
     `请为教程「${input.topic}」撰写章节「${input.title}」的中文 Markdown 正文。`,
     input.summary.length > 0 ? `章节目标：${input.summary}` : '',
-    `读者水平：${input.level}/100。事实句需以 [n] 标注引用，文末按「## 参考来源」列出编号来源列表；无来源的事实不要写。`,
+    `读者水平：${input.level}/100。事实句以 [n] 标注引用：编号必须是正文中实际出现的数字（如 [1][2]），与文末「## 参考来源」编号列表一一对应；禁止输出字面 [n] 占位符；无把握的引用直接写来源标题；无来源的事实不要写。`,
     '知识库资料：',
     ...input.kbTexts.map((text, index) => `【资料${index + 1}】${text}`),
     input.researchNotes.length > 0

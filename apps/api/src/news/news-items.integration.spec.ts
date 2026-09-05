@@ -314,6 +314,34 @@ async function expectDetailOwnership(): Promise<void> {
   await expect(itemsService.get(otherItem)).rejects.toThrow(NotFoundException);
 }
 
+/** 用于断言失败 run 清理登记残留，条目流不可见且重试 run 可重新登记同题条目。 */
+async function expectFailedRunResidueClearedForRetry(): Promise<void> {
+  const fingerprint = 'r'.repeat(64);
+  const failedRun = await createPendingRun(subscriptionId);
+  await runsService.claimPendingDigestRuns(5);
+  await registerItems(failedRun, [{ fingerprint, title: '失败残留条目' }]);
+  await runsService.completeDigestRun(failedRun, {
+    errorCode: 'NEWS_LLM_FAILED',
+    status: 'failed',
+  });
+  const residue = await database
+    .selectFrom('news_items')
+    .select('id')
+    .where('discovered_run_id', '=', failedRun)
+    .execute();
+  expect(residue).toHaveLength(0);
+  expect((await itemsService.list({})).items.some((item) => item.title === '失败残留条目')).toBe(
+    false,
+  );
+  const retryRun = await createPendingRun(subscriptionId);
+  const claimed = await runsService.claimPendingDigestRuns(5);
+  expect(claimed.find((entry) => entry.runId === retryRun)?.seenHashes).not.toContain(fingerprint);
+  expect(await registerItems(retryRun, [{ fingerprint, title: '失败残留条目' }])).toHaveLength(1);
+  expect((await itemsService.list({})).items.some((item) => item.title === '失败残留条目')).toBe(
+    true,
+  );
+}
+
 describe('news items integration', () => {
   test('登记条目按指纹去重并快照主题与运行引用', expectRegistrationDedup);
   test('完结回写条目重要性与相关性判定且忽略未知条目', expectCompleteWritesItemResults);
@@ -323,4 +351,5 @@ describe('news items integration', () => {
   test('条目流支持重要性、来源与订阅的组合过滤', expectFilterCombinations);
   test('跨过滤条件游标被拒绝', expectCursorFingerprintGuard);
   test('详情返回处理正文与运行引用且跨所有者不可见', expectDetailOwnership);
+  test('失败 run 清理残留且重试 run 去重集合不含被清条目', expectFailedRunResidueClearedForRetry);
 });

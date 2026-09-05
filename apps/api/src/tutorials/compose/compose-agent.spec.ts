@@ -42,13 +42,24 @@ describe('parseAgentReply', () => {
     expect(arrayPayload.proposal).toBeNull();
   });
 
-  test('缺失 reply 时不丢弃合法提案', () => {
+  test('缺失 reply 时不丢弃合法提案，scope 场景正文兜底为要点摘要', () => {
     const reply = parseAgentReply(
       '{"proposal":{"kind":"scope","payload":{"topic":"T","audience":"A","level":null}}}',
     );
-    expect(reply.reply).toBe('');
+    expect(reply.reply).toContain('主题「T」');
+    expect(reply.reply).toContain('受众「A」');
     expect(reply.proposal?.kind).toBe('scope');
     expect(reply.proposal?.payload).toEqual({ topic: 'T', audience: 'A', level: null });
+  });
+
+  test('scope 提案缺失 reply 时正文兜底为一行式范围要点', () => {
+    const reply = parseAgentReply(
+      '{"proposal":{"kind":"scope","payload":{"topic":"Kysely","audience":"后端工程师","level":60,"depth":"standard","goals":"会写迁移","includeTopics":["迁移"],"excludeTopics":[],"knowledgeBaseIds":["a","b"]}}}',
+    );
+    expect(reply.reply).toContain('受众');
+    expect(reply.reply).toContain('后端工程师');
+    expect(reply.reply).toContain('深度');
+    expect(reply.reply).toContain('来源范围 2 个知识库');
   });
 });
 
@@ -63,6 +74,7 @@ describe('buildComposeMessages', () => {
     expect(messages[0]!.role).toBe('system');
     expect(messages[0]!.content).toContain('outline_ready');
     expect(messages[0]!.content).toContain('[intro] 入门');
+    expect(messages[0]!.content).toContain('一行式范围要点');
     expect(messages.at(-1)).toEqual({ content: '请调整大纲', role: 'user' });
   });
 });
