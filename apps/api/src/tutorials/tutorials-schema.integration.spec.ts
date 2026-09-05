@@ -129,7 +129,7 @@ describe('tutorial draft state machine', () => {
         id: foreignId,
         level: 10,
         owner_id: foreignOwnerId,
-        status: 'draft',
+        status: 'draft_scope',
         topic: '他人教程',
       })
       .executeTakeFirstOrThrow();

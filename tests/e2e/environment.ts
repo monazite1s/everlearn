@@ -6,14 +6,20 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 
-import { resolveTutorialContent, writeTavilyResponse } from './tutorial-mock';
+import {
+  MOCK_BRIEF_TEXT,
+  resolveComposeContent,
+  resolveNewsJudgeContent,
+  resolveTutorialContent,
+  writeGlmSearchResponse,
+} from './tutorial-mock';
 
 /** mock LLM 固定端口。 */
 export const E2E_LLM_PORT = 3202;
 export const E2E_LLM_BASE_URL = `http://127.0.0.1:${E2E_LLM_PORT}/v1`;
 
-/** mock Tavily 搜索基础地址，与 mock LLM 共用同一端口。 */
-export const E2E_TAVILY_BASE_URL = `http://127.0.0.1:${E2E_LLM_PORT}/tavily`;
+/** mock GLM 搜索基础地址，与 mock LLM 共用同一端口。 */
+export const E2E_GLM_SEARCH_BASE_URL = `http://127.0.0.1:${E2E_LLM_PORT}`;
 
 /** 用于读取 web 构建产物中固化的同源代理目标，API 必须监听同一端口。 */
 function resolveBakedApiOrigin(): string {
@@ -82,14 +88,14 @@ function toChunks(text: string): string[] {
   return chunks;
 }
 
-/** 用于处理 mock LLM 的 chat/completions、embeddings 与 mock Tavily 请求。 */
+/** 用于处理 mock LLM 的 chat/completions、embeddings 与 mock GLM 搜索请求。 */
 async function handleLlmRequest(
   request: IncomingMessageLike,
   response: ServerResponseLike,
 ): Promise<void> {
   const rawBody = await readBody(request);
-  if (request.url?.includes('/tavily/search')) {
-    writeTavilyResponse(response);
+  if (request.url?.includes('/web_search')) {
+    writeGlmSearchResponse(response);
     return;
   }
   if (request.url?.includes('/embeddings')) {
@@ -126,8 +132,12 @@ async function handleChatRequest(rawBody: string, response: ServerResponseLike):
   };
   const messages = body.messages ?? [];
   const promptText = messages.map((message) => message.content ?? '').join('\n');
-  const tutorialContent = await resolveTutorialContent(promptText, response);
-  const content = tutorialContent ?? (isQaRequest(messages) ? qaContent() : draftContent());
+  const content =
+    (await resolveTutorialContent(promptText, response)) ??
+    resolveComposeContent(promptText) ??
+    resolveNewsJudgeContent(promptText) ??
+    (promptText.includes('生成一份中文简报') ? MOCK_BRIEF_TEXT : null) ??
+    (isQaRequest(messages) ? qaContent() : draftContent());
   if (content.length > 0) await writeChatCompletion(body.stream === true, content, response);
 }
 
@@ -288,11 +298,11 @@ interface ApiHandle {
   readonly ownsApi: boolean;
 }
 
-/** API 与 Worker 共用的 mock 搜索注入：API 侧无消费者，Worker 教程研究指向 mock Tavily。 */
+/** API 与 Worker 共用的 mock 搜索注入：GLM Provider 指向 mock /web_search。 */
 const MOCK_SEARCH_ENV = {
+  GLM_SEARCH_BASE_URL: E2E_GLM_SEARCH_BASE_URL,
   SEARCH_API_KEY: 'e2e-search-key',
-  SEARCH_PROVIDER: 'tavily',
-  TAVILY_BASE_URL: E2E_TAVILY_BASE_URL,
+  SEARCH_PROVIDER: 'glm',
 };
 
 /** 用于复用或拉起 API 进程并等待就绪。 */

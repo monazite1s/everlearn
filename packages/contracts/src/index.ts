@@ -106,3 +106,12 @@ export type {
   SearchScope,
   SearchTitleResult,
 } from './search.js';
+
+export { NEWS_ITEMS_DEFAULT_LIMIT, NEWS_ITEMS_MAX_LIMIT } from './news-item.js';
+export type {
+  NewsItemDetail,
+  NewsItemImportance,
+  NewsItemListResponse,
+  NewsItemSourceType,
+  NewsItemSummary,
+} from './news-item.js';

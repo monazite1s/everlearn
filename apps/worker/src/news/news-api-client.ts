@@ -4,15 +4,19 @@
 
 const REQUEST_TIMEOUT_MS = 120_000;
 
-/** 资讯运行上下文载荷：订阅配置与近期已见指纹。 */
+/** 资讯运行上下文载荷：订阅配置与近期条目上下文。 */
 export interface NewsDigestDispatchItem {
+  /** 同订阅近期条目标题，供重要性评定对照。 */
+  readonly recentItemTitles: readonly string[];
   readonly runId: string;
   readonly seenHashes: readonly string[];
   readonly subscription: {
     readonly excludeKeywords: readonly string[];
-    readonly feedUrl: string;
     readonly includeKeywords: readonly string[];
+    readonly name: string;
     readonly newsKnowledgeBaseId: string;
+    readonly sources: readonly { type: 'rss' | 'search' | 'site'; value: string }[];
+    readonly topic: string;
   };
 }
 
@@ -80,14 +84,46 @@ export interface NewsSourceResultPayload {
   readonly url: string;
 }
 
-/** 用于写入简报运行终态与已见条目。 */
+/** 登记结果单条：指纹到条目 id 的映射。 */
+export interface RegisteredNewsItem {
+  readonly contentFingerprint: string;
+  readonly id: string;
+}
+
+/** 用于在发现新条目时登记资讯条目并取回指纹到条目 id 的映射。 */
+export async function registerNewsRunItems(
+  config: { apiInternalUrl: string; secret: string },
+  runId: string,
+  items: readonly {
+    contentFingerprint: string;
+    processedContent?: string;
+    publishedAt?: string | null;
+    snippet?: string;
+    sourceType: 'rss' | 'search';
+    title: string;
+    url: string;
+  }[],
+): Promise<RegisteredNewsItem[]> {
+  const result = await callInternal(config, `/runs/${runId}/items`, {
+    body: { items },
+    method: 'POST',
+  });
+  return Array.isArray(result) ? (result as RegisteredNewsItem[]) : [];
+}
+
+/** 用于写入简报运行终态与条目处理结果。 */
 export async function completeNewsDigest(
   config: { apiInternalUrl: string; secret: string },
   runId: string,
   input: {
     briefDocumentId?: string;
     errorCode?: string;
-    seenItems?: { contentHash: string; normalizedUrl: string }[];
+    itemImportance?: readonly {
+      importance: 'high' | 'low' | 'normal';
+      itemId: string;
+      processedContent?: string;
+    }[];
+    rejectedItemIds?: readonly string[];
     sourceResults?: readonly NewsSourceResultPayload[];
     status: 'failed' | 'succeeded';
     warnings?: readonly string[];
@@ -114,6 +150,26 @@ export async function createScheduledNewsDigest(
     body: { subscriptionId },
     method: 'POST',
   })) as { runId: string };
+}
+
+/** Web 搜索结果的传输形态。 */
+export interface NewsWebSearchResult {
+  readonly publishedAt: string | null;
+  readonly snippet: string;
+  readonly title: string;
+  readonly url: string;
+}
+
+/** 用于为搜索来源执行一次 Web 搜索并返回公开结果形态。 */
+export async function searchWeb(
+  config: { apiInternalUrl: string; secret: string },
+  input: { maxResults?: number; query: string },
+): Promise<readonly NewsWebSearchResult[]> {
+  const result = await callInternal(config, '/actions/web-search', {
+    body: input,
+    method: 'POST',
+  });
+  return Array.isArray(result) ? (result as NewsWebSearchResult[]) : [];
 }
 
 /** 用于把 Workflow 内部端点的错误转换为资讯稳定错误码。 */

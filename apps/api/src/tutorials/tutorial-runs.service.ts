@@ -9,6 +9,8 @@ import type { JsonValue } from '../database/database.types';
 import { DatabaseService } from '../database/database.service';
 import { selectReadyChapters } from './chapter-scheduling';
 import {
+  CHAPTER_MAX_ATTEMPTS_ERROR_CODE,
+  MAX_CHAPTER_ATTEMPTS,
   finalizeSession,
   readChapterStatusMap,
   readKbScopeTexts,
@@ -50,14 +52,14 @@ export interface OutlineCompleteInput {
   readonly errorCode?: string;
   readonly outline?: TutorialOutline;
   readonly warnings?: readonly string[];
-  readonly status: 'failed' | 'succeeded';
+  readonly status: 'completed' | 'failed';
 }
 
 /** 章节运行终态写入。 */
 export interface ChapterCompleteInput {
   readonly errorCode?: string;
   readonly markdown?: string;
-  readonly status: 'failed' | 'succeeded';
+  readonly status: 'completed' | 'failed';
 }
 
 /** 领取锁时限内章节行的查询投影。 */
@@ -144,7 +146,7 @@ export class TutorialRunsService {
       .set({
         error_code: input.errorCode ?? null,
         ...(input.outline === undefined ? {} : { outline: input.outline as unknown as JsonValue }),
-        status: input.status === 'succeeded' ? 'outline_ready' : 'failed',
+        status: input.status === 'completed' ? 'awaiting_outline' : 'failed',
         updated_at: new Date(),
         ...(input.warnings === undefined
           ? {}
@@ -158,7 +160,7 @@ export class TutorialRunsService {
     }
   }
 
-  /** 用于原子领取依赖已满足的待执行章节并置为 generating。 */
+  /** 用于原子领取依赖已满足的待执行章节并置为 running。 */
   async claimReadyChapters(limit: number): Promise<ChapterDispatchItem[]> {
     return this.databaseService.client.transaction().execute(async (transaction) => {
       const tx = withTutorialTables(transaction);
@@ -166,6 +168,8 @@ export class TutorialRunsService {
       await sql`SELECT pg_advisory_xact_lock(hashtextextended('tutorial-chapter-claim', 0))`.execute(
         tx,
       );
+      const exhaustedSessions = await this.failExhaustedChapters(tx);
+      for (const sessionId of exhaustedSessions) await finalizeSession(sessionId, tx);
       const candidates = await this.readClaimCandidates(tx);
       const summaries = new Map(
         candidates.rows.map((row) => [row.session_id, readOutlineSummaries(row.outline)]),
@@ -176,7 +180,7 @@ export class TutorialRunsService {
           .updateTable('tutorial_chapters')
           .set({
             attempt: sql`attempt + 1`,
-            status: 'generating',
+            status: 'running',
             updated_at: new Date(),
           })
           .where(
@@ -188,6 +192,24 @@ export class TutorialRunsService {
       }
       return this.toDispatchItems(ready, summaries);
     });
+  }
+
+  /** 用于把尝试耗尽的待执行章节置为 failed 并返回受影响会话。 */
+  private async failExhaustedChapters(
+    tx: Kysely<TutorialDatabaseSchema>,
+  ): Promise<readonly string[]> {
+    const rows = await tx
+      .updateTable('tutorial_chapters')
+      .set({
+        error_code: CHAPTER_MAX_ATTEMPTS_ERROR_CODE,
+        status: 'failed',
+        updated_at: new Date(),
+      })
+      .where('status', 'in', ['placeholder', 'queued'])
+      .where('attempt', '>=', MAX_CHAPTER_ATTEMPTS)
+      .returning('session_id')
+      .execute();
+    return [...new Set(rows.map((row) => row.session_id))];
   }
 
   /** 用于把领取行筛选为依赖已满足的前 limit 个。 */
@@ -230,7 +252,7 @@ export class TutorialRunsService {
         'tutorial_sessions.outline',
         'tutorial_sessions.topic as session_topic',
       ])
-      .where('tutorial_chapters.status', '=', 'pending')
+      .where('tutorial_chapters.status', 'in', ['placeholder', 'queued'])
       .where('tutorial_sessions.status', 'in', ['generating', 'partial'])
       .execute();
     const statuses = await readChapterStatusMap(
@@ -267,7 +289,7 @@ export class TutorialRunsService {
         .selectFrom('tutorial_chapters')
         .select(['document_id', 'session_id', 'title'])
         .where('id', '=', chapterId)
-        .where('status', '=', 'generating')
+        .where('status', '=', 'running')
         .forUpdate()
         .executeTakeFirst();
       if (chapter === undefined) {
@@ -278,8 +300,13 @@ export class TutorialRunsService {
         .set({ error_code: input.errorCode ?? null, status: input.status, updated_at: new Date() })
         .where('id', '=', chapterId)
         .executeTakeFirstOrThrow();
-      if (input.status === 'succeeded' && chapter.document_id !== null) {
-        await writeChapterRevision(tx, chapter.document_id, chapter.title, input.markdown ?? '');
+      if (input.status === 'completed' && chapter.document_id !== null) {
+        await writeChapterRevision(tx, {
+          documentId: chapter.document_id,
+          markdown: input.markdown ?? '',
+          source: 'automation',
+          title: chapter.title,
+        });
       }
       await finalizeSession(chapter.session_id, tx);
     });

@@ -1,78 +1,83 @@
 /**
- * @fileoverview 实现限定所有者的资讯订阅 CRUD 与简报运行创建。
+ * @fileoverview 实现限定所有者的资讯订阅 CRUD、多来源配置与简报运行读取。
  */
 
 import { randomUUID } from 'node:crypto';
 
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Kysely } from 'kysely' with { 'resolution-mode': 'import' };
 
 import type { JsonValue } from '../database/database.types';
 import { DatabaseService } from '../database/database.service';
-import { ApiDomainException } from '../http-boundary/api-domain.exception';
 import { LocalIdentityContext } from '../identity/local-identity.context';
 import { CreateNewsSubscriptionDto } from './create-news-subscription.dto';
-import { withNewsTables } from './news-db.types';
-import type { NewsDigestRunSummary, NewsSubscriptionSummary } from './news.dto';
+import { withNewsTables, type NewsDatabaseSchema } from './news-db.types';
+import type {
+  NewsDigestListResponse,
+  NewsDigestRunSummary,
+  NewsScheduleView,
+  NewsSourceView,
+  NewsSubscriptionSummary,
+} from './news.dto';
+import {
+  computeNextRunAt,
+  listDigestPage,
+  newsError,
+  toDigestRunSummary,
+} from './news.service.helpers';
 import { UpdateNewsSubscriptionDto } from './update-news-subscription.dto';
 
 const NEWS_KB_NAME = '资讯';
 
-/** 用于构造携带稳定错误码的领域拒绝。 */
-export function newsError(code: string, message: string, status: number): ApiDomainException {
-  return new ApiDomainException({ code, kind: 'domain', message, status });
-}
-
-/** 用于把数据库行投影为公开摘要。 */
-function toSummary(row: {
+/** 订阅行的数据库读取投影。 */
+interface SubscriptionRow {
+  color_slot: number;
   created_at: Date;
+  enabled: boolean;
   exclude_keywords: string[];
-  feed_url: string;
   id: string;
   include_keywords: string[];
-  latest_run_status: string | null;
   name: string;
   news_knowledge_base_id: string;
   schedule: unknown;
-}): NewsSubscriptionSummary {
-  const schedule =
-    typeof row.schedule === 'object' && row.schedule !== null
-      ? (row.schedule as NewsSubscriptionSummary['schedule'])
-      : null;
+  topic: string;
+  version: number;
+}
+
+/** 用于读取计划 jsonb 为带星期的公开投影。 */
+function toScheduleView(value: unknown): NewsScheduleView | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const record = value as { kind?: unknown; time?: unknown; timezone?: unknown; weekday?: unknown };
+  if (record.kind !== 'daily' && record.kind !== 'weekly') return null;
+  if (typeof record.time !== 'string' || typeof record.timezone !== 'string') return null;
   return {
-    createdAt: row.created_at.toISOString(),
-    excludeKeywords: row.exclude_keywords,
-    feedUrl: row.feed_url,
-    id: row.id,
-    includeKeywords: row.include_keywords,
-    latestRunStatus: row.latest_run_status,
-    name: row.name,
-    newsKnowledgeBaseId: row.news_knowledge_base_id,
-    schedule,
+    kind: record.kind,
+    time: record.time,
+    timezone: record.timezone,
+    weekday: typeof record.weekday === 'number' ? record.weekday : null,
   };
 }
 
-/** 用于把运行行投影为带来源决策与警告的公开摘要。 */
-export function toDigestRunSummary(row: {
-  brief_document_id: string | null;
-  created_at: Date;
-  error_code: string | null;
-  id: string;
-  source_results: JsonValue;
-  status: string;
-  subscription_id: string;
-  warnings: JsonValue;
-}): NewsDigestRunSummary {
+/** 用于把订阅行与来源列表组装为公开摘要。 */
+function toSummary(
+  row: SubscriptionRow,
+  sources: readonly NewsSourceView[],
+  now: Date,
+): NewsSubscriptionSummary {
+  const schedule = toScheduleView(row.schedule);
   return {
-    briefDocumentId: row.brief_document_id,
-    createdAt: row.created_at.toISOString(),
-    errorCode: row.error_code,
+    colorSlot: row.color_slot,
+    enabled: row.enabled,
+    excludeKeywords: row.exclude_keywords,
     id: row.id,
-    sourceResults: Array.isArray(row.source_results)
-      ? (row.source_results as unknown as NewsDigestRunSummary['sourceResults'])
-      : [],
-    status: row.status,
-    subscriptionId: row.subscription_id,
-    warnings: Array.isArray(row.warnings) ? (row.warnings as string[]) : [],
+    includeKeywords: row.include_keywords,
+    name: row.name,
+    newsKnowledgeBaseId: row.news_knowledge_base_id,
+    nextRunAt: schedule === null || !row.enabled ? null : computeNextRunAt(schedule, now),
+    schedule,
+    sources,
+    topic: row.topic,
+    version: row.version,
   };
 }
 
@@ -86,8 +91,10 @@ export class NewsService {
   ) {}
 
   /** 用于确保所有者存在唯一的资讯知识库并返回其 id。 */
-  private async ensureNewsKnowledgeBase(ownerId: string): Promise<string> {
-    const database = this.databaseService.client;
+  private async ensureNewsKnowledgeBase(
+    database: Kysely<NewsDatabaseSchema>,
+    ownerId: string,
+  ): Promise<string> {
     const existing = await database
       .selectFrom('knowledge_bases')
       .select('id')
@@ -111,76 +118,159 @@ export class NewsService {
     return id;
   }
 
-  /** 用于创建订阅并自动确保资讯知识库存在。 */
+  /** 用于在同一事务内创建订阅、写入多来源并自动确保资讯知识库存在。 */
   async create(input: CreateNewsSubscriptionDto): Promise<NewsSubscriptionSummary> {
     const ownerId = this.identity.getActor().ownerId;
-    const knowledgeBaseId = await this.ensureNewsKnowledgeBase(ownerId);
-    const row = await withNewsTables(this.databaseService.client)
-      .insertInto('news_subscriptions')
-      .values({
-        id: randomUUID(),
-        owner_id: ownerId,
-        name: input.name,
-        feed_url: input.feedUrl,
-        include_keywords: input.includeKeywords ?? [],
-        exclude_keywords: input.excludeKeywords ?? [],
-        schedule: (input.schedule ?? null) as JsonValue,
-        news_knowledge_base_id: knowledgeBaseId,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return toSummary({ ...row, latest_run_status: null });
+    return this.databaseService.client.transaction().execute(async (transaction) => {
+      const database = withNewsTables(transaction);
+      const knowledgeBaseId = await this.ensureNewsKnowledgeBase(database, ownerId);
+      const colorSlot = await this.pickColorSlot(database, ownerId);
+      const row = await database
+        .insertInto('news_subscriptions')
+        .values({
+          id: randomUUID(),
+          owner_id: ownerId,
+          name: input.name,
+          topic: input.topic,
+          color_slot: colorSlot,
+          include_keywords: input.includeKeywords ?? [],
+          exclude_keywords: input.excludeKeywords ?? [],
+          schedule: (input.schedule ?? null) as JsonValue,
+          news_knowledge_base_id: knowledgeBaseId,
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow();
+      const sources = await this.replaceSources(database, row.id, input.sources);
+      return toSummary(row, sources, new Date());
+    });
   }
 
-  /** 用于列出所有者的订阅及最近一次运行状态。 */
+  /** 用于在同一事务内按所有者约束整体替换订阅字段、来源与计划（乐观并发）。 */
+  async update(id: string, input: UpdateNewsSubscriptionDto): Promise<NewsSubscriptionSummary> {
+    const ownerId = this.identity.getActor().ownerId;
+    return this.databaseService.client.transaction().execute(async (transaction) => {
+      const database = withNewsTables(transaction);
+      const row = await database
+        .updateTable('news_subscriptions')
+        .set({
+          name: input.name,
+          topic: input.topic,
+          include_keywords: input.includeKeywords ?? [],
+          exclude_keywords: input.excludeKeywords ?? [],
+          schedule: (input.schedule ?? null) as JsonValue,
+          ...(input.enabled === undefined ? {} : { enabled: input.enabled }),
+          /** 用于在并发更新通过版本守卫后递增乐观版本号。 */
+          version: (expression) => expression('version', '+', 1),
+          updated_at: new Date(),
+        })
+        .where('id', '=', id)
+        .where('owner_id', '=', ownerId)
+        .where('version', '=', input.version)
+        .returningAll()
+        .executeTakeFirst();
+      if (row === undefined) {
+        const existing = await this.readSubscription(database, ownerId, id);
+        throw newsError(
+          'VERSION_CONFLICT',
+          '订阅已被其他保存更新，请刷新后重试。',
+          existing === undefined ? 404 : 409,
+        );
+      }
+      const sources = await this.replaceSources(database, id, input.sources);
+      return toSummary(row, sources, new Date());
+    });
+  }
+
+  /** 用于列出所有者的订阅及其来源配置。 */
   async list(): Promise<NewsSubscriptionSummary[]> {
     const ownerId = this.identity.getActor().ownerId;
     const rows = await withNewsTables(this.databaseService.client)
       .selectFrom('news_subscriptions')
-      .select((expression) => [
-        'news_subscriptions.id',
-        'news_subscriptions.name',
-        'news_subscriptions.feed_url',
-        'news_subscriptions.include_keywords',
-        'news_subscriptions.exclude_keywords',
-        'news_subscriptions.schedule',
-        'news_subscriptions.news_knowledge_base_id',
-        'news_subscriptions.created_at',
-        expression
-          .selectFrom('news_digest_runs as latest_run')
-          .whereRef('latest_run.subscription_id', '=', 'news_subscriptions.id')
-          .orderBy('latest_run.created_at', 'desc')
-          .orderBy('latest_run.id', 'desc')
-          .limit(1)
-          .select('latest_run.status')
-          .as('latest_run_status'),
-      ])
+      .selectAll()
       .where('owner_id', '=', ownerId)
       .orderBy('created_at', 'desc')
       .execute();
-    return rows.map((row) => toSummary(row));
+    if (rows.length === 0) return [];
+    const sources = await this.readSources(rows.map((row) => row.id));
+    return rows.map((row) => toSummary(row, sources.get(row.id) ?? [], new Date()));
   }
 
-  /** 用于按所有者约束更新订阅字段与计划。 */
-  async update(id: string, input: UpdateNewsSubscriptionDto): Promise<NewsSubscriptionSummary> {
-    const row = await withNewsTables(this.databaseService.client)
-      .updateTable('news_subscriptions')
-      .set({
-        ...(input.name === undefined ? {} : { name: input.name }),
-        ...(input.feedUrl === undefined ? {} : { feed_url: input.feedUrl }),
-        ...(input.includeKeywords === undefined ? {} : { include_keywords: input.includeKeywords }),
-        ...(input.excludeKeywords === undefined ? {} : { exclude_keywords: input.excludeKeywords }),
-        ...(input.schedule === undefined
-          ? {}
-          : { schedule: (input.schedule ?? null) as JsonValue }),
-        updated_at: new Date(),
-      })
+  /** 用于按订阅集合批量读取来源配置。 */
+  private async readSources(
+    subscriptionIds: readonly string[],
+  ): Promise<Map<string, NewsSourceView[]>> {
+    const rows = await withNewsTables(this.databaseService.client)
+      .selectFrom('news_sources')
+      .select(['subscription_id', 'type', 'value'])
+      .where(
+        'subscription_id',
+        'in',
+        subscriptionIds.filter((value, index, all) => all.indexOf(value) === index),
+      )
+      .orderBy('created_at', 'asc')
+      .execute();
+    const grouped = new Map<string, NewsSourceView[]>();
+    for (const row of rows) {
+      const list = grouped.get(row.subscription_id) ?? [];
+      list.push({ type: row.type as NewsSourceView['type'], value: row.value });
+      grouped.set(row.subscription_id, list);
+    }
+    return grouped;
+  }
+
+  /** 用于全量替换订阅来源并返回替换后的列表。 */
+  private async replaceSources(
+    database: Kysely<NewsDatabaseSchema>,
+    subscriptionId: string,
+    sources: readonly NewsSourceView[],
+  ): Promise<NewsSourceView[]> {
+    await database
+      .deleteFrom('news_sources')
+      .where('subscription_id', '=', subscriptionId)
+      .execute();
+    if (sources.length > 0) {
+      await database
+        .insertInto('news_sources')
+        .values(
+          sources.map((source) => ({
+            id: randomUUID(),
+            subscription_id: subscriptionId,
+            type: source.type,
+            value: source.value,
+          })),
+        )
+        .execute();
+    }
+    return [...sources];
+  }
+
+  /** 用于挑选 1..5 内当前占用最少的主题色槽。 */
+  private async pickColorSlot(
+    database: Kysely<NewsDatabaseSchema>,
+    ownerId: string,
+  ): Promise<number> {
+    const rows = await database
+      .selectFrom('news_subscriptions')
+      .select('color_slot')
+      .where('owner_id', '=', ownerId)
+      .execute();
+    const counts = new Map<number, number>([1, 2, 3, 4, 5].map((slot) => [slot, 0]));
+    for (const row of rows) counts.set(row.color_slot, (counts.get(row.color_slot) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => a[1] - b[1] || a[0] - b[0])[0]![0];
+  }
+
+  /** 用于按所有者读取订阅行，缺失时返回 undefined。 */
+  private async readSubscription(
+    database: Kysely<NewsDatabaseSchema>,
+    ownerId: string,
+    id: string,
+  ): Promise<SubscriptionRow | undefined> {
+    return database
+      .selectFrom('news_subscriptions')
+      .selectAll()
       .where('id', '=', id)
-      .where('owner_id', '=', this.identity.getActor().ownerId)
-      .returningAll()
+      .where('owner_id', '=', ownerId)
       .executeTakeFirst();
-    if (row === undefined) throw new NotFoundException();
-    return toSummary({ ...row, latest_run_status: null });
   }
 
   /** 用于删除所有者订阅，已见条目与运行随级联删除。 */
@@ -251,5 +341,10 @@ export class NewsService {
       .executeTakeFirst();
     if (row === undefined) throw new NotFoundException();
     return toDigestRunSummary(row);
+  }
+
+  /** 用于按日倒序列出所有者的简报运行并附条目计数。 */
+  async listDigests(cursor?: string): Promise<NewsDigestListResponse> {
+    return listDigestPage(this.databaseService.client, this.identity.getActor().ownerId, cursor);
   }
 }

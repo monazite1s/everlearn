@@ -78,7 +78,7 @@ class RuntimeEnvironment {
   LLM_MODEL?: string;
 
   @ValidateIf(hasSearchConfiguration)
-  @IsIn(['tavily'])
+  @IsIn(['glm', 'tavily'])
   SEARCH_PROVIDER?: string;
 
   @ValidateIf(hasSearchConfiguration)

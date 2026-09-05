@@ -4,18 +4,27 @@
 
 import type { ConfigService } from '@nestjs/config';
 
+import { GlmWebSearchProvider } from './glm';
 import { TavilyWebSearchProvider } from './tavily';
 import type { WebSearchProvider } from './web-search';
 
 const DEFAULT_TAVILY_BASE_URL = 'https://api.tavily.com';
+const DEFAULT_GLM_BASE_URL = 'https://open.bigmodel.cn/api/paas/v4';
 
-/** 用于在搜索配置齐备时返回 Tavily Provider，否则返回 undefined。 */
+/** 用于在搜索配置齐备时按 SEARCH_PROVIDER 装配对应 Provider，否则返回 undefined。 */
 export function resolveWebSearchProvider(
   configService: ConfigService,
 ): WebSearchProvider | undefined {
   const provider = configService.get<string>('SEARCH_PROVIDER');
   const apiKey = configService.get<string>('SEARCH_API_KEY');
-  if (provider !== 'tavily' || apiKey === undefined || apiKey.length === 0) return undefined;
+  if (apiKey === undefined || apiKey.length === 0) return undefined;
+  if (provider === 'glm') {
+    const baseUrl =
+      configService.get<string>('GLM_SEARCH_BASE_URL')?.replace(/\/+$/u, '') ??
+      DEFAULT_GLM_BASE_URL;
+    return new GlmWebSearchProvider({ apiKey, baseUrl });
+  }
+  if (provider !== 'tavily') return undefined;
   const baseUrl =
     configService.get<string>('TAVILY_BASE_URL')?.replace(/\/+$/u, '') ?? DEFAULT_TAVILY_BASE_URL;
   return new TavilyWebSearchProvider({ apiKey, baseUrl });

@@ -10,12 +10,12 @@ export interface SchedulableChapter {
   readonly sessionId: string;
 }
 
-/** 用于筛选依赖全部成功的待执行章节（完成即释放语义）。 */
+/** 用于筛选依赖全部完成的待执行章节（完成即释放语义）。 */
 export function selectReadyChapters(
   pending: readonly SchedulableChapter[],
   statuses: ReadonlyMap<string, string>,
 ): readonly SchedulableChapter[] {
   return pending.filter((chapter) =>
-    chapter.dependsOn.every((key) => statuses.get(`${chapter.sessionId}:${key}`) === 'succeeded'),
+    chapter.dependsOn.every((key) => statuses.get(`${chapter.sessionId}:${key}`) === 'completed'),
   );
 }

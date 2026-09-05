@@ -6,15 +6,19 @@ import { completeLlm, createDocument, WorkflowApiError } from '../workflows/work
 import { assertFetchableFeedUrl } from './url-guard';
 import {
   completeNewsDigest,
+  registerNewsRunItems,
   toNewsErrorCode,
   type NewsSourceResultPayload,
 } from './news-api-client';
 import { fetchFeedItems, selectNewItems } from './news-feed';
-import { judgeRelevance } from './relevance';
+import type { FeedItem } from './news-feed';
+import { collectSearchEntries } from './news-search';
+import { judgeNewsDigest } from './relevance';
 import type { NewsDigestDispatchItem } from './news-api-client';
 
 const MAX_ITEMS = 8;
 const MIN_ADOPTED_FOR_QUALITY = 3;
+const SUMMARY_LIMIT = 120;
 
 /** 简报执行所需的外部配置。 */
 export interface NewsDigestExecutorConfig {
@@ -25,9 +29,7 @@ export interface NewsDigestExecutorConfig {
 }
 
 /** 用于构造生成中文简报的提示词。 */
-function buildPrompt(
-  entries: readonly { item: { link: string; summary: string; title: string } }[],
-): string {
+function buildPrompt(entries: readonly { item: FeedItem }[]): string {
   const sections = entries
     .map(
       (entry, index) =>
@@ -75,16 +77,47 @@ export async function executeNewsDigest(
   item: NewsDigestDispatchItem,
   config: NewsDigestExecutorConfig,
 ): Promise<void> {
-  let items: { link: string; summary: string; title: string }[];
-  try {
-    if (config.allowPrivateFeedUrls !== true)
-      await assertFetchableFeedUrl(item.subscription.feedUrl);
-    items = await fetchFeedItems(item.subscription.feedUrl);
-  } catch (error: unknown) {
-    await completeFailureExplain(item, config, error);
+  const collected = await collectFromSources(item, config);
+  if (collected.entries === null) {
+    await completeFailureExplain(item, config, collected.failure);
     return;
   }
-  await runDigestPipeline(items, item, config);
+  await runDigestPipeline(collected.entries, item, config, collected.warnings);
+}
+
+/** 多来源采集的中间结果。 */
+type SourceCollection =
+  | { entries: null; failure: unknown; warnings: string[] }
+  | { entries: FeedItem[]; warnings: string[] };
+
+/** 用于遍历订阅来源采集条目，单来源失败不阻塞其他来源。 */
+async function collectFromSources(
+  item: NewsDigestDispatchItem,
+  config: NewsDigestExecutorConfig,
+): Promise<SourceCollection> {
+  const warnings: string[] = [];
+  const entries: FeedItem[] = [];
+  let failure: unknown = new Error('订阅未配置任何来源');
+  for (const source of item.subscription.sources) {
+    try {
+      if (source.type === 'search') {
+        entries.push(
+          ...(await collectSearchEntries(config, {
+            includeKeywords: item.subscription.includeKeywords,
+            topic: item.subscription.topic,
+          })),
+        );
+        continue;
+      }
+      if (config.allowPrivateFeedUrls !== true) await assertFetchableFeedUrl(source.value);
+      entries.push(...(await fetchFeedItems(source.value)));
+    } catch (error: unknown) {
+      failure = error;
+      const reason = error instanceof Error ? error.message : String(error);
+      warnings.push(`来源 ${source.value} 抓取失败：${reason.slice(0, 200)}`);
+    }
+  }
+  return entries.length === 0 ? { entries: null, failure, warnings } : { entries, warnings };
 }
 
 /** 用于把全来源失败收敛为失败说明文档与 succeeded 运行。 */
@@ -110,49 +143,140 @@ async function completeFailureExplain(
   }
 }
 
-/** 用于执行相关性判定并产出保留条目、决策记录与结构化警告。 */
-async function judgeAndCollect(
-  adopted: {
-    contentHash: string;
-    item: { link: string; summary: string; title: string };
-    normalizedUrl: string;
-  }[],
-  sourceResults: NewsSourceResultPayload[],
+/** 抓取采纳后进入判定的条目形态。 */
+export interface AdoptedEntry {
+  readonly contentHash: string;
+  readonly item: FeedItem;
+  readonly normalizedUrl: string;
+}
+
+/** 携带判定前原始下标的入选条目，供评级与摘要按原下标记取。 */
+export interface KeptEntry extends AdoptedEntry {
+  readonly sourceIndex: number;
+}
+
+/** 三合一判定后的条目分组与逐条评级、摘要。 */
+interface JudgedCollection {
+  readonly importanceByIndex: ReadonlyMap<number, 'high' | 'low' | 'normal'>;
+  readonly kept: KeptEntry[];
+  readonly rejected: AdoptedEntry[];
+  readonly summaryByIndex: ReadonlyMap<number, string>;
+  readonly warnings: string[];
+}
+
+/** 用于执行三合一判定并产出携带原始下标的保留条目、被拒条目、评级、摘要与警告。 */
+export async function judgeAndCollect(
+  adopted: AdoptedEntry[],
   item: NewsDigestDispatchItem,
   config: NewsDigestExecutorConfig,
-): Promise<{
-  kept: typeof adopted;
-  warnings: string[];
-}> {
-  const judged = await judgeRelevance({
+): Promise<JudgedCollection> {
+  const judged = await judgeNewsDigest({
     apiInternalUrl: config.apiInternalUrl,
     entries: adopted,
+    recentItemTitles: item.recentItemTitles,
     runId: item.runId,
     secret: config.secret,
+    topic: item.subscription.topic,
   });
-  const kept = adopted.filter((_, index) => judged.keepIndexes.has(index));
-  for (const [index, entry] of adopted.entries()) {
-    if (!judged.keepIndexes.has(index)) {
-      sourceResults.push({
-        decision: 'skipped',
-        reason: 'LLM 判定不相关',
-        title: entry.item.title,
-        url: entry.item.link,
-      });
-    }
-  }
+  const kept = adopted.flatMap((entry, index) =>
+    judged.keepIndexes.has(index) ? [{ ...entry, sourceIndex: index }] : [],
+  );
+  const rejected = adopted.filter((_, index) => !judged.keepIndexes.has(index));
   const warnings = judged.warning === null ? [] : [judged.warning];
   if (kept.length > 0 && kept.length < MIN_ADOPTED_FOR_QUALITY) {
     warnings.push(`来源不足，简报仅基于 ${kept.length} 条来源`);
   }
-  return { kept, warnings };
+  return {
+    importanceByIndex: judged.importanceByIndex,
+    kept,
+    rejected,
+    summaryByIndex: judged.summaryByIndex,
+    warnings,
+  };
 }
 
-/** 用于执行抓取成功后的过滤、判定与简报生成主流程。 */
-async function runDigestPipeline(
-  items: { link: string; summary: string; title: string }[],
+/** 用于在发现新条目时登记资讯条目并返回指纹到条目 id 的映射。 */
+async function registerAdoptedItems(
+  adopted: AdoptedEntry[],
   item: NewsDigestDispatchItem,
   config: NewsDigestExecutorConfig,
+): Promise<Map<string, string>> {
+  const registered = await registerNewsRunItems(
+    config,
+    item.runId,
+    adopted.map((entry) => ({
+      contentFingerprint: entry.contentHash,
+      publishedAt: entry.item.publishedAt ?? null,
+      snippet: entry.item.summary,
+      sourceType: entry.item.sourceType,
+      title: entry.item.title,
+      url: entry.normalizedUrl,
+    })),
+  );
+  return new Map(registered.map((entry) => [entry.contentFingerprint, entry.id]));
+}
+
+/** 用于承载组装终态回写内容所需的已选条目集合。 */
+export interface ItemResultInputs {
+  readonly importanceByIndex: ReadonlyMap<number, 'high' | 'low' | 'normal'>;
+  readonly itemIds: Map<string, string>;
+  readonly kept: KeptEntry[];
+  readonly rejected: {
+    readonly contentHash: string;
+    readonly item: FeedItem;
+  }[];
+  readonly skipped: { readonly item: FeedItem; readonly reason: string }[];
+  readonly summaryByIndex: ReadonlyMap<number, string>;
+}
+
+/** 用于组装终态回写的条目级结果，评级与摘要按入选条目的原始下标记取。 */
+export function buildItemResults(inputs: ItemResultInputs): {
+  itemImportance: {
+    importance: 'high' | 'low' | 'normal';
+    itemId: string;
+    processedContent?: string;
+  }[];
+  rejectedItemIds: string[];
+  sourceResults: NewsSourceResultPayload[];
+} {
+  const { kept, rejected, skipped, itemIds, importanceByIndex, summaryByIndex } = inputs;
+  /** 用于按内容指纹解析条目 id，未登记时返回空串。 */
+  const itemIdOf = (entry: { contentHash: string }): string => itemIds.get(entry.contentHash) ?? '';
+  return {
+    itemImportance: kept
+      .map((entry) => ({
+        importance: importanceByIndex.get(entry.sourceIndex) ?? 'normal',
+        itemId: itemIdOf(entry),
+        ...(summaryByIndex.has(entry.sourceIndex)
+          ? { processedContent: summaryByIndex.get(entry.sourceIndex)!.slice(0, SUMMARY_LIMIT) }
+          : {}),
+      }))
+      .filter((entry) => entry.itemId !== ''),
+    rejectedItemIds: rejected.map(itemIdOf).filter(Boolean),
+    sourceResults: [
+      ...kept.map((entry) => ({
+        decision: 'adopted' as const,
+        reason: '入选简报',
+        title: entry.item.title,
+        url: entry.item.link,
+      })),
+      ...rejected.map((entry) => ({
+        decision: 'skipped' as const,
+        reason: 'LLM 判定不相关',
+        title: entry.item.title,
+        url: entry.item.link,
+      })),
+      ...buildSkippedResults(skipped),
+    ],
+  };
+}
+
+/** 用于执行抓取成功后的登记、判定与简报生成主流程。 */
+async function runDigestPipeline(
+  items: readonly FeedItem[],
+  item: NewsDigestDispatchItem,
+  config: NewsDigestExecutorConfig,
+  collectWarnings: readonly string[],
 ): Promise<void> {
   try {
     const { adopted, skipped } = selectNewItems({
@@ -162,18 +286,28 @@ async function runDigestPipeline(
       limit: MAX_ITEMS,
       seenHashes: item.seenHashes,
     });
-    const sourceResults = buildSourceResults(adopted, skipped);
-    const { kept, warnings } = await judgeAndCollect(adopted, sourceResults, item, config);
+    const itemIds = await registerAdoptedItems(adopted, item, config);
+    const { importanceByIndex, kept, rejected, summaryByIndex, warnings } = await judgeAndCollect(
+      adopted,
+      item,
+      config,
+    );
     const brief = await generateBrief(kept, item, config);
+    const { itemImportance, rejectedItemIds, sourceResults } = buildItemResults({
+      importanceByIndex,
+      itemIds,
+      kept,
+      rejected,
+      skipped,
+      summaryByIndex,
+    });
     await completeNewsDigest(config, item.runId, {
       briefDocumentId: brief,
-      seenItems: kept.map((entry) => ({
-        contentHash: entry.contentHash,
-        normalizedUrl: entry.normalizedUrl,
-      })),
+      itemImportance,
+      rejectedItemIds,
       sourceResults,
       status: 'succeeded',
-      warnings,
+      warnings: [...collectWarnings, ...warnings],
     });
   } catch (error: unknown) {
     await completeNewsDigest(config, item.runId, {
@@ -183,32 +317,23 @@ async function runDigestPipeline(
   }
 }
 
-/** 用于组装每条来源的决策记录。 */
-function buildSourceResults(
-  adopted: readonly { item: { link: string; summary: string; title: string } }[],
-  skipped: readonly { item: { link: string; summary: string; title: string }; reason: string }[],
+/** 用于组装关键词过滤等预处理阶段的落选记录。 */
+function buildSkippedResults(
+  skipped: readonly { item: FeedItem; reason: string }[],
 ): NewsSourceResultPayload[] {
-  return [
-    ...adopted.map((entry) => ({
-      decision: 'adopted' as const,
-      reason: '入选简报',
-      title: entry.item.title,
-      url: entry.item.link,
-    })),
-    ...skipped.map((entry) => ({
-      decision: 'skipped' as const,
-      reason: entry.reason,
-      title: entry.item.title,
-      url: entry.item.link,
-    })),
-  ];
+  return skipped.map((entry) => ({
+    decision: 'skipped' as const,
+    reason: entry.reason,
+    title: entry.item.title,
+    url: entry.item.link,
+  }));
 }
 
 /** 用于调用 LLM 生成简报并在资讯知识库创建文档。 */
 async function generateBrief(
   selected: {
     contentHash: string;
-    item: { link: string; summary: string; title: string };
+    item: FeedItem;
     normalizedUrl: string;
   }[],
   item: NewsDigestDispatchItem,

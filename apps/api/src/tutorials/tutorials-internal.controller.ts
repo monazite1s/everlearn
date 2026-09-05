@@ -18,6 +18,7 @@ import type { Request } from 'express';
 import { secretsMatch } from '../http-boundary/timing-safe-secret';
 import { UuidParamDto } from '../http-boundary/uuid-param.dto';
 import { CompleteTutorialChapterDto } from './complete-tutorial-chapter.dto';
+import { ChapterIdParamDto } from './tutorial-params.dto';
 import { CompleteTutorialOutlineDto } from './complete-tutorial-outline.dto';
 import { TutorialDispatchDto } from './tutorial-dispatch.dto';
 import type { ChapterDispatchItem, OutlineDispatchItem } from './tutorial-runs.service';
@@ -88,7 +89,7 @@ export class TutorialsInternalController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async completeChapter(
     @Req() request: Request,
-    @Param() params: UuidParamDto & { chapterId: string },
+    @Param() params: ChapterIdParamDto,
     @Body() input: CompleteTutorialChapterDto,
   ): Promise<void> {
     this.requireSecret(request);

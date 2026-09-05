@@ -10,7 +10,7 @@ import { OutlineChapterDto } from './outline-chapter.dto';
 export class CompleteTutorialOutlineDto {
   /** 运行终态。 */
   @IsString()
-  status!: 'failed' | 'succeeded';
+  status!: 'completed' | 'failed';
 
   /** 成功时回写的结构化大纲。 */
   @IsOptional()

@@ -178,7 +178,7 @@ async function claimChapterOf(sessionId: string): Promise<ChapterItem | undefine
 test('两次确认全流程：研究、编辑大纲、建库占位、无依赖章节生成', async () => {
   const sessionId = await createConfirmedSession();
   await reachOutlineReady(sessionId);
-  expect((await tutorialService.detail(sessionId)).status).toBe('outline_ready');
+  expect((await tutorialService.detail(sessionId)).status).toBe('awaiting_outline');
   expect(
     await warnings(sessionId).then((w) =>
       w.some((item) => item.startsWith('web_search_unavailable')),
@@ -216,10 +216,41 @@ test('取消未开始章节后不再被领取，存在失败时会话进入 part
   );
   const canceled = await tutorialService.cancel(sessionId);
   expect(canceled.chapters.find((chapter) => chapter.nodeKey === 'advanced')?.status).toBe(
-    'canceled',
+    'cancelled',
   );
   expect(canceled.status).toBe('partial');
   await expect(claimChapterOf(sessionId)).resolves.toBeUndefined();
+});
+
+test('尝试耗尽的章节领取与重试都置 failed 不再入队', async () => {
+  const sessionId = await createConfirmedSession();
+  await reachOutlineReady(sessionId);
+  await tutorialService.confirmOutline(sessionId);
+  const chapters = await readChapters(sessionId);
+  await database
+    .updateTable('tutorial_chapters')
+    .set({ attempt: 5, status: 'queued' })
+    .where('id', '=', chapters[0]!.id)
+    .executeTakeFirstOrThrow();
+
+  await expect(runsService.claimReadyChapters(5)).resolves.toHaveLength(0);
+  let exhausted = await database
+    .selectFrom('tutorial_chapters')
+    .select(['error_code', 'status'])
+    .where('id', '=', chapters[0]!.id)
+    .executeTakeFirstOrThrow();
+  expect(exhausted.status).toBe('failed');
+  expect(exhausted.error_code).toBe('TUTORIAL_CHAPTER_MAX_ATTEMPTS');
+  expect((await tutorialService.detail(sessionId)).status).toBe('generating');
+
+  await tutorialService.retryChapter(chapters[0]!.id);
+  exhausted = await database
+    .selectFrom('tutorial_chapters')
+    .select(['error_code', 'status'])
+    .where('id', '=', chapters[0]!.id)
+    .executeTakeFirstOrThrow();
+  expect(exhausted.status).toBe('failed');
+  expect(exhausted.error_code).toBe('TUTORIAL_CHAPTER_MAX_ATTEMPTS');
 });
 
 /** 用于读取会话告警列表。 */
@@ -262,7 +293,7 @@ async function expectFirstChapterOnly(sessionId: string): Promise<void> {
   expect(item?.chapterId).toBe(chapters[0]!.id);
   await executeTutorialChapter(item!, chapterDepsFor(item!.chapterId));
   const updated = await readChapters(sessionId);
-  expect(updated[0]!.status).toBe('succeeded');
+  expect(updated[0]!.status).toBe('completed');
   expect(updated[0]!.attempt).toBe(1);
 }
 
@@ -289,8 +320,8 @@ async function expectDependentReleased(sessionId: string): Promise<void> {
 
 /** 用于断言重复重试只生效一次且 attempt 递增。 */
 async function expectRetryIdempotent(sessionId: string, chapterId: string): Promise<void> {
-  await tutorialService.retryChapter(sessionId, chapterId);
-  await tutorialService.retryChapter(sessionId, chapterId);
+  await tutorialService.retryChapter(chapterId);
+  await tutorialService.retryChapter(chapterId);
   const retryItem = await claimChapterOf(sessionId);
   expect(retryItem?.chapterId).toBe(chapterId);
   expect(retryItem?.attempt).toBe(2);

@@ -9,14 +9,22 @@ import { LocalIdentityContext } from '../identity/local-identity.context';
 import { requireJsonContentType } from '../http-boundary/require-json-content-type';
 import { NewsInternalController } from './news-internal.controller';
 import { NewsController } from './news.controller';
+import { NewsItemsService } from './news-items.service';
 import { NewsRunsService } from './news-runs.service';
 import { NewsService } from './news.service';
+import { NewsWebSearchService } from './news-web-search.service';
 
 /** 用于持有资讯切片的控制器、服务与数据库依赖。 */
 @Module({
   controllers: [NewsController, NewsInternalController],
   imports: [DatabaseModule],
-  providers: [LocalIdentityContext, NewsRunsService, NewsService],
+  providers: [
+    LocalIdentityContext,
+    NewsItemsService,
+    NewsRunsService,
+    NewsService,
+    NewsWebSearchService,
+  ],
 })
 export class NewsModule implements NestModule {
   /** 用于向资讯读取路由应用仅 JSON 规则。 */

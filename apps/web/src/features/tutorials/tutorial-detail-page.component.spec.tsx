@@ -1,18 +1,27 @@
-/** @fileoverview 验证教程详情页各状态视图与重试、取消交互。 */
+/** @fileoverview 验证详情页三视图投影、?view 状态与章节操作交互。 */
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { TutorialDetailPage } from './tutorial-detail-page';
-import type { TutorialChapter, TutorialDetail } from './tutorials-api';
 
-/** 带类型的 Fetch 测试桩。 */
-type FetchMock = ReturnType<
-  typeof vi.fn<(input: string | URL, init?: RequestInit) => Promise<Response>>
->;
+const routerReplace = vi.fn();
+let currentQuery = '';
+
+vi.mock('next/navigation', () => ({
+  /** 用于提供视图切换与参数解析所需的最小路由接口。 */
+  useRouter: () => ({ replace: routerReplace }),
+  /** 用于返回按当前查询串解析的参数。 */
+  useSearchParams: () => new URLSearchParams(currentQuery),
+}));
+
+beforeEach(() => {
+  currentQuery = '';
+});
 
 afterEach(() => {
   cleanup();
+  routerReplace.mockClear();
   vi.unstubAllGlobals();
 });
 
@@ -25,32 +34,8 @@ function jsonResponse(body: unknown, status = 200): Response {
   } as Response;
 }
 
-/** 用于构造教程详情最小载荷。 */
-function detail(overrides: Partial<TutorialDetail> = {}): TutorialDetail {
-  return {
-    chapters: [],
-    errorCode: null,
-    id: 'tut-1',
-    outline: null,
-    scope: {
-      audience: '初学者',
-      depth: 'standard',
-      excludeTopics: [],
-      goals: '入门',
-      includeTopics: [],
-      knowledgeBaseIds: [],
-      level: '初级',
-      topic: 'React 性能优化',
-    },
-    status: 'draft',
-    tutorialKnowledgeBaseId: null,
-    warnings: [],
-    ...overrides,
-  };
-}
-
 /** 用于构造章节最小载荷。 */
-function chapter(overrides: Partial<TutorialChapter> = {}): TutorialChapter {
+function chapter(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     attempt: 1,
     dependsOn: [],
@@ -58,17 +43,52 @@ function chapter(overrides: Partial<TutorialChapter> = {}): TutorialChapter {
     errorCode: null,
     id: 'ch-x',
     nodeKey: 'ch-x',
-    status: 'pending',
+    status: 'placeholder',
+    summary: '',
     title: '章节',
+    ...overrides,
+  };
+}
+
+/** 用于构造教程详情最小载荷。 */
+function detailPayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    chapters: [
+      chapter({
+        id: 'ch-1',
+        nodeKey: 'ch-1',
+        status: 'completed',
+        documentId: 'doc-1',
+        title: '第一章 基础',
+      }),
+      chapter({
+        dependsOn: ['ch-1'],
+        errorCode: 'CHAPTER_GENERATION_FAILED',
+        id: 'ch-2',
+        nodeKey: 'ch-2',
+        status: 'failed',
+        summary: '讲解渲染流程',
+        title: '第二章 渲染',
+      }),
+    ],
+    continueTo: { chapterTitle: '第一章 基础', documentId: 'doc-1', knowledgeBaseId: 'kb-1' },
+    currentChapterId: 'ch-1',
+    errorCode: null,
+    id: 'tut-1',
+    knowledgeBase: { id: 'kb-1', kind: 'tutorial' },
+    stage: null,
+    status: 'partial',
+    topic: 'React 性能优化',
+    warnings: [],
     ...overrides,
   };
 }
 
 /** 用于安装按地址路由的 fetch 桩。 */
 function stubFetch(
-  initial: TutorialDetail,
+  payload: Record<string, unknown>,
   handlers: Record<string, (init?: RequestInit) => Response> = {},
-): FetchMock {
+) {
   return vi.fn(
     /** 用于返回按地址路由后的确定响应。 */
     (input: string | URL, init?: RequestInit) => {
@@ -76,135 +96,133 @@ function stubFetch(
       for (const [pattern, handler] of Object.entries(handlers)) {
         if (url.includes(pattern)) return Promise.resolve(handler(init));
       }
-      return Promise.resolve(jsonResponse(initial));
+      return Promise.resolve(jsonResponse(payload));
     },
   );
 }
 
-/** 用于渲染教程详情页。 */
-function renderDetail(fetchMock: FetchMock): void {
+/** 用于渲染详情页并安装 fetch 桩。 */
+function renderDetail(
+  payload: Record<string, unknown>,
+  handlers: Parameters<typeof stubFetch>[1] = {},
+) {
+  const fetchMock = stubFetch(payload, handlers);
   vi.stubGlobal('fetch', fetchMock);
   render(<TutorialDetailPage tutorialId="tut-1" />);
+  return fetchMock;
 }
 
 /** 用于断言指定后缀的接口已被调用。 */
-async function expectCalled(fetchMock: FetchMock, suffix: string): Promise<void> {
+async function expectCalled(
+  fetchMock: ReturnType<typeof stubFetch>,
+  suffix: string,
+): Promise<void> {
   await waitFor(() => {
-    /** 用于拼接调用判断结果。 */
-    const called = fetchMock.mock.calls.some(
-      /** 用于拼接调用地址。 */
-      (call) => String(call[0]).endsWith(suffix),
-    );
-    expect(called).toBe(true);
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes(suffix))).toBe(true);
   });
 }
 
-/** 用于验证草稿状态展示范围编辑与确认研究副作用文案。 */
-test('草稿状态展示范围表单与副作用文案', async () => {
-  renderDetail(stubFetch(detail()));
-  expect(await screen.findByLabelText('主题')).toHaveValue('React 性能优化');
-  expect(screen.getByText(/确认后将读取所选知识库并联网研究/)).toBeInTheDocument();
+/** 用于等待详情页章节在左栏与树视图中渲染完成。 */
+async function ready() {
+  await waitFor(() => expect(screen.getAllByText('第二章 渲染').length).toBeGreaterThan(0));
+}
+
+/** 用于验证树视图默认渲染章节、脊线当前位置与阅读链接。 */
+test('树视图默认渲染章节与当前位置阅读链接', async () => {
+  renderDetail(detailPayload());
+  await ready();
+  const current = screen.getByRole('link', { name: /第一章 基础/ });
+  expect(current).toHaveAttribute('href', '/knowledge/kb-1/documents/doc-1');
+  expect(current).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByText('依赖：第一章 基础')).toBeInTheDocument();
 });
 
-/** 用于验证草稿确认调用保存范围与确认研究两个接口。 */
-test('草稿确认依次调用保存范围与确认研究', async () => {
-  const fetchMock = stubFetch(detail(), {
-    'confirm-scope': /** 用于返回确认成功响应。 */ () => jsonResponse({ ok: true }),
-    '/scope': /** 用于返回保存成功响应。 */ () => jsonResponse({ ok: true }),
+/** 用于验证 ?view=list 恢复列表视图并平铺同一章节数据。 */
+test('列表视图平铺同一章节数据与依赖', async () => {
+  currentQuery = 'view=list';
+  renderDetail(detailPayload());
+  const table = await screen.findByRole('table', { name: '章节列表' });
+  expect(within(table).getByText('第二章 渲染')).toBeInTheDocument();
+  expect(within(table).getAllByText('第一章 基础').length).toBe(2);
+  expect(within(table).getByText('章节生成失败，可重试本章。')).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: '列表' })).toHaveAttribute('aria-selected', 'true');
+});
+
+/** 用于验证 ?view=graph 恢复图视图并支持依赖信息的文字读取。 */
+test('图视图渲染节点状态与可访问名称', async () => {
+  currentQuery = 'view=graph';
+  renderDetail(detailPayload());
+  const graph = await screen.findByRole('region', { name: '章节依赖图' });
+  expect(within(graph).getByRole('link', { name: /第一章 基础/ })).toBeInTheDocument();
+  const failedNode = within(graph).getByRole('group', { name: /第二章 渲染，状态 失败/ });
+  expect(within(failedNode).getByText('失败')).toBeInTheDocument();
+  expect(within(graph).getByText('切换到列表视图')).toBeInTheDocument();
+});
+
+/** 用于验证键盘切换 Tabs 只 replace 查询参数保持状态在 URL。 */
+test('键盘切换视图 Tabs 只 replace ?view=', async () => {
+  renderDetail(detailPayload());
+  await ready();
+  fireEvent.keyDown(screen.getByRole('tab', { name: '图' }), { key: 'Enter' });
+  await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/tutorials/tut-1?view=graph'));
+});
+
+/** 用于验证非法 view 参数被 replace 回默认树视图。 */
+test('非法 view 参数被 replace 回默认', async () => {
+  currentQuery = 'view=matrix';
+  renderDetail(detailPayload());
+  await ready();
+  await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/tutorials/tut-1?view=tree'));
+});
+
+/** 用于验证失败章节单章重试调用章节重试端点。 */
+test('失败章节提供单章重试', async () => {
+  const fetchMock = renderDetail(detailPayload(), {
+    /** 用于返回按当前查询串解析的参数。 */
+    '/tutorial-chapters/ch-2/retry': () => jsonResponse({ ok: true }),
   });
-  renderDetail(fetchMock);
-  fireEvent.click(await screen.findByRole('button', { name: '确认并开始研究' }));
-  await expectCalled(fetchMock, '/confirm-scope');
+  await ready();
+  fireEvent.click(screen.getByRole('button', { name: '重试章节 第二章 渲染' }));
+  await expectCalled(fetchMock, '/tutorial-chapters/ch-2/retry');
 });
 
-/** 用于验证研究中状态展示说明文案且不展示虚假进度。 */
-test('研究状态展示进行中说明', async () => {
-  renderDetail(stubFetch(detail({ status: 'researching' })));
-  expect(await screen.findByText(/正在读取所选知识库并联网研究/)).toBeInTheDocument();
+/** 用于验证未建库阶段引导进入创作而不是旧表单。 */
+test('未建库草稿阶段展示创作引导', async () => {
+  renderDetail(detailPayload({ chapters: [], status: 'draft_scope', knowledgeBase: null }));
+  expect(await screen.findByText('教程还没有确认研究范围')).toBeInTheDocument();
+  const entries = screen.getAllByRole('link', { name: '进入创作' });
+  expect(entries.length).toBeGreaterThan(0);
+  expect(entries[0]).toHaveAttribute('href', '/tutorials/tut-1/compose');
 });
 
-/** 用于验证大纲确认调用保存与确认接口。 */
-test('大纲确认调用保存大纲与确认大纲接口', async () => {
-  const fetchMock = stubFetch(
-    detail({
-      outline: {
-        chapters: [{ dependsOn: ['ch-1'], nodeKey: 'ch-2', summary: '渲染原理', title: '第二章' }],
-      },
-      status: 'outline_ready',
-    }),
+/** 用于验证不存在教程展示不可访问态且不提供重试。 */
+test('不可访问教程展示统一不可访问态', async () => {
+  renderDetail(
+    {},
     {
-      'confirm-outline': /** 用于返回确认成功响应。 */ () => jsonResponse({ ok: true }),
-      '/outline': /** 用于返回保存成功响应。 */ () => jsonResponse({ ok: true }),
+      /** 用于返回按当前查询串解析的参数。 */
+      '/api/v1/tutorials/tut-1': () =>
+        jsonResponse({ code: 'NOT_FOUND', message: '教程不存在' }, 404),
     },
   );
-  renderDetail(fetchMock);
-  const title = await screen.findByLabelText('第 1 章标题');
-  fireEvent.change(title, { target: { value: '渲染原理详解' } });
-  fireEvent.click(screen.getByRole('button', { name: '确认大纲并创建教程知识库' }));
-  await expectCalled(fetchMock, '/confirm-outline');
-  const saveCall = fetchMock.mock.calls.find(
-    /** 用于匹配保存大纲地址。 */
-    (call) => String(call[0]).endsWith('/outline'),
-  );
-  const body = saveCall === undefined ? '{}' : String(saveCall[1]?.body as string | undefined);
-  const payload: unknown = JSON.parse(body);
-  expect(payload).toMatchObject({ chapters: [{ title: '渲染原理详解' }] });
-  expect(screen.getByText('依赖：ch-1')).toBeInTheDocument();
+  expect(await screen.findByText('无法访问该教程')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '重新读取' })).not.toBeInTheDocument();
 });
 
-/** 用于验证生成中状态展示章节、重试与取消交互。 */
-test('生成中状态支持单章重试与取消剩余章节', async () => {
-  const fetchMock = stubFetch(
-    detail({
-      chapters: [
-        chapter({
-          attempt: 2,
-          errorCode: 'CHAPTER_GENERATION_FAILED',
-          id: 'ch-1',
-          nodeKey: 'ch-1',
-          status: 'failed',
-          title: '第一章',
-        }),
-        chapter({
-          documentId: 'doc-2',
-          id: 'ch-2',
-          nodeKey: 'ch-2',
-          status: 'succeeded',
-          title: '第二章',
-        }),
-      ],
-      status: 'partial',
-      tutorialKnowledgeBaseId: 'kb-tut',
+/** 用于验证生成中状态以真实计数宣告且不伪造百分比。 */
+test('生成中状态展示真实章节计数', async () => {
+  renderDetail(
+    detailPayload({
+      stage: { completed: 3, phase: 'generating', sourcesGathered: null, total: 12 },
+      status: 'generating',
     }),
-    {
-      '/chapters/ch-1/retry': /** 用于返回重试成功响应。 */ () => jsonResponse({ ok: true }),
-      '/cancel': /** 用于返回取消成功响应。 */ () => jsonResponse({ ok: true }),
-    },
   );
-  renderDetail(fetchMock);
-  expect(await screen.findByText('第一章')).toBeInTheDocument();
-  expect(screen.getByText('章节生成失败，可重试本章。')).toBeInTheDocument();
-  expect(screen.getByText('已尝试 2 次')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: '阅读本章' })).toHaveAttribute(
-    'href',
-    '/knowledge/kb-tut/documents/doc-2',
-  );
-  fireEvent.click(screen.getByRole('button', { name: '重试章节 第一章' }));
-  await expectCalled(fetchMock, '/chapters/ch-1/retry');
-  fireEvent.click(screen.getByRole('button', { name: '取消剩余章节' }));
-  await expectCalled(fetchMock, '/cancel');
-});
-
-/** 用于验证失败状态展示错误码中文映射与建议。 */
-test('失败状态展示中文错误与修改建议', async () => {
-  renderDetail(stubFetch(detail({ errorCode: 'RESEARCH_FAILED', status: 'failed' })));
-  expect(await screen.findByText(/研究阶段失败/)).toBeInTheDocument();
-  expect(screen.getByText(/建议调整主题或范围后重试/)).toBeInTheDocument();
+  expect(await screen.findByText('章节生成中 3/12')).toBeInTheDocument();
 });
 
 /** 用于验证告警警示条渲染。 */
 test('详情告警渲染警示条', async () => {
-  renderDetail(stubFetch(detail({ warnings: ['部分来源不可访问，已跳过。'] })));
+  renderDetail(detailPayload({ warnings: ['部分来源不可访问，已跳过。'] }));
   expect(await screen.findByText('本教程有告警')).toBeInTheDocument();
   expect(screen.getByText('部分来源不可访问，已跳过。')).toBeInTheDocument();
 });

@@ -1,70 +1,12 @@
 /**
- * @fileoverview 请求教程 API 并收窄为本 feature 的局部投影。
+ * @fileoverview 请求教程 API 端点，契约路径以 api-and-events.md 为准。
  */
-// 契约暂由本文件局部声明，待后端定稿后并入 packages/contracts，禁止在并入前被其他 feature 复用。
+// 契约暂由 tutorials-contract.ts 局部声明，待后端定稿后并入 packages/contracts。
 
-import { isRecord, requestApi, type ApiResult } from '../../shared/api-request';
-
-/** 教程章节完成计数的局部投影。 */
-export interface TutorialChapterCounts {
-  readonly failed: number;
-  readonly pending: number;
-  readonly succeeded: number;
-  readonly total: number;
-}
-
-/** 教程列表条目的局部投影。 */
-export interface TutorialListItem {
-  readonly chapterCounts: TutorialChapterCounts | null;
-  readonly createdAt: string;
-  readonly id: string;
-  readonly status: string;
-  readonly topic: string;
-}
-
-/** 教程范围的局部投影。 */
-export interface TutorialScope {
-  readonly audience: string;
-  readonly depth: 'deep' | 'overview' | 'standard';
-  readonly excludeTopics: readonly string[];
-  readonly goals: string;
-  readonly includeTopics: readonly string[];
-  readonly knowledgeBaseIds: readonly string[];
-  readonly level: string;
-  readonly topic: string;
-}
-
-/** 大纲章节的局部投影。 */
-export interface TutorialOutlineChapter {
-  readonly dependsOn: readonly string[];
-  readonly nodeKey: string;
-  readonly summary: string;
-  readonly title: string;
-}
-
-/** 教程章节的局部投影。 */
-export interface TutorialChapter {
-  readonly attempt: number;
-  readonly dependsOn: readonly string[];
-  readonly documentId: string | null;
-  readonly errorCode: string | null;
-  readonly id: string;
-  readonly nodeKey: string;
-  readonly status: string;
-  readonly title: string;
-}
-
-/** 教程详情的局部投影。 */
-export interface TutorialDetail {
-  readonly chapters: readonly TutorialChapter[];
-  readonly errorCode: string | null;
-  readonly id: string;
-  readonly outline: { readonly chapters: readonly TutorialOutlineChapter[] } | null;
-  readonly scope: TutorialScope | null;
-  readonly status: string;
-  readonly tutorialKnowledgeBaseId: string | null;
-  readonly warnings: readonly string[];
-}
+import { isRecord, requestApi } from '../../shared/api-request';
+import type { ApiResult } from '../../shared/api-request';
+import type { ComposeSnapshot, TutorialDetail, TutorialListItem } from './tutorials-contract';
+import { parseComposeSnapshot, parseTutorialDetail, parseTutorialList } from './tutorials-contract';
 
 const KNOWN_CODES = [
   'INTERNAL_ERROR',
@@ -74,144 +16,28 @@ const KNOWN_CODES = [
 ] as const;
 export type TutorialApiErrorCode = (typeof KNOWN_CODES)[number];
 
-const DEPTHS = ['overview', 'standard', 'deep'] as const;
+const JSON_INIT = { headers: { 'content-type': 'application/json' } };
 
-/** 用于只读取字符串数组且容忍缺省。 */
-function stringList(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : [];
-}
-
-/** 用于只读取字符串或 null 字段。 */
-function stringOrNull(value: unknown): string | null {
-  return typeof value === 'string' ? value : null;
-}
-
-/** 用于收窄章节完成计数。 */
-function parseChapterCounts(value: unknown): TutorialChapterCounts | null {
-  if (!isRecord(value)) return null;
-  const numbers = [value.failed, value.pending, value.succeeded, value.total];
-  if (numbers.some((item) => typeof item !== 'number')) return null;
-  return {
-    failed: value.failed as number,
-    pending: value.pending as number,
-    succeeded: value.succeeded as number,
-    total: value.total as number,
-  };
-}
-
-/** 用于把未知响应收窄为教程列表投影。 */
-export function parseTutorialList(value: unknown): TutorialListItem[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const items: TutorialListItem[] = [];
-  for (const entry of value) {
-    if (!isRecord(entry) || typeof entry.id !== 'string' || typeof entry.topic !== 'string')
-      return undefined;
-    items.push({
-      chapterCounts: parseChapterCounts(entry.chapterCounts),
-      createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : '',
-      id: entry.id,
-      status: typeof entry.status === 'string' ? entry.status : '',
-      topic: entry.topic,
-    });
-  }
-  return items;
-}
-
-/** 用于收窄教程范围。 */
-function parseScope(value: unknown): TutorialScope | null {
-  if (!isRecord(value) || typeof value.topic !== 'string') return null;
-  const depth = DEPTHS.includes(value.depth as (typeof DEPTHS)[number])
-    ? (value.depth as TutorialScope['depth'])
-    : 'standard';
-  return {
-    audience: typeof value.audience === 'string' ? value.audience : '',
-    depth,
-    excludeTopics: stringList(value.excludeTopics),
-    goals: typeof value.goals === 'string' ? value.goals : '',
-    includeTopics: stringList(value.includeTopics),
-    knowledgeBaseIds: stringList(value.knowledgeBaseIds),
-    level: typeof value.level === 'string' ? value.level : '',
-    topic: value.topic,
-  };
-}
-
-/** 用于收窄大纲章节列表。 */
-function parseOutlineChapters(value: unknown): TutorialOutlineChapter[] {
-  if (!Array.isArray(value)) return [];
-  const chapters: TutorialOutlineChapter[] = [];
-  for (const entry of value) {
-    if (
-      !isRecord(entry) ||
-      typeof entry.nodeKey !== 'string' ||
-      typeof entry.title !== 'string' ||
-      typeof entry.summary !== 'string'
-    )
-      continue;
-    chapters.push({
-      dependsOn: stringList(entry.dependsOn),
-      nodeKey: entry.nodeKey,
-      summary: entry.summary,
-      title: entry.title,
-    });
-  }
-  return chapters;
-}
-
-/** 用于收窄章节列表。 */
-function parseChapters(value: unknown): TutorialChapter[] {
-  if (!Array.isArray(value)) return [];
-  const chapters: TutorialChapter[] = [];
-  for (const entry of value) {
-    if (!isRecord(entry) || typeof entry.id !== 'string') continue;
-    chapters.push({
-      attempt: typeof entry.attempt === 'number' ? entry.attempt : 0,
-      dependsOn: stringList(entry.dependsOn),
-      documentId: stringOrNull(entry.documentId),
-      errorCode: stringOrNull(entry.errorCode),
-      id: entry.id,
-      nodeKey: typeof entry.nodeKey === 'string' ? entry.nodeKey : '',
-      status: typeof entry.status === 'string' ? entry.status : '',
-      title: typeof entry.title === 'string' ? entry.title : '',
-    });
-  }
-  return chapters;
-}
-
-/** 用于把未知响应收窄为教程详情投影。 */
-export function parseTutorialDetail(value: unknown): TutorialDetail | undefined {
-  if (!isRecord(value) || typeof value.id !== 'string') return undefined;
-  const outline = isRecord(value.outline)
-    ? { chapters: parseOutlineChapters(value.outline.chapters) }
-    : null;
-  return {
-    chapters: parseChapters(value.chapters),
-    errorCode: stringOrNull(value.errorCode),
-    id: value.id,
-    outline,
-    scope: parseScope(value.scope),
-    status: typeof value.status === 'string' ? value.status : '',
-    tutorialKnowledgeBaseId: stringOrNull(value.tutorialKnowledgeBaseId),
-    warnings: stringList(value.warnings),
-  };
-}
-
-/** 创建教程的请求载荷。 */
+/** 用于创建教程的最小请求载荷，仅主题必填。 */
 export interface CreateTutorialInput {
-  readonly audience: string;
-  readonly depth: TutorialScope['depth'];
-  readonly excludeTopics: string[];
-  readonly goals: string;
-  readonly includeTopics: string[];
-  readonly knowledgeBaseIds: string[];
-  readonly level: string;
+  readonly audience?: string;
+  readonly depth?: string;
+  readonly goals?: string;
   readonly topic: string;
 }
 
-const JSON_INIT = { headers: { 'content-type': 'application/json' } };
+/** 用于列出教程书架。 */
+export function listTutorials(): Promise<ApiResult<TutorialListItem[], TutorialApiErrorCode>> {
+  return requestApi({
+    codes: KNOWN_CODES,
+    expectedStatus: 200,
+    networkMessage: '无法读取教程列表，请稍后重试。',
+    parse: parseTutorialList,
+    url: '/api/v1/tutorials',
+  });
+}
 
-/** 用于创建教程草稿。 */
+/** 用于以最小字段创建 draft_scope 教程草案。 */
 export function createTutorial(
   input: CreateTutorialInput,
 ): Promise<ApiResult<{ id: string }, TutorialApiErrorCode>> {
@@ -227,18 +53,7 @@ export function createTutorial(
   });
 }
 
-/** 用于列出教程。 */
-export function listTutorials(): Promise<ApiResult<TutorialListItem[], TutorialApiErrorCode>> {
-  return requestApi({
-    codes: KNOWN_CODES,
-    expectedStatus: 200,
-    networkMessage: '无法读取教程列表，请稍后重试。',
-    parse: parseTutorialList,
-    url: '/api/v1/tutorials',
-  });
-}
-
-/** 用于读取教程详情。 */
+/** 用于读取教程详情（三视图共用的章节数据源）。 */
 export function getTutorial(id: string): Promise<ApiResult<TutorialDetail, TutorialApiErrorCode>> {
   return requestApi({
     codes: KNOWN_CODES,
@@ -249,23 +64,58 @@ export function getTutorial(id: string): Promise<ApiResult<TutorialDetail, Tutor
   });
 }
 
-/** 用于保存草稿范围。 */
-export function updateTutorialScope(
+/** 用于读取 compose 会话快照。 */
+export function getComposeSnapshot(
   id: string,
-  scope: CreateTutorialInput,
+): Promise<ApiResult<ComposeSnapshot, TutorialApiErrorCode>> {
+  return requestApi({
+    codes: KNOWN_CODES,
+    expectedStatus: 200,
+    networkMessage: '无法读取创作会话，请稍后重试。',
+    parse: parseComposeSnapshot,
+    url: `/api/v1/tutorials/${id}/compose`,
+  });
+}
+
+/** 用于以幂等键发送用户消息，回复经运行事件异步返回。 */
+export function sendComposeMessage(
+  id: string,
+  content: string,
+  idempotencyKey: string,
+): Promise<ApiResult<unknown, TutorialApiErrorCode>> {
+  return requestApi({
+    codes: KNOWN_CODES,
+    expectedStatus: 202,
+    init: {
+      body: JSON.stringify({ content }),
+      headers: { ...JSON_INIT.headers, 'idempotency-key': idempotencyKey },
+      method: 'POST',
+    },
+    networkMessage: '消息发送失败，请检查网络后重试。',
+    /** 用于忽略无业务正文的响应。 */
+    parse: () => ({}),
+    url: `/api/v1/tutorials/${id}/compose/messages`,
+  });
+}
+
+/** 用于决议提案；重复决议由服务端返回首次结果。 */
+export function decideProposal(
+  tutorialId: string,
+  proposalId: string,
+  decision: 'accept' | 'reject',
 ): Promise<ApiResult<unknown, TutorialApiErrorCode>> {
   return requestApi({
     codes: KNOWN_CODES,
     expectedStatus: 200,
-    init: { ...JSON_INIT, body: JSON.stringify(scope), method: 'PUT' },
-    networkMessage: '无法保存教程范围，请稍后重试。',
-    /** 用于忽略保存范围响应的无正文结果。 */
+    init: { ...JSON_INIT, method: 'POST' },
+    networkMessage: '无法记录提案决议，请稍后重试。',
+    /** 用于忽略无业务正文的响应。 */
     parse: () => ({}),
-    url: `/api/v1/tutorials/${id}/scope`,
+    url: `/api/v1/tutorials/${tutorialId}/compose/proposals/${proposalId}/${decision}`,
   });
 }
 
-/** 用于确认范围并启动研究。 */
+/** 用于确认研究范围闸门，确认后固化不可变研究范围。 */
 export function confirmTutorialScope(
   id: string,
 ): Promise<ApiResult<unknown, TutorialApiErrorCode>> {
@@ -273,30 +123,14 @@ export function confirmTutorialScope(
     codes: KNOWN_CODES,
     expectedStatus: 200,
     init: { ...JSON_INIT, method: 'POST' },
-    networkMessage: '无法启动研究，请稍后重试。',
-    /** 用于忽略确认范围响应的无正文结果。 */
+    networkMessage: '无法开始研究，请稍后重试。',
+    /** 用于忽略无业务正文的响应。 */
     parse: () => ({}),
     url: `/api/v1/tutorials/${id}/confirm-scope`,
   });
 }
 
-/** 用于保存大纲编辑。 */
-export function updateTutorialOutline(
-  id: string,
-  chapters: TutorialOutlineChapter[],
-): Promise<ApiResult<unknown, TutorialApiErrorCode>> {
-  return requestApi({
-    codes: KNOWN_CODES,
-    expectedStatus: 200,
-    init: { ...JSON_INIT, body: JSON.stringify({ chapters }), method: 'PUT' },
-    networkMessage: '无法保存大纲，请稍后重试。',
-    /** 用于忽略保存大纲响应的无正文结果。 */
-    parse: () => ({}),
-    url: `/api/v1/tutorials/${id}/outline`,
-  });
-}
-
-/** 用于确认大纲并创建教程知识库。 */
+/** 用于确认大纲闸门，确认后原子创建教程知识库与章节占位文档。 */
 export function confirmTutorialOutline(
   id: string,
 ): Promise<ApiResult<unknown, TutorialApiErrorCode>> {
@@ -305,15 +139,29 @@ export function confirmTutorialOutline(
     expectedStatus: 200,
     init: { ...JSON_INIT, method: 'POST' },
     networkMessage: '无法确认大纲，请稍后重试。',
-    /** 用于忽略确认大纲响应的无正文结果。 */
+    /** 用于忽略无业务正文的响应。 */
     parse: () => ({}),
     url: `/api/v1/tutorials/${id}/confirm-outline`,
   });
 }
 
-/** 用于重试失败或已取消的单章。 */
+/** 用于接受章节改写差异，重复接受返回同一修订。 */
+export function acceptGenerationDiff(
+  generationId: string,
+): Promise<ApiResult<unknown, TutorialApiErrorCode>> {
+  return requestApi({
+    codes: KNOWN_CODES,
+    expectedStatus: 200,
+    init: { ...JSON_INIT, method: 'POST' },
+    networkMessage: '无法接受差异，请稍后重试。',
+    /** 用于忽略无业务正文的响应。 */
+    parse: () => ({}),
+    url: `/api/v1/generations/${generationId}/accept`,
+  });
+}
+
+/** 用于单章重试，服务端沿用幂等键并写入新修订。 */
 export function retryTutorialChapter(
-  id: string,
   chapterId: string,
 ): Promise<ApiResult<unknown, TutorialApiErrorCode>> {
   return requestApi({
@@ -321,22 +169,9 @@ export function retryTutorialChapter(
     expectedStatus: 200,
     init: { ...JSON_INIT, method: 'POST' },
     networkMessage: '无法重试该章节，请稍后重试。',
-    /** 用于忽略章节重试响应的无正文结果。 */
+    /** 用于忽略无业务正文的响应。 */
     parse: () => ({}),
-    url: `/api/v1/tutorials/${id}/chapters/${chapterId}/retry`,
-  });
-}
-
-/** 用于取消剩余章节生成。 */
-export function cancelTutorial(id: string): Promise<ApiResult<unknown, TutorialApiErrorCode>> {
-  return requestApi({
-    codes: KNOWN_CODES,
-    expectedStatus: 200,
-    init: { ...JSON_INIT, method: 'POST' },
-    networkMessage: '无法取消章节生成，请稍后重试。',
-    /** 用于忽略取消响应的无正文结果。 */
-    parse: () => ({}),
-    url: `/api/v1/tutorials/${id}/cancel`,
+    url: `/api/v1/tutorial-chapters/${chapterId}/retry`,
   });
 }
 

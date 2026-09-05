@@ -69,26 +69,30 @@ Workflow 定义状态：`draft`、`published`、`archived`。运行状态：`que
 
 ## News
 
-| 实体               | 关键字段与约束                                                                   |
-| ------------------ | -------------------------------------------------------------------------------- |
-| `NewsSubscription` | 所有者、名称、主题、包含/排除关键词、计划、启用状态、目标资讯知识库。            |
-| `NewsSource`       | 订阅、类型 `rss/site/search`、URL 或查询配置、来源质量权重。                     |
-| `SourceItem`       | 规范 URL、标题、发布日期、摘要、必要短摘录、内容指纹、获取时间；不保存完整正文。 |
-| `DigestRun`        | 订阅配置快照、窗口、状态、质量结果、Workflow Run、输出文档、幂等键。             |
-| `DigestItem`       | DigestRun、SourceItem、采用状态、相关性分数、跳过原因。                          |
+| 实体               | 关键字段与约束                                                                                                                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NewsSubscription` | 所有者、名称、主题、主题色槽 `colorSlot`（1..5）、包含/排除关键词、计划、启用状态、目标资讯知识库。                                                                                                             |
+| `NewsSource`       | 订阅、类型 `rss/site/search`、URL 或查询配置、来源质量权重。                                                                                                                                                    |
+| `NewsItem`         | 所有者、订阅、发现运行、来源类型 `rss/search`、规范 URL、标题、发布日期、来源摘要、LLM 处理后正文（≤2000 字符）、相关性 `accepted/rejected`、重要性 `high/normal/low`、内容指纹、发现时间；不保存外部完整正文。 |
+| `DigestRun`        | 订阅配置快照、窗口、状态、来源决策数组（`source_results` JSON）、警告、输出文档、幂等键。                                                                                                                       |
+| `DigestItem`       | 不设独立表：条目经 `NewsItem.discovered_run_id` 弱关联发现运行，聚合决策（进入简报/落选原因）记录在 `DigestRun.source_results`，条目级重要性摘要经完结端点回写 `NewsItem`。                                     |
 
-Digest 状态与 Workflow Run 对齐。每个订阅和时间窗口有唯一幂等键；即使质量不足也关联一个输出文档，使用 `succeeded_warning`。
+条目独立于简报存在：采集成功即写 `NewsItem`，简报由当窗条目聚合生成，不复制条目正文；原 `SourceItem` 原始投影由 `NewsItem` 取代。相关性与重要性由 LLM 相对同一订阅近期条目评定，判定必须使用订阅自身主题；批量判定失败时全部按 `accepted + normal` 入库并记运行警告。不变量由数据库约束表达：`(relevance = 'rejected' AND importance IS NULL) OR (relevance = 'accepted' AND importance IS NOT NULL)`；`UNIQUE (subscription_id, content_fingerprint)` 保证同一订阅内重复条目只保留一次。主题色槽在创建订阅时分配 1..5 内空闲值，超出后循环复用，不做数据库唯一约束。查询到索引对应：默认条目流 `(owner_id, discovered_at DESC, id DESC)`；重要性筛选 `(owner_id, importance, discovered_at DESC, id DESC)`；主题筛选 `(subscription_id, discovered_at DESC, id DESC)`；运行详情来源决策反查 `(discovered_run_id)`；主题加重要性的组合筛选在同一订阅的小结果集上内存排序，条目量超出该假设前再加组合索引。Digest 状态与 Workflow Run 对齐；每个订阅和时间窗口有唯一幂等键；即使质量不足也关联一个输出文档，使用 `succeeded_warning`。
 
 ## Tutorials
 
-| 实体              | 关键字段与约束                                                            |
-| ----------------- | ------------------------------------------------------------------------- |
-| `Tutorial`        | 所有者、主题、受众、目标、深度、状态、Workflow Run、目标知识库。          |
-| `ResearchScope`   | Tutorial、连续版本、范围 JSON、确认状态、确认时间。                       |
-| `TutorialOutline` | Tutorial、连续版本、结构化大纲、来源覆盖、确认状态；确认后不可变。        |
-| `TutorialChapter` | Tutorial、Outline 节点 ID、Document、依赖节点、状态、最近运行和质量结果。 |
+| 实体                   | 关键字段与约束                                                                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Tutorial`             | 所有者、主题、受众、目标、深度、状态、Workflow Run、目标知识库。                                                                                        |
+| `ResearchScope`        | Tutorial、连续版本、范围 JSON、确认状态、确认时间。                                                                                                     |
+| `TutorialOutline`      | Tutorial、连续版本、结构化大纲（含 `dependsOn`）、来源覆盖、确认状态；确认后不可变。                                                                    |
+| `TutorialChapter`      | Tutorial、Outline 节点 ID、Document、依赖节点、状态、最近运行和质量结果。                                                                               |
+| `TutorialConversation` | Tutorial、标题、状态 `active/archived`；每教程至多一个 active 会话（部分唯一索引）。                                                                    |
+| `TutorialMessage`      | Conversation、角色 `user/agent/system`、正文、可选提案 JSON 与提案状态 `pending/accepted/rejected/superseded`（成对约束）；按 `(created_at, id)` 排序。 |
 
 Tutorial 状态：`draft_scope`、`researching`、`awaiting_outline`、`generating`、`partial`、`completed`、`failed`、`cancelled`。章节状态：`placeholder`、`queued`、`running`、`completed`、`warning`、`failed`、`cancelled`。
+
+compose 对话为 `TutorialConversation` + `TutorialMessage` 双表：每教程复用唯一的 active 会话，普通消息与提案统一落 `TutorialMessage`（提案存消息行的 JSON 列）；确认闸门卡不落库，由快照投影按教程状态（`draft_scope`/`awaiting_outline`）合成。提案状态只能从 `pending` 一次性转入 `accepted/rejected`（后续再落新提案时旧提案标记 `superseded`），重复决议返回首次结果。章节「用户已编辑」判定沿用 `DocumentRevision` 来源（最近修订为 `manual` 即视为已编辑），不冗余存储标记；差异接受复用 Generations 的修订与引用契约。
 
 ## Sharing（M7）
 

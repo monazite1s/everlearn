@@ -13,6 +13,12 @@ import type { TutorialDatabaseSchema } from './tutorial-db.types';
 /** 每个知识库参与研究的纯文本截断上限。 */
 const KB_TEXT_LIMIT = 8000;
 
+/** 单章生成尝试上限，达到后领取与重试都置 failed 不再入队。 */
+export const MAX_CHAPTER_ATTEMPTS = 5;
+
+/** 尝试耗尽时写入的章节错误码。 */
+export const CHAPTER_MAX_ATTEMPTS_ERROR_CODE = 'TUTORIAL_CHAPTER_MAX_ATTEMPTS';
+
 /** 用于读取相关会话全部章节的状态映射（键为 session:nodeKey）。 */
 export async function readChapterStatusMap(
   tx: Kysely<TutorialDatabaseSchema>,
@@ -41,7 +47,7 @@ export async function finalizeSession(
     .select('status')
     .where('session_id', '=', sessionId)
     .execute();
-  if (chapters.some((row) => ['pending', 'generating'].includes(row.status))) return;
+  if (chapters.some((row) => ['placeholder', 'queued', 'running'].includes(row.status))) return;
   await tx
     .updateTable('tutorial_sessions')
     .set({
@@ -91,26 +97,32 @@ export function readOutlineSummaries(outline: unknown): Map<string, string> {
   return summaries;
 }
 
-/** 用于把章节 Markdown 写入占位文档并追加一条 automation 修订。 */
+/** 章节修订写入的输入集合。 */
+export interface ChapterRevisionInput {
+  readonly documentId: string;
+  readonly markdown: string;
+  readonly source: 'automation' | 'manual';
+  readonly title: string;
+}
+
+/** 用于把章节 Markdown 写入占位文档并追加一条修订，返回修订号。 */
 export async function writeChapterRevision(
   tx: Kysely<TutorialDatabaseSchema>,
-  documentId: string,
-  title: string,
-  markdown: string,
-): Promise<void> {
+  input: ChapterRevisionInput,
+): Promise<number> {
   const document = await tx
     .selectFrom('documents')
     .select(['owner_id', 'version'])
-    .where('id', '=', documentId)
+    .where('id', '=', input.documentId)
     .where('deleted_at', 'is', null)
     .forUpdate()
     .executeTakeFirst();
   if (document === undefined) throw new NotFoundException();
-  const contentJson = buildMarkdownContent(markdown);
+  const contentJson = buildMarkdownContent(input.markdown);
   const latest = await tx
     .selectFrom('document_revisions')
     .select(({ fn }) => fn.max('revision_number').as('max'))
-    .where('document_id', '=', documentId)
+    .where('document_id', '=', input.documentId)
     .executeTakeFirstOrThrow();
   const revisionNumber = Number(latest.max ?? 0) + 1;
   await tx
@@ -118,26 +130,27 @@ export async function writeChapterRevision(
     .values({
       content_json: contentJson,
       created_by: document.owner_id,
-      document_id: documentId,
+      document_id: input.documentId,
       id: randomUUID(),
       owner_id: document.owner_id,
-      plain_text: markdown,
+      plain_text: input.markdown,
       revision_number: revisionNumber,
       schema_version: 1,
-      source: 'automation',
-      title,
+      source: input.source,
+      title: input.title,
     })
     .executeTakeFirstOrThrow();
   await tx
     .updateTable('documents')
     .set({
       content_json: contentJson,
-      plain_text: markdown,
+      plain_text: input.markdown,
       updated_at: new Date(),
       version: document.version + 1,
     })
-    .where('id', '=', documentId)
+    .where('id', '=', input.documentId)
     .executeTakeFirstOrThrow();
+  return revisionNumber;
 }
 
 /** 用于把 Markdown 按行降级为标题与段落块（不解析行内标记）。 */

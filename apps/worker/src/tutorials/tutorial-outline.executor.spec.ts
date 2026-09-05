@@ -74,7 +74,7 @@ describe('tutorial-outline executor', () => {
     const { completions, deps, prompts } = createHarness({ llmOutput: OUTLINE_JSON });
     await executeTutorialOutline(createItem(), deps);
     expect(completions).toHaveLength(1);
-    expect(completions[0]!.status).toBe('succeeded');
+    expect(completions[0]!.status).toBe('completed');
     expect(completions[0]!.warnings![0]).toContain('web_search_unavailable');
     expect(prompts[0]).toContain('仅依据知识库资料');
   });

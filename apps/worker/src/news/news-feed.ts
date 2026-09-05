@@ -19,7 +19,11 @@ const FEED_TIMEOUT_MS = 15_000;
 
 /** 资讯条目的最小投影。 */
 export interface FeedItem {
+  /** 条目发布时间（ISO 8601，来源缺失时为 null）。 */
+  readonly publishedAt?: string | null;
   readonly link: string;
+  /** 条目登记时的来源类型。 */
+  readonly sourceType: 'rss' | 'search';
   readonly summary: string;
   readonly title: string;
 }
@@ -85,16 +89,16 @@ export async function fetchFeedItems(feedUrl: string): Promise<FeedItem[]> {
 async function parseFeedXml(xml: string): Promise<FeedItem[]> {
   const { default: Parser } = await import('rss-parser');
   const parsed = await new Parser().parseString(xml);
-  const items = (parsed.items ?? []).map((item) => ({
-    link: item.link ?? '',
-    summary: (item.contentSnippet ?? item.content ?? '').slice(0, 1000),
-    title: item.title ?? '',
-    pubDate: item.isoDate ?? null,
-  }));
-  return items
+  return (parsed.items ?? [])
+    .map((item) => ({
+      link: item.link ?? '',
+      publishedAt: item.isoDate ?? null,
+      sourceType: 'rss' as const,
+      summary: (item.contentSnippet ?? item.content ?? '').slice(0, 1000),
+      title: item.title ?? '',
+    }))
     .filter((item) => item.link !== '' && item.title !== '')
-    .sort((a, b) => (b.pubDate ?? '').localeCompare(a.pubDate ?? ''))
-    .map(({ link, summary, title }) => ({ link, summary, title }));
+    .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''));
 }
 
 /** 条目筛选的输入集合。 */

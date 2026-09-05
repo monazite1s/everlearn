@@ -109,7 +109,7 @@ describe('workflow 定义持久化', () => {
       expect(tableNames).toContain(table);
     }
     const reverted: string[] = [];
-    while (!reverted.includes(workflowMigrationName) && reverted.length < 10) {
+    while (!reverted.includes(workflowMigrationName) && reverted.length < 20) {
       const step = await runMigrations(database, migrationOptions('down'));
       reverted.push(...step.executedMigrations);
     }

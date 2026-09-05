@@ -1,37 +1,27 @@
 /**
- * @fileoverview 渲染教程列表、新建教程表单及其加载与失败状态。
+ * @fileoverview 渲染教程书架列表、新建入口与加载、空、失败状态。
  */
 
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { BookOpenIcon } from 'lucide-react';
 
-import { Badge, Card, CardContent, CardHeader, CardTitle } from '@everlearn/ui';
-
-import { listKnowledgeBases } from '../knowledge/knowledge-api';
-import type { KnowledgeApiResult } from '../knowledge/knowledge-api';
-import type { KnowledgeBaseListResponse } from '@everlearn/contracts';
+import { EmptyState } from '../../shared/empty-state';
 import { LoadFailure } from '../../shared/load-failure';
 import { ListSkeleton } from '../../shared/list-skeleton';
 import { PageShell } from '../../shared/page-shell';
-import { TutorialCreateForm } from './tutorial-create-form';
+import { TutorialCreateDialog } from './tutorial-create-dialog';
+import { TutorialShelfCard } from './tutorial-shelf-card';
 import { listTutorials } from './tutorials-api';
-import type { TutorialApiErrorCode, TutorialListItem } from './tutorials-api';
-import type { ApiResult } from '../../shared/api-request';
-import { TUTORIAL_STATUS_LABELS, tutorialBadgeVariant } from './tutorials-status';
+import type { TutorialListItem } from './tutorials-contract';
 
-interface KnowledgeBaseOption {
-  readonly id: string;
-  readonly name: string;
-}
-
-/** 用于持有教程页的列表数据与重读入口。 */
+/** 用于持有书架数据并提供手动重读入口。 */
 export function useTutorialsData() {
   const [items, setItems] = useState<TutorialListItem[] | undefined>(undefined);
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBaseOption[]>([]);
   const [loadError, setLoadError] = useState<string | undefined>(undefined);
 
-  /** 用于重读教程列表并返回失败文案。 */
+  /** 用于重读书架列表并返回失败文案。 */
   const load = useCallback(async (): Promise<string | undefined> => {
     const result = await listTutorials();
     if (!result.ok) {
@@ -44,45 +34,39 @@ export function useTutorialsData() {
   }, []);
 
   useEffect(
-    /** 用于启动列表与知识库选项的初始同步。 */
-    function synchronizeInitialData(): () => void {
-      let active = true;
-
-      /** 用于把一次列表读取结果安全写入状态并忽略过期响应。 */
-      function applyList(result: ApiResult<TutorialListItem[], TutorialApiErrorCode>): void {
-        if (!active) return;
-        if (result.ok) {
-          setItems(result.data);
-          setLoadError(undefined);
-        } else {
-          setLoadError(result.error.message);
-        }
-      }
-
-      void listTutorials().then(applyList);
-      void listKnowledgeBases().then(
-        /** 用于把知识库选项安全写入状态并忽略过期响应。 */
-        function applyKnowledgeBases(result: KnowledgeApiResult<KnowledgeBaseListResponse>) {
-          if (!active || !result.ok) return;
-          setKnowledgeBases(result.data.items.map((item) => ({ id: item.id, name: item.name })));
-        },
+    /** 用于完成首屏列表读取。 */
+    function synchronizeInitialList(): void {
+      void listTutorials().then(
+        /** 用于把首读结果写入状态。 */
+        (result) => applyListResult(result, setItems, setLoadError),
       );
-      return /** 用于忽略卸载后的状态写入。 */ function cancel(): void {
-        active = false;
-      };
     },
     [],
   );
 
-  return { knowledgeBases, items, load, loadError };
+  return { items, load, loadError };
 }
 
-/** 用于渲染教程管理页。 */
+/** 用于把一次列表读取结果安全写入状态。 */
+function applyListResult(
+  result: Awaited<ReturnType<typeof listTutorials>>,
+  setItems: (items: TutorialListItem[] | undefined) => void,
+  setLoadError: (message: string | undefined) => void,
+): void {
+  if (result.ok) {
+    setItems(result.data);
+    setLoadError(undefined);
+  } else {
+    setLoadError(result.error.message);
+  }
+}
+
+/** 用于渲染教程书架页。 */
 export function TutorialsPage() {
-  const { knowledgeBases, items, load, loadError } = useTutorialsData();
-  const [actionError, setActionError] = useState<string | undefined>(undefined);
+  const { items, load, loadError } = useTutorialsData();
   return (
     <PageShell
+      actions={<TutorialCreateDialog />}
       lead="围绕知识点研究、确认大纲并生成系统教程。"
       title={
         <h1 data-page-title tabIndex={-1}>
@@ -90,16 +74,6 @@ export function TutorialsPage() {
         </h1>
       }
     >
-      <TutorialCreateForm
-        knowledgeBases={knowledgeBases}
-        onActionError={setActionError}
-        onCreated={() => void load()}
-      />
-      {actionError && (
-        <p className="mt-2 text-sm text-destructive" role="alert">
-          {actionError}
-        </p>
-      )}
       {items === undefined && loadError !== undefined && (
         <LoadFailure
           description="请检查网络后重新读取教程列表。"
@@ -108,45 +82,30 @@ export function TutorialsPage() {
         />
       )}
       {items === undefined && loadError === undefined && <ListSkeleton count={3} />}
-      {items !== undefined && <TutorialList items={items} />}
+      {items !== undefined && <ShelfBody items={items} />}
     </PageShell>
   );
 }
 
-/** 用于渲染教程卡片列表。 */
-function TutorialList({ items }: { items: TutorialListItem[] }) {
+/** 用于在空列表与卡片网格之间切换书架主体。 */
+function ShelfBody({ items }: { items: readonly TutorialListItem[] }) {
   if (items.length === 0) {
-    return <p className="mt-6 text-sm text-muted-foreground">还没有教程，先用上方表单创建一个。</p>;
+    return (
+      <EmptyState
+        action={<TutorialCreateDialog triggerVariant="outline" />}
+        description="书架还没有教程。创建第一个教程，确认范围与大纲后会自动生成章节内容。"
+        icon={BookOpenIcon}
+        title="还没有教程"
+      />
+    );
   }
   return (
-    <ul className="mt-6 grid gap-3 md:grid-cols-2">
+    <ul className="mt-2 grid list-none gap-4 p-0 md:grid-cols-2">
       {items.map((item) => (
         <li key={item.id}>
-          <a
-            className="block rounded-lg border border-border transition-colors hover:bg-muted/40"
-            href={`/tutorials/${item.id}`}
-          >
-            <Card className="border-0 shadow-none">
-              <CardHeader className="gap-2">
-                <CardTitle className="font-serif text-title-small">{item.topic}</CardTitle>
-                <Badge variant={tutorialBadgeVariant(item.status)}>
-                  {TUTORIAL_STATUS_LABELS[item.status] ?? item.status}
-                </Badge>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                {describeCounts(item)}
-              </CardContent>
-            </Card>
-          </a>
+          <TutorialShelfCard item={item} />
         </li>
       ))}
     </ul>
   );
-}
-
-/** 用于描述教程的章节完成进度文案。 */
-function describeCounts(item: TutorialListItem): string {
-  if (item.chapterCounts === null || item.chapterCounts.total === 0) return '尚未生成章节';
-  const { failed, succeeded, total } = item.chapterCounts;
-  return `章节 ${succeeded}/${total} 完成${failed > 0 ? `，${failed} 章失败` : ''}`;
 }

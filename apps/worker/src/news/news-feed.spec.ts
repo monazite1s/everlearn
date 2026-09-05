@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { contentFingerprint, filterByKeywords, normalizeUrl, selectNewItems } from './news-feed';
+import type { FeedItem } from './news-feed';
 
 describe('normalizeUrl', () => {
   it('剥离 utm 与跟踪参数并小写 host', () => {
@@ -39,8 +40,18 @@ describe('contentFingerprint', () => {
 
 describe('filterByKeywords', () => {
   const items = [
-    { link: 'https://a.com/1', summary: 'LLM 推理优化', title: 'AI 模型进展' },
-    { link: 'https://a.com/2', summary: '体育赛事回顾', title: '本周球赛' },
+    {
+      link: 'https://a.com/1',
+      sourceType: 'rss' as const,
+      summary: 'LLM 推理优化',
+      title: 'AI 模型进展',
+    },
+    {
+      link: 'https://a.com/2',
+      sourceType: 'rss' as const,
+      summary: '体育赛事回顾',
+      title: '本周球赛',
+    },
   ];
 
   it('不区分大小写命中包含词', () => {
@@ -59,18 +70,23 @@ describe('filterByKeywords', () => {
   });
 });
 
-describe('selectNewItems', () => {
-  const items = [
-    { link: 'https://a.com/1?utm_source=x', summary: 's1', title: 't1' },
-    { link: 'https://a.com/1', summary: 'dup', title: 't1' },
-    { link: 'https://a.com/2', summary: 's2', title: 't2' },
-  ];
+const dedupeItems: readonly FeedItem[] = [
+  {
+    link: 'https://a.com/1?utm_source=x',
+    sourceType: 'rss',
+    summary: 's1',
+    title: 't1',
+  },
+  { link: 'https://a.com/1', sourceType: 'rss', summary: 'dup', title: 't1' },
+  { link: 'https://a.com/2', sourceType: 'rss', summary: 's2', title: 't2' },
+];
 
+describe('selectNewItems', () => {
   it('按指纹去重并限制数量', () => {
     const result = selectNewItems({
       excludeKeywords: [],
       includeKeywords: [],
-      items,
+      items: dedupeItems,
       limit: 10,
       seenHashes: [],
     });
@@ -84,7 +100,7 @@ describe('selectNewItems', () => {
     const result = selectNewItems({
       excludeKeywords: [],
       includeKeywords: [],
-      items,
+      items: dedupeItems,
       limit: 10,
       seenHashes: seen,
     });
@@ -96,9 +112,9 @@ describe('selectNewItems', () => {
       excludeKeywords: ['球赛'],
       includeKeywords: [],
       items: [
-        { link: 'https://a.com/1', summary: '技术', title: 't1' },
-        { link: 'https://a.com/2', summary: '赛事', title: '球赛回顾' },
-        { link: 'https://a.com/3', summary: '技术3', title: 't3' },
+        { link: 'https://a.com/1', sourceType: 'rss' as const, summary: '技术', title: 't1' },
+        { link: 'https://a.com/2', sourceType: 'rss' as const, summary: '赛事', title: '球赛回顾' },
+        { link: 'https://a.com/3', sourceType: 'rss' as const, summary: '技术3', title: 't3' },
       ],
       limit: 1,
       seenHashes: [],

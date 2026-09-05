@@ -5,21 +5,22 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
 
 import { UuidParamDto } from '../http-boundary/uuid-param.dto';
+import { CreateTutorialDto } from './create-tutorial.dto';
 import { TutorialOutlineDto } from './tutorial-outline.dto';
-import type { TutorialDetail, TutorialSummary } from './tutorial.dto';
+import type { TutorialDetail, TutorialGraph, TutorialSummary } from './tutorial.dto';
 import { TutorialScopeDto } from './tutorial-scope.dto';
 import { TutorialService } from './tutorial.service';
 
-/** 用于把已校验 HTTP 输入映射到教程应用服务。 */
+/** 把已校验 HTTP 输入映射到教程应用服务。 */
 @Controller('tutorials')
 export class TutorialsController {
   /** 用于注入教程应用服务。 */
   constructor(private readonly tutorialService: TutorialService) {}
 
-  /** 用于创建教程草案。 */
+  /** 用于创建教程草案，仅主题必填。 */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() input: TutorialScopeDto): Promise<{ id: string; status: 'draft' }> {
+  create(@Body() input: CreateTutorialDto): Promise<{ id: string; status: 'draft_scope' }> {
     return this.tutorialService.create(input);
   }
 
@@ -33,6 +34,12 @@ export class TutorialsController {
   @Get(':id')
   detail(@Param() params: UuidParamDto): Promise<TutorialDetail> {
     return this.tutorialService.detail(params.id);
+  }
+
+  /** 用于返回三视图图数据（无已确认大纲时为空集）。 */
+  @Get(':id/graph')
+  graph(@Param() params: UuidParamDto): Promise<TutorialGraph> {
+    return this.tutorialService.graph(params.id);
   }
 
   /** 用于在 draft 态整体替换研究范围。 */
@@ -65,13 +72,6 @@ export class TutorialsController {
   @HttpCode(HttpStatus.OK)
   confirmOutline(@Param() params: UuidParamDto): Promise<TutorialDetail> {
     return this.tutorialService.confirmOutline(params.id);
-  }
-
-  /** 用于重试失败或取消的章节。 */
-  @Post(':id/chapters/:chapterId/retry')
-  @HttpCode(HttpStatus.OK)
-  retryChapter(@Param() params: UuidParamDto & { chapterId: string }): Promise<TutorialDetail> {
-    return this.tutorialService.retryChapter(params.id, params.chapterId);
   }
 
   /** 用于取消尚未开始的章节。 */

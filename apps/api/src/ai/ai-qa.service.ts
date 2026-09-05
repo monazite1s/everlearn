@@ -12,6 +12,7 @@ import type { HybridRecallRow } from '../search/search-query.store';
 import { activeKnowledgeBaseExists, readHybridRecallRows } from '../search/search-query.store';
 import type { EmbeddingProvider } from './embedding';
 import { resolveEmbeddingProvider } from './embedding';
+import { extractJsonObject } from './json-extraction';
 import type { LlmMessage } from './llm-provider';
 import { LlmGateway } from './llm-gateway';
 
@@ -42,30 +43,19 @@ function notFound(): ApiDomainException {
   });
 }
 
-/** 用于生成要求仅依据候选回答并输出 JSON 的消息序列。 */
-function buildQaMessages(question: string, candidates: string): readonly LlmMessage[] {
+/** 用于生成要求仅依据候选回答并输出纯 JSON 的消息序列。 */
+export function buildQaMessages(question: string, candidates: string): readonly LlmMessage[] {
   return [
     {
       content:
         '你是知识库问答助手。仅依据给定候选片段回答；输出严格 JSON：' +
         '{"answer":"string","citations":[{"documentId":"string","blockId":"string"}]}；' +
-        '证据不足时 answer 明确说明未找到且 citations 为空数组，禁止编造引用。',
+        '证据不足时 answer 明确说明未找到且 citations 为空数组，禁止编造引用。' +
+        '只输出 JSON 本身，不要使用 Markdown 代码围栏，不要附加任何解释文字。',
       role: 'system',
     },
     { content: `候选片段：\n${candidates}\n\n问题：${question}`, role: 'user' },
   ];
-}
-
-/** 用于从模型输出中解析 JSON 对象，失败时返回 undefined。 */
-function parseModelJson(raw: string): { answer?: unknown; citations?: unknown } | undefined {
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start < 0 || end <= start) return undefined;
-  try {
-    return JSON.parse(raw.slice(start, end + 1)) as { answer?: unknown; citations?: unknown };
-  } catch {
-    return undefined;
-  }
 }
 
 /** 用于过滤不在候选集内的非法引用。 */
@@ -163,8 +153,8 @@ export class AiQaService {
             .join('\n'),
         ),
       );
-    const parsed = parseModelJson(raw);
-    if (parsed === undefined)
+    const parsed = extractJsonObject(raw) as { answer?: unknown; citations?: unknown } | null;
+    if (parsed === null)
       throw new ApiDomainException({
         code: 'LLM_INVALID_OUTPUT',
         kind: 'domain',

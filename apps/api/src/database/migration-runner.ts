@@ -22,6 +22,10 @@ import { documentTagsLinksMigration } from './migrations/20260903000000_document
 import { searchEmbeddingsMigration } from './migrations/20260904000000_search_embeddings';
 import { tutorialSchemaMigration } from './migrations/20260906000000_tutorial_schema';
 import { newsRunDetailsMigration } from './migrations/20260905000000_news_run_details';
+import { newsItemsMigration } from './migrations/20260907000000_news_items';
+import { tutorialComposeMigration } from './migrations/20260908000000_tutorial_compose';
+import { newsSubscriptionSourcesMigration } from './migrations/20260909000000_news_subscription_sources';
+import { tutorialStatusEnumsMigration } from './migrations/20260910000000_tutorial_status_enums';
 
 const applicationMigrations = {
   '20260812010000_identity_knowledge_schema': identityKnowledgeSchemaMigration,
@@ -37,6 +41,10 @@ const applicationMigrations = {
   '20260904000000_search_embeddings': searchEmbeddingsMigration,
   '20260905000000_news_run_details': newsRunDetailsMigration,
   '20260906000000_tutorial_schema': tutorialSchemaMigration,
+  '20260907000000_news_items': newsItemsMigration,
+  '20260908000000_tutorial_compose': tutorialComposeMigration,
+  '20260909000000_news_subscription_sources': newsSubscriptionSourcesMigration,
+  '20260910000000_tutorial_status_enums': tutorialStatusEnumsMigration,
 } satisfies Record<string, Migration>;
 
 export type MigrationDirection = 'down' | 'up';

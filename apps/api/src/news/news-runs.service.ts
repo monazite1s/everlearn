@@ -1,5 +1,5 @@
 /**
- * @fileoverview 实现 Worker 侧简报运行的领取、终态写入与计划触发。
+ * @fileoverview 实现 Worker 侧简报运行的领取、条目登记、终态写入与计划触发。
  */
 
 import { randomUUID } from 'node:crypto';
@@ -10,11 +10,13 @@ import type { Kysely } from 'kysely' with { 'resolution-mode': 'import' };
 import { DatabaseService } from '../database/database.service';
 import type { Json } from '../database/database.types';
 import { CompleteNewsDigestDto } from './complete-news-digest.dto';
+import type { RegisteredNewsRunItem } from './register-news-run-items.dto';
 import { withNewsTables, type NewsDatabaseSchema } from './news-db.types';
 import type { NewsDigestDispatchItem, NewsDigestRunSummary, NewsScheduleItem } from './news.dto';
-import { newsError } from './news.service';
+import { newsError } from './news.service.helpers';
 
 const ACTIVE_RUN_STATUSES = ['pending', 'running'] as const;
+const RECENT_ITEM_LIMIT = 20;
 
 /** 用于承接 Worker 对简报运行状态机的迁移请求。 */
 @Injectable()
@@ -35,15 +37,18 @@ export class NewsRunsService {
         )
         .select([
           'news_digest_runs.id as run_id',
-          'news_subscriptions.feed_url',
+          'news_digest_runs.subscription_id',
           'news_subscriptions.include_keywords',
           'news_subscriptions.exclude_keywords',
+          'news_subscriptions.name',
+          'news_subscriptions.topic',
           'news_subscriptions.news_knowledge_base_id',
         ])
         .where('news_digest_runs.status', '=', 'pending')
         .orderBy('news_digest_runs.created_at', 'asc')
         .limit(limit)
         .forUpdate()
+        .skipLocked()
         .execute();
       const runIds = pending.map((row) => row.run_id);
       if (runIds.length > 0) {
@@ -57,80 +62,223 @@ export class NewsRunsService {
         pending.map(async (row) => ({
           runId: row.run_id,
           subscription: {
-            feedUrl: row.feed_url,
-            includeKeywords: row.include_keywords,
             excludeKeywords: row.exclude_keywords,
+            includeKeywords: row.include_keywords,
+            name: row.name,
             newsKnowledgeBaseId: row.news_knowledge_base_id,
+            sources: await this.readSubscriptionSources(row.subscription_id),
+            topic: row.topic,
           },
-          seenHashes: await this.readSeenHashes(row.run_id),
+          seenHashes: await this.readSeenHashes(row.subscription_id),
+          recentItemTitles: await this.readRecentItemTitles(row.subscription_id),
         })),
       );
     });
   }
 
-  /** 用于读取订阅近期已见指纹供去重，上限 500 条。 */
-  private async readSeenHashes(runId: string): Promise<string[]> {
-    const run = await withNewsTables(this.databaseService.client)
-      .selectFrom('news_digest_runs')
-      .select('subscription_id')
-      .where('id', '=', runId)
-      .executeTakeFirst();
-    if (run === undefined) return [];
+  /** 用于读取订阅的多来源配置。 */
+  private async readSubscriptionSources(
+    subscriptionId: string,
+  ): Promise<NewsDigestDispatchItem['subscription']['sources']> {
     const rows = await withNewsTables(this.databaseService.client)
-      .selectFrom('news_seen_items')
-      .select('content_hash')
-      .where('subscription_id', '=', run.subscription_id)
-      .orderBy('seen_at', 'desc')
+      .selectFrom('news_sources')
+      .select(['type', 'value'])
+      .where('subscription_id', '=', subscriptionId)
+      .orderBy('created_at', 'asc')
+      .execute();
+    return rows.map((row) => ({
+      type: row.type as 'rss' | 'search' | 'site',
+      value: row.value,
+    }));
+  }
+
+  /** 用于读取订阅近期条目指纹供去重，上限 500 条。 */
+  private async readSeenHashes(subscriptionId: string): Promise<string[]> {
+    const rows = await withNewsTables(this.databaseService.client)
+      .selectFrom('news_items')
+      .select('content_fingerprint')
+      .where('subscription_id', '=', subscriptionId)
+      .orderBy('discovered_at', 'desc')
       .limit(500)
       .execute();
-    return rows.map((row) => row.content_hash);
+    return rows.map((row) => row.content_fingerprint);
   }
 
-  /** 用于把运行推进到终态并写入简报文档、错误码与已见条目。 */
-  async completeDigestRun(runId: string, input: CompleteNewsDigestDto): Promise<void> {
+  /** 用于读取订阅近期条目标题供重要性评定对照。 */
+  private async readRecentItemTitles(subscriptionId: string): Promise<string[]> {
+    const rows = await withNewsTables(this.databaseService.client)
+      .selectFrom('news_items')
+      .select('title')
+      .where('subscription_id', '=', subscriptionId)
+      .orderBy('discovered_at', 'desc')
+      .limit(RECENT_ITEM_LIMIT)
+      .execute();
+    return rows.map((row) => row.title);
+  }
+
+  /** 用于在发现新条目时按指纹去重登记资讯条目并返回指纹到条目 id 的映射。 */
+  async registerRunItems(
+    runId: string,
+    items: {
+      contentFingerprint: string;
+      processedContent?: string;
+      publishedAt?: string | null;
+      snippet?: string;
+      sourceType: 'rss' | 'search';
+      title: string;
+      url: string;
+    }[],
+  ): Promise<RegisteredNewsRunItem[]> {
+    if (items.length === 0) return [];
     const database = withNewsTables(this.databaseService.client);
-    const result = await database
-      .updateTable('news_digest_runs')
-      .set({
-        status: input.status,
-        brief_document_id: input.briefDocumentId ?? null,
-        error_code: input.errorCode ?? null,
-        source_results: JSON.stringify(input.sourceResults ?? []) as unknown as Json,
-        updated_at: new Date(),
-        warnings: JSON.stringify(input.warnings ?? []) as unknown as Json,
-      })
+    const context = await this.readActiveRunContext(database, runId);
+    await this.insertRunItems(database, context, runId, items);
+    return this.mapStoredItemIds(database, context.subscriptionId, items);
+  }
+
+  /** 用于读取活跃运行的订阅与所有者上下文，运行缺失或已终态时拒绝。 */
+  private async readActiveRunContext(
+    database: Kysely<NewsDatabaseSchema>,
+    runId: string,
+  ): Promise<{ ownerId: string; subscriptionId: string; topic: string }> {
+    const run = await database
+      .selectFrom('news_digest_runs')
+      .select(['subscription_id', 'status'])
       .where('id', '=', runId)
-      .where('status', 'in', [...ACTIVE_RUN_STATUSES])
       .executeTakeFirst();
-    const changedRows = Number(result.numUpdatedRows ?? result.numChangedRows ?? 0);
-    if (changedRows === 0) {
+    if (run === undefined || !ACTIVE_RUN_STATUSES.includes(run.status as 'pending')) {
       throw newsError('NEWS_RUN_NOT_ACTIVE', '简报运行不存在或已进入终态。', 409);
     }
-    if (input.seenItems !== undefined && input.seenItems.length > 0) {
-      await this.persistSeenItems(runId, input.seenItems);
-    }
+    const subscription = await database
+      .selectFrom('news_subscriptions')
+      .select(['owner_id', 'topic', 'name'])
+      .where('id', '=', run.subscription_id)
+      .executeTakeFirstOrThrow();
+    return {
+      ownerId: subscription.owner_id,
+      subscriptionId: run.subscription_id,
+      topic: subscription.topic === '' ? subscription.name : subscription.topic,
+    };
   }
 
-  /** 用于写入本次运行新增的已见条目并忽略重复。 */
-  private async persistSeenItems(
+  /** 用于以订阅主题快照批量写入条目并按订阅内指纹去重。 */
+  private async insertRunItems(
+    database: Kysely<NewsDatabaseSchema>,
+    context: { ownerId: string; subscriptionId: string; topic: string },
     runId: string,
-    items: NonNullable<CompleteNewsDigestDto['seenItems']>,
+    items: {
+      contentFingerprint: string;
+      processedContent?: string;
+      publishedAt?: string | null;
+      snippet?: string;
+      sourceType: 'rss' | 'search';
+      title: string;
+      url: string;
+    }[],
   ): Promise<void> {
-    const database = withNewsTables(this.databaseService.client);
-    const subscriptionId = (await this.readSubscriptionId(runId)) ?? '';
+    const discoveredAt = new Date();
     await database
-      .insertInto('news_seen_items')
+      .insertInto('news_items')
       .values(
         items.map((item) => ({
-          subscription_id: subscriptionId,
-          normalized_url: item.normalizedUrl,
-          content_hash: item.contentHash,
+          id: randomUUID(),
+          subscription_id: context.subscriptionId,
+          owner_id: context.ownerId,
+          url: item.url,
+          title: item.title,
+          snippet: item.snippet ?? '',
+          processed_content: (item.processedContent ?? '').slice(0, 2000),
+          topic: context.topic,
+          source_type: item.sourceType,
+          relevance: 'accepted',
+          importance: 'normal',
+          published_at:
+            item.publishedAt === undefined || item.publishedAt === null
+              ? null
+              : new Date(item.publishedAt),
+          discovered_at: discoveredAt,
+          content_fingerprint: item.contentFingerprint,
+          discovered_run_id: runId,
         })),
       )
       .onConflict((constraint) =>
-        constraint.columns(['subscription_id', 'content_hash']).doNothing(),
+        constraint.columns(['subscription_id', 'content_fingerprint']).doNothing(),
       )
       .execute();
+  }
+
+  /** 用于按指纹集合读取已登记条目并映射为指纹到 id 的列表。 */
+  private async mapStoredItemIds(
+    database: Kysely<NewsDatabaseSchema>,
+    subscriptionId: string,
+    items: { contentFingerprint: string }[],
+  ): Promise<RegisteredNewsRunItem[]> {
+    const stored = await database
+      .selectFrom('news_items')
+      .select(['id', 'content_fingerprint'])
+      .where(
+        'content_fingerprint',
+        'in',
+        items.map((item) => item.contentFingerprint),
+      )
+      .where('subscription_id', '=', subscriptionId)
+      .execute();
+    return stored.map((row) => ({ contentFingerprint: row.content_fingerprint, id: row.id }));
+  }
+
+  /** 用于在同一事务内把运行推进到终态并回写条目重要性、文档关联、错误码与来源决策。 */
+  async completeDigestRun(runId: string, input: CompleteNewsDigestDto): Promise<void> {
+    await this.databaseService.client.transaction().execute(async (transaction) => {
+      const database = withNewsTables(transaction);
+      const subscriptionId = await this.readSubscriptionId(runId);
+      const result = await database
+        .updateTable('news_digest_runs')
+        .set({
+          status: input.status,
+          brief_document_id: input.briefDocumentId ?? null,
+          error_code: input.errorCode ?? null,
+          source_results: JSON.stringify(input.sourceResults ?? []) as unknown as Json,
+          updated_at: new Date(),
+          warnings: JSON.stringify(input.warnings ?? []) as unknown as Json,
+        })
+        .where('id', '=', runId)
+        .where('status', 'in', [...ACTIVE_RUN_STATUSES])
+        .executeTakeFirst();
+      const changedRows = Number(result.numUpdatedRows ?? result.numChangedRows ?? 0);
+      if (changedRows === 0) {
+        throw newsError('NEWS_RUN_NOT_ACTIVE', '简报运行不存在或已进入终态。', 409);
+      }
+      if (subscriptionId !== null) await this.applyItemResults(database, subscriptionId, input);
+    });
+  }
+
+  /** 用于把本次运行的重要性评定、摘要与相关性拒绝更新到已登记条目上。 */
+  private async applyItemResults(
+    database: Kysely<NewsDatabaseSchema>,
+    subscriptionId: string,
+    input: CompleteNewsDigestDto,
+  ): Promise<void> {
+    for (const item of input.itemImportance ?? []) {
+      await database
+        .updateTable('news_items')
+        .set({
+          importance: item.importance,
+          ...(item.processedContent !== undefined && item.processedContent.length > 0
+            ? { processed_content: item.processedContent.slice(0, 2000) }
+            : {}),
+        })
+        .where('id', '=', item.itemId)
+        .where('subscription_id', '=', subscriptionId)
+        .execute();
+    }
+    if ((input.rejectedItemIds?.length ?? 0) > 0) {
+      await database
+        .updateTable('news_items')
+        .set({ importance: null, relevance: 'rejected' })
+        .where('id', 'in', input.rejectedItemIds!)
+        .where('subscription_id', '=', subscriptionId)
+        .execute();
+    }
   }
 
   /** 用于读取运行所属订阅 id。 */
@@ -143,12 +291,13 @@ export class NewsRunsService {
     return row?.subscription_id ?? null;
   }
 
-  /** 用于列出启用计划的订阅。 */
+  /** 用于列出启用且配置了计划的订阅。 */
   async listSchedules(): Promise<NewsScheduleItem[]> {
     const rows = await withNewsTables(this.databaseService.client)
       .selectFrom('news_subscriptions')
       .select(['id', 'schedule'])
       .where('schedule', 'is not', null)
+      .where('enabled', '=', true)
       .execute();
     return rows.flatMap((row) => {
       const schedule = row.schedule as unknown as NewsScheduleItem['schedule'] | null;

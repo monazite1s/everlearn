@@ -24,7 +24,7 @@ export interface ChapterItem {
 export interface ChapterCompletion {
   readonly errorCode?: string;
   readonly markdown?: string;
-  readonly status: 'failed' | 'succeeded';
+  readonly status: 'completed' | 'failed';
 }
 
 /** 执行章节生成所需的外部依赖。 */
@@ -55,7 +55,7 @@ export async function executeTutorialChapter(
   try {
     const researchNotes = await researchChapter(item, deps);
     const markdown = await writeChapter(item, researchNotes, deps);
-    await deps.complete({ markdown, status: 'succeeded' });
+    await deps.complete({ markdown, status: 'completed' });
   } catch (error: unknown) {
     await deps.complete({
       errorCode: error instanceof WorkflowApiError ? error.errorCode : 'TUTORIAL_CHAPTER_FAILED',

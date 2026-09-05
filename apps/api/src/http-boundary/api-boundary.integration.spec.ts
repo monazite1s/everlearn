@@ -9,6 +9,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 
 import { REQUEST_ID_HEADER } from './request-correlation.middleware';
+import { TutorialMessageParamDto } from '../tutorials/tutorial-params.dto';
 import { UuidParamDto } from './uuid-param.dto';
 
 const validResourceId = '20000000-0000-4000-8000-000000000001';
@@ -21,6 +22,11 @@ class ApiBoundaryProbeController {
     return params;
   }
 
+  /** 用于返回多字段组合参数 DTO 的校验结果。 */
+  acceptMessage(params: TutorialMessageParamDto): TutorialMessageParamDto {
+    return params;
+  }
+
   /** 用于抛出必须由生产过滤器隐藏的内部错误。 */
   failInternally(): never {
     throw new Error('private database and stack detail');
@@ -29,13 +35,26 @@ class ApiBoundaryProbeController {
 
 const probePrototype = ApiBoundaryProbeController.prototype;
 const acceptDescriptor = Object.getOwnPropertyDescriptor(probePrototype, 'acceptId');
+const messageDescriptor = Object.getOwnPropertyDescriptor(probePrototype, 'acceptMessage');
 const failDescriptor = Object.getOwnPropertyDescriptor(probePrototype, 'failInternally');
-if (acceptDescriptor === undefined || failDescriptor === undefined) {
+if (
+  acceptDescriptor === undefined ||
+  messageDescriptor === undefined ||
+  failDescriptor === undefined
+) {
   throw new Error('API boundary probe descriptors are unavailable');
 }
 Param()(probePrototype, 'acceptId', 0);
 Reflect.defineMetadata('design:paramtypes', [UuidParamDto], probePrototype, 'acceptId');
 Get('resource/:id')(probePrototype, 'acceptId', acceptDescriptor);
+Param()(probePrototype, 'acceptMessage', 0);
+Reflect.defineMetadata(
+  'design:paramtypes',
+  [TutorialMessageParamDto],
+  probePrototype,
+  'acceptMessage',
+);
+Get('resource/:id/messages/:messageId')(probePrototype, 'acceptMessage', messageDescriptor);
 Get('internal-failure')(probePrototype, 'failInternally', failDescriptor);
 Controller('boundary-probe')(ApiBoundaryProbeController);
 
@@ -89,6 +108,15 @@ async function rejectsInvalidUuid(): Promise<void> {
   expect(body.requestId).toBe(response.get(REQUEST_ID_HEADER));
 }
 
+/** 用于验证多字段组合参数 DTO 中任一非法 UUID 都按 400 拒绝。 */
+async function rejectsInvalidMessageUuid(): Promise<void> {
+  const response = await request(getHttpServer()).get(
+    `/api/v1/boundary-probe/resource/${validResourceId}/messages/not-a-uuid`,
+  );
+  expect(response.status).toBe(400);
+  expect(parseBody(response)).toMatchObject({ code: 'VALIDATION_FAILED' });
+}
+
 /** 用于验证有效 UUID 可通过 DTO 转换。 */
 async function acceptsValidUuid(): Promise<void> {
   const response = await request(getHttpServer()).get(
@@ -111,5 +139,6 @@ async function hidesInternalFailure(): Promise<void> {
 beforeAll(startApplication, 30_000);
 afterAll(stopApplication);
 test('rejects invalid UUID route input', rejectsInvalidUuid);
+test('rejects invalid UUID in multi-field params', rejectsInvalidMessageUuid);
 test('accepts valid UUID route input', acceptsValidUuid);
 test('hides internal failure details', hidesInternalFailure);

@@ -48,6 +48,7 @@ export async function createChapterPlaceholders(
       createdAt,
       contentJson,
       documentId,
+      summary: chapter.summary ?? '',
       title: chapter.title,
     });
   }
@@ -69,7 +70,7 @@ async function insertChapterRow(
       id: randomUUID(),
       node_key: chapter.nodeKey,
       session_id: context.sessionId,
-      status: 'pending',
+      status: 'placeholder',
       title: chapter.title,
     })
     .executeTakeFirstOrThrow();
@@ -107,12 +108,14 @@ interface RevisionInput {
   readonly createdAt: Date;
   readonly context: ProvisionContext;
   readonly documentId: string;
+  readonly summary: string;
   readonly title: string;
 }
 
 /** 用于插入占位文档的初始修订。 */
 async function insertInitialRevision(input: RevisionInput): Promise<void> {
   const { context } = input;
+  const { summary } = input;
   await context.tx
     .insertInto('document_revisions')
     .values({
@@ -122,7 +125,7 @@ async function insertInitialRevision(input: RevisionInput): Promise<void> {
       document_id: input.documentId,
       id: randomUUID(),
       owner_id: context.ownerId,
-      plain_text: '',
+      plain_text: summary,
       revision_number: 1,
       schema_version: 1,
       source: 'automation',

@@ -131,6 +131,24 @@ export interface NewsDigestRun {
   warnings: Generated<Json>;
 }
 
+export interface NewsItem {
+  content_fingerprint: string;
+  discovered_at: Generated<Timestamp>;
+  discovered_run_id: string | null;
+  id: string;
+  importance: string | null;
+  owner_id: string;
+  processed_content: Generated<string>;
+  published_at: Timestamp | null;
+  relevance: Generated<string>;
+  snippet: Generated<string>;
+  source_type: string;
+  subscription_id: string;
+  title: string;
+  topic: string;
+  url: string;
+}
+
 export interface NewsSeenItem {
   content_hash: string;
   normalized_url: string;
@@ -138,17 +156,28 @@ export interface NewsSeenItem {
   subscription_id: string;
 }
 
-export interface NewsSubscription {
+export interface NewsSource {
   created_at: Generated<Timestamp>;
+  id: string;
+  subscription_id: string;
+  type: string;
+  value: string;
+}
+
+export interface NewsSubscription {
+  color_slot: Generated<number>;
+  created_at: Generated<Timestamp>;
+  enabled: Generated<boolean>;
   exclude_keywords: Generated<string[]>;
-  feed_url: string;
   id: string;
   include_keywords: Generated<string[]>;
   name: string;
   news_knowledge_base_id: string;
   owner_id: string;
   schedule: Json | null;
+  topic: Generated<string>;
   updated_at: Generated<Timestamp>;
+  version: Generated<number>;
 }
 
 export interface OutboxEventTable {
@@ -212,6 +241,25 @@ export interface TutorialChapter {
   status: string;
   title: string;
   updated_at: Generated<Timestamp>;
+}
+
+export interface TutorialConversation {
+  created_at: Generated<Timestamp>;
+  id: string;
+  session_id: string;
+  status: string;
+  title: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface TutorialMessage {
+  content: string;
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  id: string;
+  proposal: Json | null;
+  proposal_status: string | null;
+  role: string;
 }
 
 export interface TutorialSession {
@@ -293,13 +341,17 @@ export interface DB {
   inbox_items: InboxItemTable;
   knowledge_bases: KnowledgeBaseTable;
   news_digest_runs: NewsDigestRun;
+  news_items: NewsItem;
   news_seen_items: NewsSeenItem;
+  news_sources: NewsSource;
   news_subscriptions: NewsSubscription;
   outbox_events: OutboxEventTable;
   search_blocks: SearchBlockTable;
   search_document_projections: SearchDocumentProjectionTable;
   tags: Tag;
   tutorial_chapters: TutorialChapter;
+  tutorial_conversations: TutorialConversation;
+  tutorial_messages: TutorialMessage;
   tutorial_sessions: TutorialSession;
   users: UserTable;
   workflow_run_events: WorkflowRunEvent;

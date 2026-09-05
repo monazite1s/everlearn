@@ -26,7 +26,7 @@ export interface OutlineCompletion {
   readonly errorCode?: string;
   readonly outline?: { chapters: unknown[] };
   readonly warnings?: readonly string[];
-  readonly status: 'failed' | 'succeeded';
+  readonly status: 'completed' | 'failed';
 }
 
 /** 执行大纲研究所需的外部依赖。 */
@@ -57,7 +57,7 @@ export async function executeTutorialOutline(
   try {
     const { notes, warnings } = await research(item, deps);
     const outline = await generateOutline(item, notes, deps);
-    await deps.complete({ outline, status: 'succeeded', warnings });
+    await deps.complete({ outline, status: 'completed', warnings });
   } catch (error: unknown) {
     await deps.complete({
       errorCode: error instanceof WorkflowApiError ? error.errorCode : 'TUTORIAL_OUTLINE_FAILED',

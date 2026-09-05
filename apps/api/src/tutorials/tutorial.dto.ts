@@ -32,21 +32,44 @@ export interface TutorialScope {
   readonly knowledgeBaseIds: readonly string[];
 }
 
-/** 列表项携带的章节状态计数。 */
-export interface TutorialChapterCounts {
+/** 教程产出知识库的最小引用投影。 */
+export interface TutorialKnowledgeBaseView {
+  readonly id: string;
+  readonly kind: string;
+}
+
+/** 书架卡片携带的章节进度计数。 */
+export interface TutorialProgressView {
+  readonly completed: number;
   readonly failed: number;
-  readonly pending: number;
-  readonly succeeded: number;
   readonly total: number;
+}
+
+/** 继续阅读定位：指向章节文档路由。 */
+export interface TutorialContinueTarget {
+  readonly chapterTitle: string;
+  readonly documentId: string;
+  readonly knowledgeBaseId: string;
 }
 
 /** 教程会话列表项。 */
 export interface TutorialSummary {
-  readonly chapterCounts: TutorialChapterCounts;
+  readonly continueTo: TutorialContinueTarget | null;
   readonly createdAt: string;
   readonly id: string;
+  readonly knowledgeBase: TutorialKnowledgeBaseView | null;
+  readonly progress: TutorialProgressView | null;
   readonly status: string;
   readonly topic: string;
+  readonly updatedAt: string;
+}
+
+/** 异步阶段的真实计数投影，不伪造百分比。 */
+export interface TutorialStageView {
+  readonly completed: number | null;
+  readonly phase: 'generating' | 'researching';
+  readonly sourcesGathered: number | null;
+  readonly total: number | null;
 }
 
 /** 教程章节详情项。 */
@@ -58,17 +81,42 @@ export interface TutorialChapterView {
   readonly id: string;
   readonly nodeKey: string;
   readonly status: string;
+  readonly summary: string;
   readonly title: string;
 }
 
 /** 教程会话详情。 */
 export interface TutorialDetail {
-  readonly scope: TutorialScope;
   readonly chapters: readonly TutorialChapterView[];
+  readonly continueTo: TutorialContinueTarget | null;
+  readonly currentChapterId: string | null;
   readonly errorCode: string | null;
   readonly id: string;
+  readonly knowledgeBase: TutorialKnowledgeBaseView | null;
   readonly outline: TutorialOutline | null;
+  readonly scope: TutorialScope;
+  readonly stage: TutorialStageView | null;
   readonly status: string;
   readonly tutorialKnowledgeBaseId: string | null;
   readonly warnings: readonly string[];
+}
+
+/** 三视图图的节点：来自已确认大纲的章节行。 */
+export interface TutorialGraphNode {
+  readonly documentId: string | null;
+  readonly nodeKey: string;
+  readonly status: string;
+  readonly title: string;
+}
+
+/** 三视图图的依赖边：from 为前置章节 nodeKey。 */
+export interface TutorialGraphEdge {
+  readonly from: string;
+  readonly to: string;
+}
+
+/** 三视图图数据；无已确认大纲时两侧均为空集。 */
+export interface TutorialGraph {
+  readonly edges: readonly TutorialGraphEdge[];
+  readonly nodes: readonly TutorialGraphNode[];
 }

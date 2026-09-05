@@ -72,3 +72,25 @@
 - TUT-06：/tutorials 列表+创建、详情页两次确认/大纲编辑（行内编辑与排序，dependsOn 暂只读标签）/章节状态/单章重试/取消，researching/generating 5s 轮询；组件测试 12 例。
 - 浏览器 E2E：教程完整闭环（含大纲编辑、占位立即可见、引用正文跳转）、单章失败重试（attempt=2）、取消后不领取，三轮全量 E2E 18/18 稳定。
 - 遗留裁剪：大纲 dependsOn 页面不可编辑；章节占位正文仅段落块（行内标记不解析）；无进行中章节中断（cancel 只拦未开始）；真实 Tavily 出网未验证（mock 路径全覆盖）。
+
+### 2026-09-05 重设计方案（质量优先）
+
+方案事实源：`docs/00-product/product-spec.md`（系统教程节）、`docs/01-design/pages/tutorials.md`、`docs/02-architecture/data-model.md`（Tutorials 节）、`docs/02-architecture/api-and-events.md`。以下任务供后续认领，编号接续 TUT-06：
+
+- TUT-07 教程书架列表：书架卡片（标题、进度 x/y 章、状态徽章、继续阅读）；质量对齐知识库入口的三通道层级、hover 反馈与结构化空态。
+- TUT-08 详情三视图：左栏章节树 + 知识脊线；Tabs 树/列表/图写入 `?view=`；图视图用 dagre 布局 + SVG 自绘（不引入 React Flow），仅渲染本教程大纲内已确认 `dependsOn`，50+ 节点默认展开当前章节 2 跳其余折叠「+N」；列表视图作无障碍等价（顺带消化上批「dependsOn 页面不可编辑遗留」的展示面）。
+- TUT-09 compose 会话持久化：`tutorial_messages` 迁移（消息/确认卡/提案统一落库，`UNIQUE (tutorial_id, sequence)`，提案与确认卡 `pending→accepted/rejected` 一次性状态机）；`GET /tutorials/:id/compose` 快照、`POST .../messages`（幂等键 202）、`POST .../proposals/:id/accept|reject` 端点。
+- TUT-10 compose 子路由：`/tutorials/:id/compose` 左 1/3 对话流 + 右 2/3 实时预览；开始研究与建库两闸门以对话内确认卡呈现（复用 `confirm-scope`/`confirm-outline`，取代旧独立向导页）；Agent 提议仅提案、接受才落库；全新占位章节首次填充视为已授权；用户编辑章节（最近修订 manual）改写先展示差异（复用 `/generations/:id/accept`）；researching/generating 显示阶段名与真实计数。
+- TUT-11 教程徽标：知识库列表对 `kind=tutorial` 显示教程徽标（不隐藏、不混排）；`/tutorials` 只列教程知识库。
+- TUT-12 E2E 更新：闸门接受前零副作用、提案决议幂等与刷新恢复、三视图数据一致与折叠行为、差异接受流程、教程徽标可见性；axe/390px/reduced motion 走查。
+
+## 技术债登记（2026-09-05 评审）
+
+以下缓办项经评审确认不在本轮修复，逐条登记内容、影响与升级条件：
+
+1. sendMessage 状态读取与落库存在窗口：LLM 调用在事务与锁外（有意避免长事务持锁），生成回复所依据的教程状态与最终落库之间可能落后一个并发写。升级条件：出现「闸门期内禁止发消息」等强一致需求时把会话状态校验收进写事务。
+2. 对话历史窗口固定 50 条：`readHistory` 以 limit 50 作为提示词上下文，更早消息不进入模型。升级条件：长会话 Agent 遗忘早期约束成为质量问题时做滚动摘要压缩。
+3. superseded 只覆盖同类提案：接受提案仅将同教程同 kind 其它 pending 提案置 superseded，不同 kind 的 pending 提案可继续独立决议（语义如此设计）。升级条件：产品要求一次决议清空全部待决提案时扩展。
+4. 章节尝试上限为经验值：`MAX_CHAPTER_ATTEMPTS=5` 硬编码，耗尽后 claim/retry 置 failed（`TUTORIAL_CHAPTER_MAX_ATTEMPTS`），无自动告警与人工重置路径。升级条件：失败面数据支持调参或需要「重置尝试计数」功能。
+5. Tavily 适配错误未分类：worker 侧 `searchWithTavily` 仍抛 `tavily search responded <status>` 原始错误，未与 GLM 一样映射稳定中文错误。升级条件：Tavily 重新成为默认 Provider 时对齐错误映射。
+6. worker/api 搜索与 JSON 提取实现双份同源复制（ponytail 已注明下沉 packages 条件）。升级条件：任一份需要独立演化或出现第三处复用。

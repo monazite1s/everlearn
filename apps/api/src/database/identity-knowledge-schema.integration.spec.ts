@@ -22,6 +22,10 @@ const newsSchemaMigrationName = '20260902000000_news_schema';
 const tagsLinksMigrationName = '20260903000000_document_tags_links';
 const newsRunDetailsMigrationName = '20260905000000_news_run_details';
 const tutorialSchemaMigrationName = '20260906000000_tutorial_schema';
+const newsItemsMigrationName = '20260907000000_news_items';
+const tutorialComposeMigrationName = '20260908000000_tutorial_compose';
+const newsSubscriptionSourcesMigrationName = '20260909000000_news_subscription_sources';
+const tutorialStatusEnumsMigrationName = '20260910000000_tutorial_status_enums';
 const searchEmbeddingsMigrationName = '20260904000000_search_embeddings';
 const fullMigrationNames = [
   schemaMigrationName,
@@ -37,6 +41,10 @@ const fullMigrationNames = [
   searchEmbeddingsMigrationName,
   newsRunDetailsMigrationName,
   tutorialSchemaMigrationName,
+  newsItemsMigrationName,
+  tutorialComposeMigrationName,
+  newsSubscriptionSourcesMigrationName,
+  tutorialStatusEnumsMigrationName,
 ];
 const otherUserId = '10000000-0000-4000-8000-000000000001';
 const firstKnowledgeBaseId = '20000000-0000-4000-8000-000000000001';
@@ -265,40 +273,23 @@ async function migratesIdentityAndKnowledgeSchema(): Promise<void> {
   await database.deleteFrom('documents').execute();
   await database.deleteFrom('knowledge_bases').execute();
   await database.deleteFrom('users').where('id', '=', otherUserId).execute();
-  await expectSingleMigration('down', tutorialSchemaMigrationName);
-  await expectSingleMigration('down', newsRunDetailsMigrationName);
-  await expectSingleMigration('down', searchEmbeddingsMigrationName);
-  await expectSingleMigration('down', tagsLinksMigrationName);
-  await expectSingleMigration('down', newsSchemaMigrationName);
-  await expectSingleMigration('down', workflowRuntimeMigrationName);
-  await expectSingleMigration('down', searchQueryIndexesMigrationName);
-  await expectSingleMigration('down', searchProjectionMigrationName);
-  await expectSingleMigration('down', attachmentsMigrationName);
-  await expectSingleMigration('down', revisionTitleMigrationName);
-  await expectSingleMigration('down', trashIndexesMigrationName);
-  await expectSingleMigration('down', seedMigrationName);
-  await expectSingleMigration('down', schemaMigrationName);
+  await migrateDownThrough(schemaMigrationName);
   expect((await runMigrations(database, migrationOptions('up'))).executedMigrations).toEqual(
     fullMigrationNames,
   );
 }
 
-/** 用于把迁移回退到修订标题之前以构造存量行夹具。 */
-async function downToBeforeRevisionTitle(): Promise<void> {
-  await expectSingleMigration('down', tutorialSchemaMigrationName);
-  await expectSingleMigration('down', newsRunDetailsMigrationName);
-  await expectSingleMigration('down', searchEmbeddingsMigrationName);
-  await expectSingleMigration('down', tagsLinksMigrationName);
-  await expectSingleMigration('down', newsSchemaMigrationName);
-  await expectSingleMigration('down', workflowRuntimeMigrationName);
-  await expectSingleMigration('down', searchQueryIndexesMigrationName);
-  await expectSingleMigration('down', searchProjectionMigrationName);
-  await expectSingleMigration('down', attachmentsMigrationName);
+/** 用于按时间逆序逐个回退迁移直到（含）目标迁移为止。 */
+async function migrateDownThrough(target: string): Promise<void> {
+  for (const name of [...fullMigrationNames].sort().reverse()) {
+    await expectSingleMigration('down', name);
+    if (name === target) return;
+  }
 }
 
 /** 用于验证修订标题迁移按文档标题回填存量修订行。 */
 async function backfillsRevisionTitlesFromDocuments(): Promise<void> {
-  await downToBeforeRevisionTitle();
+  await migrateDownThrough(attachmentsMigrationName);
   expect((await runMigrations(database, migrationOptions('down'))).executedMigrations).toEqual([
     revisionTitleMigrationName,
   ]);
@@ -342,12 +333,50 @@ async function backfillsRevisionTitlesFromDocuments(): Promise<void> {
   await database.deleteFrom('knowledge_bases').execute();
 }
 
+/** 用于断言把指定状态写入表是否被当前 CHECK 约束接受。 */
+async function expectStatusChange(table: string, status: string, accepted: boolean): Promise<void> {
+  const { sql } = await import('kysely');
+  const statement = sql`UPDATE ${sql.table(table)} SET status = ${status}`.execute(database);
+  if (accepted) await statement;
+  else await expect(statement).rejects.toThrow();
+}
+
+/** 用于验证教程状态枚举迁移在新旧两种库状态下幂等收敛。 */
+async function convergesTutorialStatusEnums(): Promise<void> {
+  const { sql } = await import('kysely');
+  const sessionId = '70000000-0000-4000-8000-000000000001';
+  const chapterId = '70000000-0000-4000-8000-000000000002';
+  await sql`INSERT INTO tutorial_sessions (id, owner_id, topic, audience, level, depth, status)
+    VALUES (${sessionId}, ${LOCAL_USER_ID}, '枚举收敛', '通用读者', 10, 'overview', 'researching')`.execute(
+    database,
+  );
+  await sql`INSERT INTO tutorial_chapters (id, session_id, node_key, title, status)
+    VALUES (${chapterId}, ${sessionId}, 'ch-1', '章节一', 'failed')`.execute(database);
+
+  // 旧枚举基线经新迁移收敛后，只接受新枚举状态。
+  await expectStatusChange('tutorial_sessions', 'draft', false);
+  await expectStatusChange('tutorial_sessions', 'draft_scope', true);
+  await expectStatusChange('tutorial_chapters', 'pending', false);
+  await expectStatusChange('tutorial_chapters', 'queued', true);
+
+  // 模拟真实库“已收敛但迁移未记账”：清除历史后重跑应成功且约束不回退。
+  await sql`DELETE FROM migration_history WHERE name = ${tutorialStatusEnumsMigrationName}`.execute(
+    database,
+  );
+  const rerun = await runMigrations(database, migrationOptions('up'));
+  expect(rerun.executedMigrations).toEqual([tutorialStatusEnumsMigrationName]);
+  await expectStatusChange('tutorial_sessions', 'outline_ready', false);
+  await database.deleteFrom('tutorial_chapters').execute();
+  await database.deleteFrom('tutorial_sessions').execute();
+}
+
 /** 用于仅在配置 PostgreSQL 时注册生产 Schema 场景。 */
 function defineSchemaMigrationTests(): void {
   beforeAll(prepareDatabase);
   afterAll(cleanDatabase);
   test('enforces the initial user-owned knowledge schema', migratesIdentityAndKnowledgeSchema);
   test('backfills revision titles from documents', backfillsRevisionTitlesFromDocuments);
+  test('converges tutorial status enums idempotently', convergesTutorialStatusEnums);
 }
 
 describe.skipIf(databaseUrl === undefined)(

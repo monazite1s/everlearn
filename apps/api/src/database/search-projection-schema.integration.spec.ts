@@ -85,7 +85,7 @@ async function migratesUpDownAndUp(): Promise<void> {
   expect(await tableExists(database, schemaName, 'search_blocks')).toBe(true);
 
   const reverted: string[] = [];
-  while (!reverted.includes(migrationName) && reverted.length < 10) {
+  while (!reverted.includes(migrationName) && reverted.length < 20) {
     const step = await runMigrations(database, migrationOptions('down', schemaName));
     reverted.push(...step.executedMigrations);
   }

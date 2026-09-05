@@ -1,209 +1,297 @@
 /**
- * @fileoverview 请求资讯 API 并收窄为本 feature 的局部投影。
+ * @fileoverview 请求条目流、条目详情、简报与运行详情 API 并收窄为局部投影。
  */
-// 待后续并入 packages/contracts，禁止在并入前被其他 feature 复用。
+// 条目契约以 packages/contracts 为单一事实源；简报与运行详情仍为局部投影，禁止跨 feature 复用。
+// ponytail: 解析容忍未知额外字段，关键字段与枚举严格校验；剩余局部契约并入 contracts 时再收紧为精确键集。
 
+import type {
+  NewsItemDetail,
+  NewsItemImportance,
+  NewsItemSourceType,
+  NewsItemSummary,
+} from '@everlearn/contracts';
 import { isRecord, requestApi, type ApiResult } from '../../shared/api-request';
 
-/** 订阅计划的局部投影。 */
-export interface NewsSchedule {
-  readonly kind: 'daily' | 'weekly';
-  readonly time: string;
-  readonly timezone: string;
+/** 订阅主题色槽，创建时由服务端在 1..5 内循环分配。 */
+export type NewsColorSlot = 1 | 2 | 3 | 4 | 5;
+/** 订阅来源类型。 */
+export type NewsSourceType = 'rss' | 'site' | 'search';
+// 条目契约别名保留给 news feature 既有引用，事实源在 contracts。
+export type { NewsItemDetail, NewsItemSummary } from '@everlearn/contracts';
+export type { NewsItemImportance as NewsImportance } from '@everlearn/contracts';
+export type { NewsItemSourceType as NewsStreamSourceType } from '@everlearn/contracts';
+/** 条目过滤条件，任一变化都必须从第一页重读。 */
+export interface NewsItemFilters {
+  readonly importance?: NewsItemImportance | undefined;
+  readonly sourceType?: NewsItemSourceType | undefined;
+  readonly subscriptionId?: string | undefined;
 }
-
-/** 订阅列表条目的局部投影。 */
-export interface NewsSubscriptionItem {
-  readonly createdAt: string;
-  readonly feedUrl: string;
-  readonly id: string;
-  readonly latestRunStatus: string | null;
-  readonly name: string;
-  readonly newsKnowledgeBaseId: string;
-  readonly schedule: NewsSchedule | null;
+/** 游标分页响应。 */
+export interface NewsPage<T> {
+  readonly items: readonly T[];
+  readonly nextCursor: string | null;
 }
-
-/** 简报运行条目的局部投影。 */
-export interface NewsDigestRunItem {
-  readonly briefDocumentId: string | null;
-  readonly createdAt: string;
-  readonly errorCode: string | null;
+/** 简报按日列表条目投影。 */
+export interface NewsDigestSummary {
+  readonly digestDate: string;
+  readonly documentId: string | null;
   readonly id: string;
-  readonly sourceResults: readonly NewsDigestSourceResult[];
+  readonly itemCount: number;
+  readonly knowledgeBaseId?: string;
   readonly status: string;
-  readonly subscriptionId: string;
-  readonly warnings: readonly string[];
+  readonly title: string;
+  readonly warningCount: number;
 }
-
-/** 单条来源采纳结果的局部投影。 */
-export interface NewsDigestSourceResult {
+/** 运行详情里的单条来源决策。 */
+export interface NewsRunSourceResult {
   readonly decision: 'adopted' | 'skipped';
   readonly reason: string;
   readonly title: string;
   readonly url: string;
 }
+/** 发现运行详情投影，用于条目「处理过程」。 */
+export interface NewsRunDetail {
+  readonly id: string;
+  readonly sourceResults: readonly NewsRunSourceResult[];
+  readonly status: string;
+  readonly warnings: readonly string[];
+}
 
-const KNOWN_CODES = [
+const NEWS_CODES = [
   'INTERNAL_ERROR',
   'NOT_FOUND',
   'VALIDATION_FAILED',
-  'NEWS_KB_MISSING',
+  'VERSION_CONFLICT',
 ] as const;
-export type NewsApiErrorCode = (typeof KNOWN_CODES)[number];
+export type NewsApiErrorCode = (typeof NEWS_CODES)[number];
+export type NewsApiResult<T> = ApiResult<T, NewsApiErrorCode>;
 
-/** 用于只读取字符串或 null 字段。 */
-function stringOrNull(value: unknown): string | null {
-  return typeof value === 'string' ? value : null;
+const STREAM_SOURCE_TYPES: readonly NewsItemSourceType[] = ['rss', 'search'];
+const IMPORTANCES: readonly NewsItemImportance[] = ['high', 'normal', 'low'];
+
+/** 用于读取字符串字段并容忍缺省。 */
+function text(value: unknown): string {
+  return typeof value === 'string' ? value : '';
 }
 
-/** 用于收窄计划对象。 */
-function parseSchedule(value: unknown): NewsSchedule | null {
-  if (!isRecord(value)) return null;
-  if (value.kind !== 'daily' && value.kind !== 'weekly') return null;
-  if (typeof value.time !== 'string' || typeof value.timezone !== 'string') return null;
-  return { kind: value.kind, time: value.time, timezone: value.timezone };
+/** 用于读取非负安全整数计数。 */
+function count(value: unknown): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0;
 }
 
-/** 用于把未知响应收窄为订阅列表投影。 */
-export function parseSubscriptionList(value: unknown): NewsSubscriptionItem[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const items: NewsSubscriptionItem[] = [];
-  for (const entry of value) {
-    if (!isRecord(entry) || typeof entry.name !== 'string' || typeof entry.id !== 'string')
-      return undefined;
-    items.push({
-      createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : '',
-      feedUrl: typeof entry.feedUrl === 'string' ? entry.feedUrl : '',
-      id: entry.id,
-      latestRunStatus: stringOrNull(entry.latestRunStatus),
-      name: entry.name,
-      newsKnowledgeBaseId:
-        typeof entry.newsKnowledgeBaseId === 'string' ? entry.newsKnowledgeBaseId : '',
-      schedule: parseSchedule(entry.schedule),
-    });
-  }
-  return items;
-}
-
-/** 用于收窄来源采纳结果数组。 */
-function parseSourceResults(value: unknown): NewsDigestSourceResult[] {
-  if (!Array.isArray(value)) return [];
-  const results: NewsDigestSourceResult[] = [];
-  for (const entry of value) {
-    if (!isRecord(entry)) continue;
-    if (entry.decision !== 'adopted' && entry.decision !== 'skipped') continue;
-    if (
-      typeof entry.title !== 'string' ||
-      typeof entry.url !== 'string' ||
-      typeof entry.reason !== 'string'
-    )
-      continue;
-    results.push({
-      decision: entry.decision,
-      reason: entry.reason,
-      title: entry.title,
-      url: entry.url,
-    });
-  }
-  return results;
-}
-
-/** 用于把未知响应收窄为简报运行列表投影。 */
-export function parseDigestRunList(value: unknown): NewsDigestRunItem[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const items: NewsDigestRunItem[] = [];
-  for (const entry of value) {
-    if (!isRecord(entry) || typeof entry.id !== 'string') return undefined;
-    items.push({
-      briefDocumentId: stringOrNull(entry.briefDocumentId),
-      createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : '',
-      errorCode: stringOrNull(entry.errorCode),
-      id: entry.id,
-      sourceResults: parseSourceResults(entry.sourceResults),
-      status: typeof entry.status === 'string' ? entry.status : '',
-      subscriptionId: typeof entry.subscriptionId === 'string' ? entry.subscriptionId : '',
-      warnings: parseStringList(entry.warnings),
-    });
-  }
-  return items;
-}
-
-/** 用于收窄字符串数组且容忍缺省。 */
-function parseStringList(value: unknown): string[] {
+/** 用于读取字符串数组且过滤非字符串项。 */
+function textList(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : [];
 }
 
-/** 简报运行错误码的中文文案映射。 */
-const RUN_ERROR_LABELS: Record<string, string> = {
-  INTERNAL_ERROR: '服务内部错误，请稍后重试。',
-  NEWS_KB_MISSING: '资讯知识库缺失，请先重建资讯知识库。',
-  NOT_FOUND: '运行记录不存在，可能已被清理。',
-  PROVIDER_UNAVAILABLE: '内容提供方暂不可用，请稍后重试。',
-};
-
-/** 用于把简报运行错误码转换为中文文案。 */
-export function describeRunErrorCode(code: string): string {
-  return RUN_ERROR_LABELS[code] ?? `运行失败（${code}），请稍后重试。`;
+/** 用于收窄主题色槽并拒绝越界值。 */
+function parseColorSlot(value: unknown): NewsColorSlot | undefined {
+  return value === 1 || value === 2 || value === 3 || value === 4 || value === 5
+    ? value
+    : undefined;
 }
 
-/** 用于列出订阅。 */
-export function listSubscriptions(): Promise<ApiResult<NewsSubscriptionItem[], NewsApiErrorCode>> {
+/** 用于判断值是否属于批准的字符串枚举。 */
+function oneOf<T extends string>(values: readonly T[], value: unknown): T | undefined {
+  return typeof value === 'string' && (values as readonly string[]).includes(value)
+    ? (value as T)
+    : undefined;
+}
+
+/** 用于收窄条目流摘要投影。 */
+function parseItemSummary(entry: unknown): NewsItemSummary | undefined {
+  if (!isRecord(entry)) return undefined;
+  const sourceType = oneOf(STREAM_SOURCE_TYPES, entry.sourceType);
+  const importance = oneOf(IMPORTANCES, entry.importance);
+  const colorSlot = parseColorSlot(entry.colorSlot);
+  if (
+    sourceType === undefined ||
+    importance === undefined ||
+    colorSlot === undefined ||
+    typeof entry.id !== 'string' ||
+    typeof entry.title !== 'string'
+  ) {
+    return undefined;
+  }
+  return {
+    colorSlot,
+    discoveredAt: text(entry.discoveredAt),
+    id: entry.id,
+    importance,
+    snippet: text(entry.snippet),
+    sourceType,
+    subscriptionId: text(entry.subscriptionId),
+    title: entry.title,
+    topic: text(entry.topic),
+    url: text(entry.url),
+  };
+}
+
+/** 用于收窄条目流分页响应。 */
+function parseItemPage(value: unknown): NewsPage<NewsItemSummary> | undefined {
+  if (!isRecord(value) || !Array.isArray(value.items)) return undefined;
+  const items: NewsItemSummary[] = [];
+  for (const entry of value.items) {
+    const parsed = parseItemSummary(entry);
+    if (parsed === undefined) return undefined;
+    items.push(parsed);
+  }
+  return { items, nextCursor: typeof value.nextCursor === 'string' ? value.nextCursor : null };
+}
+
+/** 用于收窄条目详情投影。 */
+function parseItemDetail(value: unknown): NewsItemDetail | undefined {
+  if (!isRecord(value) || typeof value.processedContent !== 'string') return undefined;
+  const summary = parseItemSummary(value);
+  if (summary === undefined) return undefined;
+  return {
+    ...summary,
+    discoveredRunId: typeof value.discoveredRunId === 'string' ? value.discoveredRunId : null,
+    processedContent: value.processedContent,
+    relevance: value.relevance === 'rejected' ? 'rejected' : 'accepted',
+  };
+}
+
+/** 用于收窄简报列表条目投影。 */
+function parseDigest(entry: unknown): NewsDigestSummary | undefined {
+  if (
+    !isRecord(entry) ||
+    typeof entry.id !== 'string' ||
+    typeof entry.title !== 'string' ||
+    typeof entry.digestDate !== 'string'
+  ) {
+    return undefined;
+  }
+  return {
+    digestDate: entry.digestDate,
+    documentId: typeof entry.documentId === 'string' ? entry.documentId : null,
+    id: entry.id,
+    itemCount: count(entry.itemCount),
+    ...(typeof entry.knowledgeBaseId === 'string'
+      ? { knowledgeBaseId: entry.knowledgeBaseId }
+      : {}),
+    status: text(entry.status),
+    title: entry.title,
+    warningCount: count(entry.warningCount),
+  };
+}
+
+/** 用于收窄简报分页响应。 */
+function parseDigestPage(value: unknown): NewsPage<NewsDigestSummary> | undefined {
+  if (!isRecord(value) || !Array.isArray(value.items)) return undefined;
+  const items: NewsDigestSummary[] = [];
+  for (const entry of value.items) {
+    const parsed = parseDigest(entry);
+    if (parsed === undefined) return undefined;
+    items.push(parsed);
+  }
+  return { items, nextCursor: typeof value.nextCursor === 'string' ? value.nextCursor : null };
+}
+
+/** 用于收窄单条来源决策投影。 */
+function parseSourceResult(entry: unknown): NewsRunSourceResult | undefined {
+  if (!isRecord(entry) || typeof entry.title !== 'string' || typeof entry.url !== 'string') {
+    return undefined;
+  }
+  if (entry.decision !== 'adopted' && entry.decision !== 'skipped') return undefined;
+  return {
+    decision: entry.decision,
+    reason: text(entry.reason),
+    title: entry.title,
+    url: entry.url,
+  };
+}
+
+/** 用于收窄运行详情投影。 */
+function parseRunDetail(value: unknown): NewsRunDetail | undefined {
+  if (!isRecord(value) || typeof value.id !== 'string') return undefined;
+  const results: NewsRunSourceResult[] = [];
+  if (Array.isArray(value.sourceResults)) {
+    for (const entry of value.sourceResults) {
+      const parsed = parseSourceResult(entry);
+      if (parsed === undefined) return undefined;
+      results.push(parsed);
+    }
+  }
+  return {
+    id: value.id,
+    sourceResults: results,
+    status: text(value.status),
+    warnings: textList(value.warnings),
+  };
+}
+
+/** 用于把条目过滤编码为同源 GET 查询。 */
+function itemPageUrl(filters: NewsItemFilters, cursor?: string): string {
+  const params = new URLSearchParams();
+  if (filters.subscriptionId) params.set('subscriptionId', filters.subscriptionId);
+  if (filters.sourceType) params.set('sourceType', filters.sourceType);
+  if (filters.importance) params.set('importance', filters.importance);
+  if (cursor) params.set('cursor', cursor);
+  const query = params.toString();
+  return query ? `/api/v1/news-items?${query}` : '/api/v1/news-items';
+}
+
+/** 用于读取一页条目流并支持取消过期请求。 */
+export function listNewsItems(
+  filters: NewsItemFilters,
+  signal: AbortSignal,
+  cursor?: string,
+): Promise<NewsApiResult<NewsPage<NewsItemSummary>>> {
   return requestApi({
-    codes: KNOWN_CODES,
+    codes: NEWS_CODES,
     expectedStatus: 200,
-    networkMessage: '无法连接资讯服务，请稍后重试。',
-    parse: parseSubscriptionList,
-    url: '/api/v1/news/subscriptions',
+    init: { signal },
+    networkMessage: '无法连接资讯服务，请检查网络后重试。',
+    parse: parseItemPage,
+    url: itemPageUrl(filters, cursor),
   });
 }
 
-/** 用于创建订阅。 */
-export function createSubscription(input: {
-  excludeKeywords: string[];
-  feedUrl: string;
-  includeKeywords: string[];
-  name: string;
-  schedule: NewsSchedule | null;
-}): Promise<ApiResult<unknown, NewsApiErrorCode>> {
+/** 用于读取条目详情。 */
+export function getNewsItem(
+  itemId: string,
+  signal: AbortSignal,
+): Promise<NewsApiResult<NewsItemDetail>> {
   return requestApi({
-    codes: KNOWN_CODES,
-    expectedStatus: 201,
-    init: {
-      body: JSON.stringify(input),
-      headers: { 'content-type': 'application/json' },
-      method: 'POST',
-    },
-    networkMessage: '无法创建订阅，请稍后重试。',
-    /** 用于忽略启动运行响应的无正文结果。 */
-    parse: () => ({}),
-    url: '/api/v1/news/subscriptions',
+    codes: NEWS_CODES,
+    expectedStatus: 200,
+    init: { signal },
+    networkMessage: '无法连接资讯服务，请检查网络后重试。',
+    parse: parseItemDetail,
+    url: `/api/v1/news-items/${itemId}`,
   });
 }
 
-/** 用于立即运行一次订阅简报。 */
-export function runSubscription(
-  subscriptionId: string,
-): Promise<ApiResult<unknown, NewsApiErrorCode>> {
+/** 用于读取简报按日列表。 */
+export function listNewsDigests(
+  signal: AbortSignal,
+  cursor?: string,
+): Promise<NewsApiResult<NewsPage<NewsDigestSummary>>> {
+  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
   return requestApi({
-    codes: KNOWN_CODES,
+    codes: NEWS_CODES,
     expectedStatus: 200,
-    init: { headers: { 'content-type': 'application/json' }, method: 'POST' },
-    networkMessage: '无法启动简报，请稍后重试。',
-    /** 用于忽略启动运行响应的无正文结果。 */
-    parse: () => ({}),
-    url: `/api/v1/news/subscriptions/${subscriptionId}/run`,
+    init: { signal },
+    networkMessage: '无法连接资讯服务，请检查网络后重试。',
+    parse: parseDigestPage,
+    url: `/api/v1/news-digests${query}`,
   });
 }
 
-/** 用于列出最近简报运行。 */
-export function listDigestRuns(): Promise<ApiResult<NewsDigestRunItem[], NewsApiErrorCode>> {
+/** 用于读取发现运行详情（来源决策与质量警告）。 */
+export function getDigestRun(
+  runId: string,
+  signal: AbortSignal,
+): Promise<NewsApiResult<NewsRunDetail>> {
   return requestApi({
-    codes: KNOWN_CODES,
+    codes: NEWS_CODES,
     expectedStatus: 200,
-    networkMessage: '无法读取简报记录，请稍后重试。',
-    parse: parseDigestRunList,
-    url: '/api/v1/news/digest-runs',
+    init: { signal },
+    networkMessage: '无法连接资讯服务，请检查网络后重试。',
+    parse: parseRunDetail,
+    url: `/api/v1/digest-runs/${runId}`,
   });
 }

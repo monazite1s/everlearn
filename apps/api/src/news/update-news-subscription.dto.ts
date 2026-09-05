@@ -1,31 +1,44 @@
 /**
- * @fileoverview 定义更新资讯订阅的请求边界。
+ * @fileoverview 定义更新资讯订阅的请求边界（必须提交 version）。
  */
 
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
+  IsBoolean,
+  IsInt,
   IsOptional,
   IsString,
   Length,
-  Matches,
+  Min,
   ValidateNested,
 } from 'class-validator';
 
 import { NewsScheduleDto } from './news-schedule.dto';
+import { NewsSourceDto } from './news-source.dto';
 
 /** 更新订阅的请求边界。 */
 export class UpdateNewsSubscriptionDto {
-  @IsOptional()
+  @IsInt()
+  @Min(1)
+  version!: number;
+
   @IsString()
   @Length(1, 120)
-  name?: string;
+  name!: string;
 
-  @IsOptional()
   @IsString()
-  @Matches(/^https?:\/\/\S{1,2000}$/u)
-  feedUrl?: string;
+  @Length(1, 200)
+  topic!: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => NewsSourceDto)
+  sources!: NewsSourceDto[];
 
   @IsOptional()
   @IsArray()
@@ -45,4 +58,8 @@ export class UpdateNewsSubscriptionDto {
   @ValidateNested()
   @Type(() => NewsScheduleDto)
   schedule?: NewsScheduleDto | null;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
 }

@@ -80,7 +80,7 @@ async function migratesSearchQueryIndexesUpDownAndUp(): Promise<void> {
   for (const name of indexNames) expect(indexes.get(name)).toContain('WHERE (deleted_at IS NULL)');
 
   const reverted: string[] = [];
-  while (!reverted.includes(migrationName) && reverted.length < 10) {
+  while (!reverted.includes(migrationName) && reverted.length < 20) {
     const step = await runMigrations(getDatabase(), migrationOptions('down'));
     reverted.push(...step.executedMigrations);
   }

@@ -106,7 +106,7 @@ export async function completeTutorialOutline(
     errorCode?: string;
     outline?: { chapters: unknown[] };
     warnings?: readonly string[];
-    status: 'failed' | 'succeeded';
+    status: 'completed' | 'failed';
   },
 ): Promise<void> {
   await callInternal(config, `/outline/${sessionId}/complete`, { body: input, method: 'POST' });
@@ -116,7 +116,7 @@ export async function completeTutorialOutline(
 export async function completeTutorialChapter(
   config: TutorialExecutorConfig,
   chapterId: string,
-  input: { errorCode?: string; markdown?: string; status: 'failed' | 'succeeded' },
+  input: { errorCode?: string; markdown?: string; status: 'completed' | 'failed' },
 ): Promise<void> {
   await callInternal(config, `/chapters/${chapterId}/complete`, { body: input, method: 'POST' });
 }
