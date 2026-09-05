@@ -36,16 +36,67 @@ function findObjectEnd(text: string, start: number): number {
   return -1;
 }
 
-/** 用于从 LLM 文本提取首个完整 JSON 对象，失败返回 null。 */
+/** JSON 字符串字面量内反斜杠后允许跟随的转义目标字符。 */
+const VALID_ESCAPE_CHARS = '"\\/bfnrtu';
+
+/** 用于把字符串字面量内的裸控制字符映射为对应 JSON 转义。 */
+const CONTROL_ESCAPES: Record<string, string> = {
+  '\b': '\\b',
+  '\f': '\\f',
+  '\n': '\\n',
+  '\r': '\\r',
+  '\t': '\\t',
+};
+
+/** 用于修复候选 JSON 中字符串字面量内的裸控制字符与非法转义序列。 */
+function repairJsonText(text: string): string {
+  let repaired = '';
+  let inString = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]!;
+    if (!inString) {
+      if (char === '"') inString = true;
+      repaired += char;
+      continue;
+    }
+    if (char === '"') {
+      inString = false;
+      repaired += char;
+      continue;
+    }
+    if (char === '\\') {
+      const next = text[index + 1];
+      if (next !== undefined && VALID_ESCAPE_CHARS.includes(next)) {
+        repaired += char + next;
+        index += 1;
+      } else {
+        repaired += '\\\\';
+      }
+      continue;
+    }
+    const escaped = CONTROL_ESCAPES[char];
+    if (escaped !== undefined) repaired += escaped;
+    else if (char < ' ') repaired += `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`;
+    else repaired += char;
+  }
+  return repaired;
+}
+
+/** 用于从 LLM 文本提取首个完整 JSON 对象，首次解析失败时修复重试，仍失败返回 null。 */
 export function extractJsonObject(text: string): unknown {
   const cleaned = stripFences(text);
   for (let index = cleaned.indexOf('{'); index >= 0; index = cleaned.indexOf('{', index + 1)) {
     const end = findObjectEnd(cleaned, index);
     if (end < 0) break;
+    const candidate = cleaned.slice(index, end + 1);
     try {
-      return JSON.parse(cleaned.slice(index, end + 1)) as unknown;
+      return JSON.parse(candidate) as unknown;
     } catch {
-      continue;
+      try {
+        return JSON.parse(repairJsonText(candidate)) as unknown;
+      } catch {
+        continue;
+      }
     }
   }
   return null;

@@ -2,7 +2,8 @@
  * @fileoverview 验证对话 Agent 回复解析与提示词构造纯函数。
  */
 
-import { describe, expect, test } from 'vitest';
+import { Logger } from '@nestjs/common';
+import { describe, expect, test, vi } from 'vitest';
 
 import { buildComposeMessages, parseAgentReply } from './compose-agent';
 
@@ -60,6 +61,30 @@ describe('parseAgentReply', () => {
     expect(reply.reply).toContain('后端工程师');
     expect(reply.reply).toContain('深度');
     expect(reply.reply).toContain('来源范围 2 个知识库');
+  });
+});
+
+describe('parseAgentReply 解析失败提示', () => {
+  test('疑似提案结构解析失败时附加提示行并记录结构化警告', () => {
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockReturnValue(undefined);
+    const reply = parseAgentReply(
+      '{"reply":"好的，我来重写第一章。","proposal":{"kind":"chapter","payload":{"nodeKey":"intro","markdown":"# 引言',
+    );
+    expect(reply.proposal).toBeNull();
+    expect(reply.reply).toContain('好的，我来重写第一章。');
+    expect(reply.reply.endsWith('（提案解析失败，本次回复未生成可执行的确认卡）')).toBe(true);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'compose.proposal.parse_failed' }),
+    );
+    warn.mockRestore();
+  });
+
+  test('纯文本回复不含提案结构时不附加提示行也不告警', () => {
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockReturnValue(undefined);
+    const reply = parseAgentReply('这段输出只是普通文本，没有任何可解析的结构。');
+    expect(reply.reply).not.toContain('提案解析失败');
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });
 

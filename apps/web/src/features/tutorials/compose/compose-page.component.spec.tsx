@@ -228,11 +228,11 @@ test('差异确认卡展示前后内容并接受差异', async () => {
 /** 用于验证发送消息携带幂等键且成功后刷新会话。 */
 test('发送消息携带幂等键并刷新会话', async () => {
   const fetchMock = renderCompose(snapshot(), {
-    /** 用于断言幂等键并返回 202 响应。 */
+    /** 用于断言幂等键并返回 200 响应。 */
     '/compose/messages': (init) => {
       const key = (init?.headers as Record<string, string> | undefined)?.['idempotency-key'];
       expect(typeof key).toBe('string');
-      return jsonResponse({ ok: true }, 202);
+      return jsonResponse({ ok: true }, 200);
     },
   });
   await ready();

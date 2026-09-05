@@ -77,7 +77,7 @@ export function getComposeSnapshot(
   });
 }
 
-/** 用于以幂等键发送用户消息，回复经运行事件异步返回。 */
+/** 用于以幂等键同步发送用户消息并返回 Agent 回复。 */
 export function sendComposeMessage(
   id: string,
   content: string,
@@ -85,7 +85,7 @@ export function sendComposeMessage(
 ): Promise<ApiResult<unknown, TutorialApiErrorCode>> {
   return requestApi({
     codes: KNOWN_CODES,
-    expectedStatus: 202,
+    expectedStatus: 200,
     init: {
       body: JSON.stringify({ content }),
       headers: { ...JSON_INIT.headers, 'idempotency-key': idempotencyKey },

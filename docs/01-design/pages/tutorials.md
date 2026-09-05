@@ -42,7 +42,7 @@
 - 数据实体：`Tutorial`、`ResearchScope`、`TutorialOutline`、`TutorialChapter`、`TutorialMessage`、`WorkflowRun`、目标 `KnowledgeBase`（kind=tutorial）与章节 `Document`。
 - `GET /tutorials`：书架列表，返回标题、进度 x/y、状态与最近活动；`POST /api/v1/tutorials` 以最小字段创建草案。
 - `GET /api/v1/tutorials/:id/compose`：会话快照，含分页消息、待处理提案与确认卡、当前大纲与章节状态。
-- `POST /api/v1/tutorials/:id/compose/messages`：以幂等键发送用户消息，返回 202；回复经既有 `/workflow-runs/:id/events` SSE 推送，SSE 失效按运行详情轮询。
+- `POST /api/v1/tutorials/:id/compose/messages`：以幂等键同步发送用户消息，返回 200 与含 Agent 回复的消息列表；研究与章节运行的流式更新仍经既有 `/workflow-runs/:id/events`。
 - `POST /api/v1/tutorials/:id/compose/proposals/:proposalId/accept|reject`：决议提案；重复决议返回首次结果。
 - 确认闸门沿用 `/:id/confirm-scope` 与 `/:id/confirm-outline`；单章重试沿用 `/tutorial-chapters/:id/retry`；章节差异接受沿用 `/generations/:id/accept`。
 - 大纲确认后不可原地篡改，只能创建新版本；章节完成与重试都写入文档修订。

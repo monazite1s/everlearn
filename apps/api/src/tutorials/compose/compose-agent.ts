@@ -2,6 +2,8 @@
  * @fileoverview 定义对话 Agent 的提示词构造与回复解析纯函数。
  */
 
+import { Logger } from '@nestjs/common';
+
 import { extractJsonObject } from '../../ai/json-extraction';
 import type { LlmMessage } from '../../ai/llm-provider';
 
@@ -46,16 +48,22 @@ export interface ComposeTutorialState {
 /** 历史消息携带上限，防止提示词无限增长。 */
 const HISTORY_LIMIT = 20;
 
+/** 用于记录提案结构解析失败的结构化警告。 */
+const logger = new Logger('ComposeAgent');
+
+/** 提案解析失败时附加在回复末尾的用户提示行。 */
+const PROPOSAL_PARSE_FAILED_SUFFIX = '（提案解析失败，本次回复未生成可执行的确认卡）';
+
 /** 用于把提案类型规范为受支持的枚举值。 */
 function toProposalKind(value: unknown): ComposeProposalKind | null {
   return value === 'scope' || value === 'outline' || value === 'chapter' ? value : null;
 }
 
-/** 用于把 LLM 输出解析为回复与提案，解析失败时整段降级为纯文本回复。 */
+/** 用于把 LLM 输出解析为回复与提案，解析失败时降级为纯文本回复。 */
 export function parseAgentReply(text: string): ComposeAgentReply {
   const parsed = extractJsonObject(text);
   if (typeof parsed !== 'object' || parsed === null) {
-    return { proposal: null, reply: text.trim().slice(0, 20000) };
+    return toDegradedReply(text);
   }
   const record = parsed as { proposal?: unknown; reply?: unknown };
   const proposal = readProposal(record.proposal);
@@ -70,6 +78,14 @@ export function parseAgentReply(text: string): ComposeAgentReply {
         ? buildScopeSummaryLine(proposal.payload)
         : reply,
   };
+}
+
+/** 用于降级为纯文本回复，疑似携带提案结构时附加提示行并记录警告。 */
+function toDegradedReply(text: string): ComposeAgentReply {
+  const reply = text.trim().slice(0, 20000);
+  if (!reply.includes('"proposal"')) return { proposal: null, reply };
+  logger.warn({ event: 'compose.proposal.parse_failed', replyLength: reply.length });
+  return { proposal: null, reply: `${reply}\n\n${PROPOSAL_PARSE_FAILED_SUFFIX}` };
 }
 
 /** 用于把 scope 提案 payload 摘要为一行式要点，缺失或非法字段安全跳过。 */

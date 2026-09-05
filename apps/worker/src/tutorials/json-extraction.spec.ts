@@ -2,6 +2,9 @@
  * @fileoverview 验证 LLM 输出 JSON 对象提取的围栏、嵌套、字符串边界、多起点重试与修复重试。
  */
 
+// ponytail: 与 apps/api/src/ai/json-extraction.spec.ts 逐行同源复制；
+// Worker rootDir 限制无法跨包共享，升级条件为提取函数下沉到共享 packages。
+
 import { describe, expect, it } from 'vitest';
 
 import { extractJsonObject } from './json-extraction';

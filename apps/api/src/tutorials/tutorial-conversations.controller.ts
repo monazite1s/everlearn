@@ -32,9 +32,9 @@ export class TutorialConversationsController {
     return this.conversationsService.composeSnapshot(params.id);
   }
 
-  /** 用于发送用户消息并同步生成 Agent 回复，契约形态返回 202。 */
+  /** 用于发送用户消息并同步生成 Agent 回复，同步完成后返回 200。 */
   @Post('messages')
-  @HttpCode(HttpStatus.ACCEPTED)
+  @HttpCode(HttpStatus.OK)
   sendMessage(
     @Param() params: UuidParamDto,
     @Body() input: ConversationMessageDto,

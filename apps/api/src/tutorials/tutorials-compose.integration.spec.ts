@@ -240,11 +240,11 @@ test('快照读取创建唯一对话并合成闸门卡：纯文本与提案消�
 
   nextComposeReply = '请描述你的受众。';
   const plain = await sendAndRead(sessionId, '你好');
-  expect(plain.status).toBe(202);
+  expect(plain.status).toBe(200);
 
   nextComposeReply = proposalReply('建议这样调整范围。', 'scope', scopePayload);
   const withProposal = await sendAndRead(sessionId, '帮我调整范围');
-  expect(withProposal.status).toBe(202);
+  expect(withProposal.status).toBe(200);
   const detail = await readSnapshot(sessionId);
   const latest = (detail.body as { messages: Record<string, unknown>[] }).messages
     .filter((message) => (message.card as Record<string, unknown> | null)?.variant === 'proposal')
