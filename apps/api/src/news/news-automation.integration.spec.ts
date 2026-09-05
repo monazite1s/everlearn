@@ -263,7 +263,7 @@ async function expectExecutorPersistsBrief(): Promise<void> {
     .select(['plain_text', 'title'])
     .where('document_id', '=', run.briefDocumentId!)
     .executeTakeFirstOrThrow();
-  expect(revision.title).toBe(`资讯简报 ${new Date().toISOString().slice(0, 10)}`);
+  expect(revision.title).toBe(`自动化测试源·资讯简报 ${new Date().toISOString().slice(0, 10)}`);
   expect(revision.plain_text).toContain(briefText);
   expect(revision.plain_text).toContain('http://127.0.0.1:9/beta');
   const items = await readItems(subscription.id);
@@ -290,7 +290,7 @@ async function expectAllSourcesFailedExplains(): Promise<void> {
     .select(['plain_text', 'title'])
     .where('document_id', '=', run.briefDocumentId!)
     .executeTakeFirstOrThrow();
-  expect(revision.title).toContain('资讯简报生成失败说明');
+  expect(revision.title).toContain('失败测试源·资讯简报生成失败说明');
   expect(revision.plain_text).toContain('失败步骤：资讯源抓取');
 }
 

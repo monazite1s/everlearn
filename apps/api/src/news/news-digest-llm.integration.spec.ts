@@ -150,6 +150,11 @@ function readItems(subscriptionId: string) {
     .execute();
 }
 
+/** 用于断言简报修订标题为「订阅名·资讯简报 当日日期」。 */
+function expectBriefTitle(title: string): void {
+  expect(title).toBe(`${subscriptionName}·资讯简报 ${new Date().toISOString().slice(0, 10)}`);
+}
+
 beforeAll(prepareApplication);
 afterAll(cleanApplication);
 
@@ -192,7 +197,7 @@ async function expectRealModelDigestFlow(): Promise<void> {
     .select(['plain_text', 'title'])
     .where('document_id', '=', run.briefDocumentId!)
     .executeTakeFirstOrThrow();
-  expect(revision.title).toBe(`资讯简报 ${new Date().toISOString().slice(0, 10)}`);
+  expectBriefTitle(revision.title);
 
   const secondRunId = await runOnce(subscription.id);
   expect(await readItems(subscription.id)).toHaveLength(4);

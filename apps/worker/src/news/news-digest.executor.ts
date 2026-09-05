@@ -64,7 +64,7 @@ async function createFailureExplainDocument(
     nodeId: 'news-digest-brief',
     plainText,
     runId: item.runId,
-    title: `资讯简报生成失败说明 ${today}`,
+    title: `${item.subscription.name}·资讯简报生成失败说明 ${today}`,
   });
   if (created.documentId === undefined) {
     throw new WorkflowApiError('NEWS_DOC_CREATE_FAILED', 'doc-create returned no documentId');
@@ -340,7 +340,7 @@ async function generateBrief(
   config: NewsDigestExecutorConfig,
 ): Promise<string> {
   const today = new Date().toISOString().slice(0, 10);
-  const title = `资讯简报 ${today}`;
+  const title = `${item.subscription.name}·资讯简报 ${today}`;
   // ponytail: 无新条目时仍生成占位简报文档，简化空期态；升级条件为用户反馈空简报噪音。
   const plainText =
     selected.length === 0

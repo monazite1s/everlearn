@@ -73,7 +73,7 @@
 
 ### 补充交付（2026-09-02 第二批）
 
-- M4 门禁「计划时间只生成一份简报」已验证：`news-automation.integration.spec.ts` 6/6——真实 RSS 源 + OpenAI 兼容 mock LLM 的执行闭环（抓取→过滤→LLM→简报文档落入资讯知识库、标题「资讯简报 YYYY-MM-DD」、含来源链接且 utm 剥离）；同日重复计划触发返回同一 runId；终态重复 complete 被守卫拒绝（顺带修复 `numUpdatedRows`/`numChangedRows` 字段读错的真实 bug）；停用订阅从调度清单消失。
+- M4 门禁「计划时间只生成一份简报」已验证：`news-automation.integration.spec.ts` 6/6——真实 RSS 源 + OpenAI 兼容 mock LLM 的执行闭环（抓取→过滤→LLM→简报文档落入资讯知识库、标题「{订阅名}·资讯简报 YYYY-MM-DD」（2026-09-05 起带订阅名前缀以便多订阅区分；失败说明文档同理）、含来源链接且 utm 剥离）；同日重复计划触发返回同一 runId；终态重复 complete 被守卫拒绝（顺带修复 `numUpdatedRows`/`numChangedRows` 字段读错的真实 bug）；停用订阅从调度清单消失。
 - 遗留：E2E 浏览器层的 NEWS-06 未做（集成层已覆盖同一语义）。
 
 ### 正式化交付（2026-09-04）
